@@ -28,16 +28,22 @@ class ExchangeManager:
             }
             
             if self.config.api_key and self.config.api_secret:
-                exchange_config.update({
-                    'apiKey': self.config.api_key,
-                    'secret': self.config.api_secret
-                })
+                if self.config.sandbox_mode:
+                    exchange_config.update({
+                        'apiKey': self.config.demo_api_key,
+                        'secret': self.config.demo_api_secret
+                    })
+                else:
+                    exchange_config.update({
+                        'apiKey': self.config.api_key,
+                        'secret': self.config.api_secret
+                    })
             
             exchange = ccxt.bybit(exchange_config)
             exchange.load_markets()
             
-            mode = "TESTNET" if self.config.sandbox_mode else "PRODUCTION"
-            self.logger.info(f"✅ Connected to Bybit {mode}")
+            mode = "DEMO" if self.config.sandbox_mode else "PRODUCTION"
+            self.logger.debug(f"✅ Connected to Bybit {mode}")
             
             return exchange
             
@@ -45,10 +51,14 @@ class ExchangeManager:
             self.logger.error(f"Exchange setup failed: {e}")
             return None
     
-    def fetch_ohlcv_data(self, symbol: str, timeframe: str = None, limit: int = 500) -> pd.DataFrame:
-        """Fetch OHLCV data with error handling"""
+    def fetch_ohlcv_data(self, symbol: str, timeframe: str = None, limit: int = None) -> pd.DataFrame:
+        """Fetch OHLCV data with database-configured limit"""
         if timeframe is None:
             timeframe = self.config.timeframe
+            
+        # Use database-configured limit if not specified
+        if limit is None:
+            limit = self.config.ohlcv_limit_primary
             
         try:
             ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)

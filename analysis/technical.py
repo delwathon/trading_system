@@ -222,7 +222,7 @@ class EnhancedTechnicalAnalysis:
             # Forward fill then backward fill, finally fill remaining with 0
             df = df.ffill().bfill().fillna(0)
             
-            logging.info("✅ All technical indicators calculated successfully")
+            logging.debug("✅ All technical indicators calculated successfully")
             return df
             
         except Exception as e:

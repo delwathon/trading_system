@@ -1,0 +1,427 @@
+2025-07-21 15:07:08 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-21 15:07:08 - TradingSystem - INFO - ✅ Multi-Timeframe Confirmation: Primary 15m, Confirmation 1h/4h
+2025-07-21 15:07:08 - TradingSystem - INFO - ✅ Database: bybit_trading_system @ localhost
+2025-07-21 15:07:08 - TradingSystem - INFO - 🚀 STARTING ENHANCED ANALYSIS WITH 15m→1h/4h MTF CONFIRMATION (PARALLEL + MYSQL)
+2025-07-21 15:07:08 - TradingSystem - INFO - ==========================================================================================
+2025-07-21 15:07:13 - TradingSystem - INFO - 📊 Analyzing 213 symbols with MTF confirmation...
+2025-07-21 15:07:13 - TradingSystem - INFO -    Primary Timeframe: 15m
+2025-07-21 15:07:13 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h
+2025-07-21 15:07:13 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
+2025-07-21 15:07:13 - TradingSystem - INFO -    Database: MySQL @ localhost
+2025-07-21 15:09:00 - TradingSystem - INFO - 🔍 Running 1h, 4h confirmation for NXPC/USDT:USDT...
+2025-07-21 15:09:00 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for NXPC/USDT:USDT
+2025-07-21 15:09:04 - analysis.multi_timeframe - INFO -    ➖ 1h: NXPC/USDT:USDT No clear signal
+2025-07-21 15:09:05 - TradingSystem - INFO - 🔍 Running 1h, 4h confirmation for AERO/USDT:USDT...
+2025-07-21 15:09:05 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for AERO/USDT:USDT
+2025-07-21 15:09:08 - TradingSystem - WARNING - Insufficient 15m data for TA/USDT:USDT
+2025-07-21 15:09:08 - analysis.multi_timeframe - INFO -    ✅ 1h: AERO/USDT:USDT BUY signal confirmed
+2025-07-21 15:09:09 - analysis.multi_timeframe - INFO -    ➖ 4h: NXPC/USDT:USDT No clear signal
+2025-07-21 15:09:09 - analysis.multi_timeframe - INFO -    📊 Confirmation: 0/2 timeframes
+2025-07-21 15:09:09 - analysis.multi_timeframe - INFO -    💪 Strength: 0.0%
+2025-07-21 15:09:09 - TradingSystem - INFO -    📊 MTF Status: NONE (0/2)
+2025-07-21 15:09:10 - visualization.charts - INFO - Adding TP/SL boxes for buy signal: Entry=1.08453753707483, SL=1.0512751468948462, TP1=1.1377573613628043, TP2=1.1776722295787847
+2025-07-21 15:09:10 - visualization.charts - ERROR - Error adding prominent TP/SL boxes: Invalid annotation position "middle left"
+2025-07-21 15:09:10 - choreographer.browsers.chromium - INFO - Chromium init'ed with kwargs {}
+2025-07-21 15:09:10 - choreographer.browsers.chromium - INFO - Found chromium path: /usr/bin/google-chrome
+2025-07-21 15:09:10 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmpcwawf8bi.
+2025-07-21 15:09:10 - choreographer.browser_async - INFO - Opening browser.
+2025-07-21 15:09:10 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmpapm50lyl.
+2025-07-21 15:09:10 - choreographer.browsers.chromium - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-07-21 15:09:10 - choreographer.browsers.chromium - INFO - Temporary directory at: /tmp/tmpapm50lyl
+2025-07-21 15:09:10 - kaleido.kaleido - INFO - Conforming 1 to file:///tmp/tmpcwawf8bi/index.html
+2025-07-21 15:09:10 - kaleido.kaleido - INFO - Waiting on all navigates
+2025-07-21 15:09:14 - analysis.multi_timeframe - INFO -    ➖ 4h: AERO/USDT:USDT No clear signal
+2025-07-21 15:09:14 - analysis.multi_timeframe - INFO -    📊 Confirmation: 1/2 timeframes
+2025-07-21 15:09:14 - analysis.multi_timeframe - INFO -    💪 Strength: 50.0%
+2025-07-21 15:09:14 - TradingSystem - INFO -    📈 Confidence boosted: 93.0% → 95.0%
+2025-07-21 15:09:14 - TradingSystem - INFO -    📊 MTF Status: PARTIAL (1/2)
+2025-07-21 15:09:14 - visualization.charts - INFO - Adding TP/SL boxes for buy signal: Entry=0.9525425, SL=0.9344961437061743, TP1=0.981416670070121, TP2=1.0030722976227118
+2025-07-21 15:09:14 - visualization.charts - ERROR - Error adding prominent TP/SL boxes: Invalid annotation position "middle left"
+2025-07-21 15:09:14 - choreographer.browsers.chromium - INFO - Chromium init'ed with kwargs {}
+2025-07-21 15:09:14 - choreographer.browsers.chromium - INFO - Found chromium path: /usr/bin/google-chrome
+2025-07-21 15:09:14 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmpn9j6m9kr.
+2025-07-21 15:09:14 - choreographer.browser_async - INFO - Opening browser.
+2025-07-21 15:09:14 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmp0pckuupq.
+2025-07-21 15:09:14 - choreographer.browsers.chromium - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-07-21 15:09:14 - choreographer.browsers.chromium - INFO - Temporary directory at: /tmp/tmp0pckuupq
+2025-07-21 15:09:14 - kaleido.kaleido - INFO - Conforming 1 to file:///tmp/tmpn9j6m9kr/index.html
+2025-07-21 15:09:14 - kaleido.kaleido - INFO - Waiting on all navigates
+2025-07-21 15:09:24 - kaleido.kaleido - INFO - All navigates done, putting them all in queue.
+2025-07-21 15:09:24 - kaleido.kaleido - INFO - Getting tab from queue (has 1)
+2025-07-21 15:09:24 - kaleido.kaleido - INFO - Got B503
+2025-07-21 15:09:24 - kaleido._kaleido_tab - INFO - Processing bAEROUSDTUSDTb__Trading_Signal_Analysis.jpeg
+2025-07-21 15:09:24 - kaleido._kaleido_tab - INFO - Sending big command for bAEROUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:09:24 - kaleido._kaleido_tab - INFO - Sent big command for bAEROUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:09:24 - kaleido.kaleido - INFO - Reloading tab B503 before return.
+2025-07-21 15:09:25 - TradingSystem - INFO - 🔍 Running 1h, 4h confirmation for BABY/USDT:USDT...
+2025-07-21 15:09:25 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for BABY/USDT:USDT
+2025-07-21 15:09:29 - analysis.multi_timeframe - INFO -    ➖ 1h: BABY/USDT:USDT No clear signal
+2025-07-21 15:09:33 - analysis.multi_timeframe - INFO -    ➖ 4h: BABY/USDT:USDT No clear signal
+2025-07-21 15:09:34 - analysis.multi_timeframe - INFO -    📊 Confirmation: 0/2 timeframes
+2025-07-21 15:09:34 - analysis.multi_timeframe - INFO -    💪 Strength: 0.0%
+2025-07-21 15:09:34 - TradingSystem - INFO -    📊 MTF Status: NONE (0/2)
+2025-07-21 15:09:34 - visualization.charts - INFO - Adding TP/SL boxes for buy signal: Entry=0.05503171768707482, SL=0.05337796216979238, TP1=0.057677726514726725, TP2=0.059662233135465655
+2025-07-21 15:09:34 - visualization.charts - ERROR - Error adding prominent TP/SL boxes: Invalid annotation position "middle left"
+2025-07-21 15:09:34 - choreographer.browsers.chromium - INFO - Chromium init'ed with kwargs {}
+2025-07-21 15:09:34 - choreographer.browsers.chromium - INFO - Found chromium path: /usr/bin/google-chrome
+2025-07-21 15:09:34 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmpmd9vyl1e.
+2025-07-21 15:09:34 - choreographer.browser_async - INFO - Opening browser.
+2025-07-21 15:09:34 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmpldpt5kju.
+2025-07-21 15:09:34 - choreographer.browsers.chromium - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-07-21 15:09:34 - choreographer.browsers.chromium - INFO - Temporary directory at: /tmp/tmpldpt5kju
+2025-07-21 15:09:34 - kaleido.kaleido - INFO - Conforming 1 to file:///tmp/tmpmd9vyl1e/index.html
+2025-07-21 15:09:34 - kaleido.kaleido - INFO - Waiting on all navigates
+2025-07-21 15:09:37 - kaleido.kaleido - INFO - All navigates done, putting them all in queue.
+2025-07-21 15:09:37 - kaleido.kaleido - INFO - Getting tab from queue (has 1)
+2025-07-21 15:09:37 - kaleido.kaleido - INFO - Got AADB
+2025-07-21 15:09:37 - kaleido._kaleido_tab - INFO - Processing bNXPCUSDTUSDTb__Trading_Signal_Analysis.jpeg
+2025-07-21 15:09:37 - kaleido._kaleido_tab - INFO - Sending big command for bNXPCUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:09:37 - kaleido._kaleido_tab - INFO - Sent big command for bNXPCUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:09:37 - kaleido.kaleido - INFO - Reloading tab AADB before return.
+2025-07-21 15:09:45 - TradingSystem - INFO - 🔍 Running 1h, 4h confirmation for NEIROETH/USDT:USDT...
+2025-07-21 15:09:45 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for NEIROETH/USDT:USDT
+2025-07-21 15:09:46 - kaleido.kaleido - INFO - All navigates done, putting them all in queue.
+2025-07-21 15:09:46 - kaleido.kaleido - INFO - Getting tab from queue (has 1)
+2025-07-21 15:09:46 - kaleido.kaleido - INFO - Got 849B
+2025-07-21 15:09:46 - kaleido._kaleido_tab - INFO - Processing bBABYUSDTUSDTb__Trading_Signal_Analysis.jpeg
+2025-07-21 15:09:46 - kaleido._kaleido_tab - INFO - Sending big command for bBABYUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:09:46 - kaleido._kaleido_tab - INFO - Sent big command for bBABYUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:09:46 - kaleido.kaleido - INFO - Reloading tab 849B before return.
+2025-07-21 15:09:47 - kaleido.kaleido - INFO - Putting tab B503 back (queue size: 0).
+2025-07-21 15:09:47 - kaleido.kaleido - INFO - Waiting for all cleanups to finish.
+2025-07-21 15:09:47 - kaleido.kaleido - INFO - Exiting Kaleido
+2025-07-21 15:09:47 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:09:47 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:09:47 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:09:47 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:09:47 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:09:47 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:09:47 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:09:47 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:09:47 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:09:47 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:09:47 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:09:47 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:09:47 - visualization.charts - INFO - 📊 Chart saved: tradingview_AEROUSDTUSDT_chart_20250721_150914.jpg
+2025-07-21 15:09:47 - TradingSystem - INFO - ✅ AERO/USDT:USDT - BUY signal generated (15m base)
+2025-07-21 15:09:51 - TradingSystem - INFO - 🔍 Running 1h, 4h confirmation for KAITO/USDT:USDT...
+2025-07-21 15:09:51 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for KAITO/USDT:USDT
+2025-07-21 15:09:54 - analysis.multi_timeframe - INFO -    ✅ 1h: KAITO/USDT:USDT BUY signal confirmed
+2025-07-21 15:09:58 - analysis.multi_timeframe - INFO -    ✅ 1h: NEIROETH/USDT:USDT BUY signal confirmed
+2025-07-21 15:10:00 - analysis.multi_timeframe - INFO -    ➖ 4h: KAITO/USDT:USDT No clear signal
+2025-07-21 15:10:00 - analysis.multi_timeframe - INFO -    📊 Confirmation: 1/2 timeframes
+2025-07-21 15:10:00 - analysis.multi_timeframe - INFO -    💪 Strength: 50.0%
+2025-07-21 15:10:00 - TradingSystem - INFO -    📈 Confidence boosted: 90.0% → 95.0%
+2025-07-21 15:10:00 - TradingSystem - INFO -    📊 MTF Status: PARTIAL (1/2)
+2025-07-21 15:10:00 - visualization.charts - INFO - Adding TP/SL boxes for buy signal: Entry=1.6958305336734694, SL=1.6633399510830498, TP1=1.7478154658181408, TP2=1.7868041649266444
+2025-07-21 15:10:00 - visualization.charts - ERROR - Error adding prominent TP/SL boxes: Invalid annotation position "middle left"
+2025-07-21 15:10:00 - choreographer.browsers.chromium - INFO - Chromium init'ed with kwargs {}
+2025-07-21 15:10:00 - choreographer.browsers.chromium - INFO - Found chromium path: /usr/bin/google-chrome
+2025-07-21 15:10:00 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmp0aoo6tk_.
+2025-07-21 15:10:00 - choreographer.browser_async - INFO - Opening browser.
+2025-07-21 15:10:00 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmpe66d1x8w.
+2025-07-21 15:10:00 - choreographer.browsers.chromium - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-07-21 15:10:00 - choreographer.browsers.chromium - INFO - Temporary directory at: /tmp/tmpe66d1x8w
+2025-07-21 15:10:00 - kaleido.kaleido - INFO - Conforming 1 to file:///tmp/tmp0aoo6tk_/index.html
+2025-07-21 15:10:00 - kaleido.kaleido - INFO - Waiting on all navigates
+2025-07-21 15:10:03 - analysis.multi_timeframe - INFO -    ✅ 4h: NEIROETH/USDT:USDT BUY signal confirmed
+2025-07-21 15:10:04 - analysis.multi_timeframe - INFO -    📊 Confirmation: 2/2 timeframes
+2025-07-21 15:10:04 - analysis.multi_timeframe - INFO -    💪 Strength: 100.0%
+2025-07-21 15:10:04 - TradingSystem - INFO -    📈 Confidence boosted: 93.0% → 95.0%
+2025-07-21 15:10:04 - TradingSystem - INFO -    📊 MTF Status: STRONG (2/2)
+2025-07-21 15:10:04 - visualization.charts - INFO - Adding TP/SL boxes for buy signal: Entry=0.136459375, SL=0.13109769815299593, TP1=0.1450380579552065, TP2=0.15147207017161138
+2025-07-21 15:10:04 - visualization.charts - ERROR - Error adding prominent TP/SL boxes: Invalid annotation position "middle left"
+2025-07-21 15:10:04 - choreographer.browsers.chromium - INFO - Chromium init'ed with kwargs {}
+2025-07-21 15:10:04 - choreographer.browsers.chromium - INFO - Found chromium path: /usr/bin/google-chrome
+2025-07-21 15:10:04 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmpy8hjqgs2.
+2025-07-21 15:10:04 - choreographer.browser_async - INFO - Opening browser.
+2025-07-21 15:10:04 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmpjn_43xwn.
+2025-07-21 15:10:04 - choreographer.browsers.chromium - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-07-21 15:10:04 - choreographer.browsers.chromium - INFO - Temporary directory at: /tmp/tmpjn_43xwn
+2025-07-21 15:10:04 - kaleido.kaleido - INFO - Conforming 1 to file:///tmp/tmpy8hjqgs2/index.html
+2025-07-21 15:10:04 - kaleido.kaleido - INFO - Waiting on all navigates
+2025-07-21 15:10:13 - kaleido.kaleido - INFO - Putting tab AADB back (queue size: 0).
+2025-07-21 15:10:13 - kaleido.kaleido - INFO - Waiting for all cleanups to finish.
+2025-07-21 15:10:13 - kaleido.kaleido - INFO - Exiting Kaleido
+2025-07-21 15:10:13 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:10:13 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:10:13 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:10:13 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:10:13 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:10:13 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:10:13 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:10:13 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:10:13 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:10:13 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:10:13 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:10:13 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:10:13 - visualization.charts - INFO - 📊 Chart saved: tradingview_NXPCUSDTUSDT_chart_20250721_150910.jpg
+2025-07-21 15:10:13 - TradingSystem - INFO - ✅ NXPC/USDT:USDT - BUY signal generated (15m base)
+2025-07-21 15:10:29 - kaleido.kaleido - INFO - Putting tab 849B back (queue size: 0).
+2025-07-21 15:10:29 - kaleido.kaleido - INFO - Waiting for all cleanups to finish.
+2025-07-21 15:10:29 - kaleido.kaleido - INFO - Exiting Kaleido
+2025-07-21 15:10:29 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:10:29 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:10:29 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:10:29 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:10:29 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:10:29 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:10:29 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:10:29 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:10:29 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:10:29 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:10:29 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:10:29 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:10:29 - visualization.charts - INFO - 📊 Chart saved: tradingview_BABYUSDTUSDT_chart_20250721_150934.jpg
+2025-07-21 15:10:29 - TradingSystem - INFO - ✅ BABY/USDT:USDT - BUY signal generated (15m base)
+2025-07-21 15:10:39 - kaleido.kaleido - INFO - All navigates done, putting them all in queue.
+2025-07-21 15:10:39 - kaleido.kaleido - INFO - Getting tab from queue (has 1)
+2025-07-21 15:10:39 - kaleido.kaleido - INFO - Got 5221
+2025-07-21 15:10:39 - kaleido._kaleido_tab - INFO - Processing bNEIROETHUSDTUSDTb__Trading_Signal_Analysis.jpeg
+2025-07-21 15:10:39 - kaleido._kaleido_tab - INFO - Sending big command for bNEIROETHUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:10:39 - kaleido._kaleido_tab - INFO - Sent big command for bNEIROETHUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:10:39 - kaleido.kaleido - INFO - Reloading tab 5221 before return.
+2025-07-21 15:10:39 - kaleido.kaleido - INFO - Putting tab 5221 back (queue size: 0).
+2025-07-21 15:10:39 - kaleido.kaleido - INFO - Waiting for all cleanups to finish.
+2025-07-21 15:10:39 - kaleido.kaleido - INFO - Exiting Kaleido
+2025-07-21 15:10:39 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:10:39 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:10:39 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:10:39 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:10:39 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:10:39 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:10:39 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:10:39 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:10:39 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:10:39 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:10:39 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:10:39 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:10:39 - visualization.charts - INFO - 📊 Chart saved: tradingview_NEIROETHUSDTUSDT_chart_20250721_151004.jpg
+2025-07-21 15:10:39 - TradingSystem - INFO - ✅ NEIROETH/USDT:USDT - BUY signal generated (15m base)
+2025-07-21 15:10:47 - TradingSystem - INFO - 🔍 Running 1h, 4h confirmation for IOTA/USDT:USDT...
+2025-07-21 15:10:47 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for IOTA/USDT:USDT
+2025-07-21 15:10:49 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:10:49 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:10:58 - analysis.multi_timeframe - INFO -    ➖ 1h: IOTA/USDT:USDT No clear signal
+2025-07-21 15:10:58 - kaleido.kaleido - INFO - All navigates done, putting them all in queue.
+2025-07-21 15:10:58 - kaleido.kaleido - INFO - Getting tab from queue (has 1)
+2025-07-21 15:10:58 - kaleido.kaleido - INFO - Got 5A1F
+2025-07-21 15:10:58 - kaleido._kaleido_tab - INFO - Processing bKAITOUSDTUSDTb__Trading_Signal_Analysis.jpeg
+2025-07-21 15:10:58 - kaleido._kaleido_tab - INFO - Sending big command for bKAITOUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:10:58 - kaleido._kaleido_tab - INFO - Sent big command for bKAITOUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:10:58 - kaleido.kaleido - INFO - Reloading tab 5A1F before return.
+2025-07-21 15:11:06 - analysis.multi_timeframe - INFO -    ➖ 4h: IOTA/USDT:USDT No clear signal
+2025-07-21 15:11:06 - analysis.multi_timeframe - INFO -    📊 Confirmation: 0/2 timeframes
+2025-07-21 15:11:06 - analysis.multi_timeframe - INFO -    💪 Strength: 0.0%
+2025-07-21 15:11:06 - TradingSystem - INFO -    📊 MTF Status: NONE (0/2)
+2025-07-21 15:11:06 - visualization.charts - INFO - Adding TP/SL boxes for sell signal: Entry=0.2475, SL=0.2522780846375956, TP1=0.239855064579847, TP2=0.23412136301473227
+2025-07-21 15:11:06 - visualization.charts - ERROR - Error adding prominent TP/SL boxes: Invalid annotation position "middle left"
+2025-07-21 15:11:07 - choreographer.browsers.chromium - INFO - Chromium init'ed with kwargs {}
+2025-07-21 15:11:07 - choreographer.browsers.chromium - INFO - Found chromium path: /usr/bin/google-chrome
+2025-07-21 15:11:07 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmp6tdjwy1q.
+2025-07-21 15:11:07 - choreographer.browser_async - INFO - Opening browser.
+2025-07-21 15:11:07 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmpqayhm_8l.
+2025-07-21 15:11:07 - choreographer.browsers.chromium - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-07-21 15:11:07 - choreographer.browsers.chromium - INFO - Temporary directory at: /tmp/tmpqayhm_8l
+2025-07-21 15:11:07 - kaleido.kaleido - INFO - Conforming 1 to file:///tmp/tmp6tdjwy1q/index.html
+2025-07-21 15:11:07 - kaleido.kaleido - INFO - Waiting on all navigates
+2025-07-21 15:11:13 - TradingSystem - INFO - 🔍 Running 1h, 4h confirmation for CELO/USDT:USDT...
+2025-07-21 15:11:13 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for CELO/USDT:USDT
+2025-07-21 15:11:14 - kaleido.kaleido - INFO - Putting tab 5A1F back (queue size: 0).
+2025-07-21 15:11:14 - kaleido.kaleido - INFO - Waiting for all cleanups to finish.
+2025-07-21 15:11:14 - kaleido.kaleido - INFO - Exiting Kaleido
+2025-07-21 15:11:14 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:14 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:14 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:11:14 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:11:14 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:11:14 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:14 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:14 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:11:14 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:11:14 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:11:15 - TradingSystem - INFO - 🔍 Running 1h, 4h confirmation for DEGEN/USDT:USDT...
+2025-07-21 15:11:15 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for DEGEN/USDT:USDT
+2025-07-21 15:11:15 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:15 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:15 - visualization.charts - INFO - 📊 Chart saved: tradingview_KAITOUSDTUSDT_chart_20250721_151000.jpg
+2025-07-21 15:11:15 - TradingSystem - INFO - ✅ KAITO/USDT:USDT - BUY signal generated (15m base)
+2025-07-21 15:11:15 - TradingSystem - INFO - Generated 5 charts (limit reached for demo)
+2025-07-21 15:11:19 - analysis.multi_timeframe - INFO -    ➖ 1h: CELO/USDT:USDT No clear signal
+2025-07-21 15:11:19 - analysis.multi_timeframe - INFO -    ✅ 1h: DEGEN/USDT:USDT BUY signal confirmed
+2025-07-21 15:11:19 - kaleido.kaleido - INFO - All navigates done, putting them all in queue.
+2025-07-21 15:11:19 - kaleido.kaleido - INFO - Getting tab from queue (has 1)
+2025-07-21 15:11:19 - kaleido.kaleido - INFO - Got 8EA6
+2025-07-21 15:11:19 - kaleido._kaleido_tab - INFO - Processing bIOTAUSDTUSDTb__Trading_Signal_Analysis.jpeg
+2025-07-21 15:11:19 - kaleido._kaleido_tab - INFO - Sending big command for bIOTAUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:11:19 - kaleido._kaleido_tab - INFO - Sent big command for bIOTAUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:11:19 - kaleido.kaleido - INFO - Reloading tab 8EA6 before return.
+2025-07-21 15:11:22 - TradingSystem - INFO - 🔍 Running 1h, 4h confirmation for A/USDT:USDT...
+2025-07-21 15:11:22 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for A/USDT:USDT
+2025-07-21 15:11:24 - analysis.multi_timeframe - INFO -    ➖ 4h: CELO/USDT:USDT No clear signal
+2025-07-21 15:11:24 - analysis.multi_timeframe - INFO -    📊 Confirmation: 0/2 timeframes
+2025-07-21 15:11:24 - analysis.multi_timeframe - INFO -    💪 Strength: 0.0%
+2025-07-21 15:11:24 - TradingSystem - INFO -    📊 MTF Status: NONE (0/2)
+2025-07-21 15:11:24 - visualization.charts - INFO - Adding TP/SL boxes for sell signal: Entry=0.3966, SL=0.40420175907952116, TP1=0.3844371854727662, TP2=0.37531507457734076
+2025-07-21 15:11:24 - visualization.charts - ERROR - Error adding prominent TP/SL boxes: Invalid annotation position "middle left"
+2025-07-21 15:11:24 - choreographer.browsers.chromium - INFO - Chromium init'ed with kwargs {}
+2025-07-21 15:11:24 - choreographer.browsers.chromium - INFO - Found chromium path: /usr/bin/google-chrome
+2025-07-21 15:11:24 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmp82qrh_kd.
+2025-07-21 15:11:24 - choreographer.browser_async - INFO - Opening browser.
+2025-07-21 15:11:24 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmpitier24b.
+2025-07-21 15:11:24 - choreographer.browsers.chromium - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-07-21 15:11:24 - choreographer.browsers.chromium - INFO - Temporary directory at: /tmp/tmpitier24b
+2025-07-21 15:11:24 - analysis.multi_timeframe - INFO -    ➖ 1h: A/USDT:USDT No clear signal
+2025-07-21 15:11:24 - kaleido.kaleido - INFO - Conforming 1 to file:///tmp/tmp82qrh_kd/index.html
+2025-07-21 15:11:24 - kaleido.kaleido - INFO - Waiting on all navigates
+2025-07-21 15:11:28 - analysis.multi_timeframe - INFO -    ➖ 4h: A/USDT:USDT No clear signal
+2025-07-21 15:11:28 - analysis.multi_timeframe - INFO -    📊 Confirmation: 0/2 timeframes
+2025-07-21 15:11:28 - analysis.multi_timeframe - INFO -    💪 Strength: 0.0%
+2025-07-21 15:11:28 - TradingSystem - INFO -    📊 MTF Status: NONE (0/2)
+2025-07-21 15:11:28 - visualization.charts - INFO - Adding TP/SL boxes for sell signal: Entry=0.6347, SL=0.6439669454324803, TP1=0.6198728873080316, TP2=0.6087525527890553
+2025-07-21 15:11:28 - visualization.charts - ERROR - Error adding prominent TP/SL boxes: Invalid annotation position "middle left"
+2025-07-21 15:11:28 - analysis.multi_timeframe - INFO -    ➖ 4h: DEGEN/USDT:USDT No clear signal
+2025-07-21 15:11:28 - choreographer.browsers.chromium - INFO - Chromium init'ed with kwargs {}
+2025-07-21 15:11:28 - choreographer.browsers.chromium - INFO - Found chromium path: /usr/bin/google-chrome
+2025-07-21 15:11:28 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmp80u05ch2.
+2025-07-21 15:11:28 - choreographer.browser_async - INFO - Opening browser.
+2025-07-21 15:11:28 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmp4q8619p3.
+2025-07-21 15:11:28 - choreographer.browsers.chromium - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-07-21 15:11:28 - choreographer.browsers.chromium - INFO - Temporary directory at: /tmp/tmp4q8619p3
+2025-07-21 15:11:28 - analysis.multi_timeframe - INFO -    📊 Confirmation: 1/2 timeframes
+2025-07-21 15:11:28 - analysis.multi_timeframe - INFO -    💪 Strength: 50.0%
+2025-07-21 15:11:28 - TradingSystem - INFO -    📈 Confidence boosted: 95.0% → 95.0%
+2025-07-21 15:11:28 - TradingSystem - INFO -    📊 MTF Status: PARTIAL (1/2)
+2025-07-21 15:11:29 - visualization.charts - INFO - Adding TP/SL boxes for buy signal: Entry=0.004738550076042803, SL=0.004612710568469425, TP1=0.004939893288160208, TP2=0.005090900697248262
+2025-07-21 15:11:29 - visualization.charts - ERROR - Error adding prominent TP/SL boxes: Invalid annotation position "middle left"
+2025-07-21 15:11:29 - kaleido.kaleido - INFO - Conforming 1 to file:///tmp/tmp80u05ch2/index.html
+2025-07-21 15:11:29 - choreographer.browsers.chromium - INFO - Chromium init'ed with kwargs {}
+2025-07-21 15:11:29 - kaleido.kaleido - INFO - Waiting on all navigates
+2025-07-21 15:11:29 - choreographer.browsers.chromium - INFO - Found chromium path: /usr/bin/google-chrome
+2025-07-21 15:11:29 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmplxpi26nw.
+2025-07-21 15:11:29 - choreographer.browser_async - INFO - Opening browser.
+2025-07-21 15:11:29 - choreographer.utils._tmpfile - INFO - Temp directory created: /tmp/tmppmd5t1ng.
+2025-07-21 15:11:29 - choreographer.browsers.chromium - INFO - ldd failed. e: Command '['ldd', '/usr/bin/google-chrome']' returned non-zero exit status 1., stderr: None
+2025-07-21 15:11:29 - choreographer.browsers.chromium - INFO - Temporary directory at: /tmp/tmppmd5t1ng
+2025-07-21 15:11:29 - kaleido.kaleido - INFO - Conforming 1 to file:///tmp/tmplxpi26nw/index.html
+2025-07-21 15:11:29 - kaleido.kaleido - INFO - Waiting on all navigates
+2025-07-21 15:11:37 - kaleido.kaleido - INFO - All navigates done, putting them all in queue.
+2025-07-21 15:11:37 - kaleido.kaleido - INFO - Getting tab from queue (has 1)
+2025-07-21 15:11:37 - kaleido.kaleido - INFO - Got 7D76
+2025-07-21 15:11:37 - kaleido._kaleido_tab - INFO - Processing bCELOUSDTUSDTb__Trading_Signal_Analysis.jpeg
+2025-07-21 15:11:37 - kaleido._kaleido_tab - INFO - Sending big command for bCELOUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:11:37 - kaleido._kaleido_tab - INFO - Sent big command for bCELOUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:11:37 - kaleido.kaleido - INFO - Reloading tab 7D76 before return.
+2025-07-21 15:11:38 - kaleido.kaleido - INFO - Putting tab 8EA6 back (queue size: 0).
+2025-07-21 15:11:38 - kaleido.kaleido - INFO - Waiting for all cleanups to finish.
+2025-07-21 15:11:38 - kaleido.kaleido - INFO - Exiting Kaleido
+2025-07-21 15:11:38 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:38 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:38 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:11:38 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:11:38 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:11:38 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:38 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:38 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:11:38 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:11:38 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:11:38 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:38 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:38 - visualization.charts - INFO - 📊 Chart saved: tradingview_IOTAUSDTUSDT_chart_20250721_151107.jpg
+2025-07-21 15:11:38 - TradingSystem - INFO - ✅ IOTA/USDT:USDT - SELL signal generated (15m base)
+2025-07-21 15:11:44 - kaleido.kaleido - INFO - All navigates done, putting them all in queue.
+2025-07-21 15:11:44 - kaleido.kaleido - INFO - Getting tab from queue (has 1)
+2025-07-21 15:11:44 - kaleido.kaleido - INFO - Got BB30
+2025-07-21 15:11:44 - kaleido._kaleido_tab - INFO - Processing bDEGENUSDTUSDTb__Trading_Signal_Analysis.jpeg
+2025-07-21 15:11:44 - kaleido._kaleido_tab - INFO - Sending big command for bDEGENUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:11:45 - kaleido._kaleido_tab - INFO - Sent big command for bDEGENUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:11:45 - kaleido.kaleido - INFO - Reloading tab BB30 before return.
+2025-07-21 15:11:55 - kaleido.kaleido - INFO - Putting tab 7D76 back (queue size: 0).
+2025-07-21 15:11:55 - kaleido.kaleido - INFO - Waiting for all cleanups to finish.
+2025-07-21 15:11:55 - kaleido.kaleido - INFO - Exiting Kaleido
+2025-07-21 15:11:55 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:55 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:55 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:11:55 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:11:55 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:11:55 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:55 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:55 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:11:55 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:11:55 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:11:55 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:55 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:55 - visualization.charts - INFO - 📊 Chart saved: tradingview_CELOUSDTUSDT_chart_20250721_151124.jpg
+2025-07-21 15:11:56 - TradingSystem - INFO - ✅ CELO/USDT:USDT - SELL signal generated (15m base)
+2025-07-21 15:11:59 - kaleido.kaleido - INFO - Putting tab BB30 back (queue size: 0).
+2025-07-21 15:11:59 - kaleido.kaleido - INFO - Waiting for all cleanups to finish.
+2025-07-21 15:11:59 - kaleido.kaleido - INFO - Exiting Kaleido
+2025-07-21 15:11:59 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:59 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:59 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:11:59 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:11:59 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:11:59 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:59 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:59 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:11:59 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:11:59 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:11:59 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:11:59 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:11:59 - visualization.charts - INFO - 📊 Chart saved: tradingview_DEGENUSDTUSDT_chart_20250721_151129.jpg
+2025-07-21 15:11:59 - TradingSystem - INFO - ✅ DEGEN/USDT:USDT - BUY signal generated (15m base)
+2025-07-21 15:12:25 - kaleido.kaleido - INFO - All navigates done, putting them all in queue.
+2025-07-21 15:12:25 - kaleido.kaleido - INFO - Getting tab from queue (has 1)
+2025-07-21 15:12:25 - kaleido.kaleido - INFO - Got 1545
+2025-07-21 15:12:25 - kaleido._kaleido_tab - INFO - Processing bAUSDTUSDTb__Trading_Signal_Analysis.jpeg
+2025-07-21 15:12:25 - kaleido._kaleido_tab - INFO - Sending big command for bAUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:12:25 - kaleido._kaleido_tab - INFO - Sent big command for bAUSDTUSDTb__Trading_Signal_Analysis.jpeg.
+2025-07-21 15:12:25 - kaleido.kaleido - INFO - Reloading tab 1545 before return.
+2025-07-21 15:12:26 - kaleido.kaleido - INFO - Putting tab 1545 back (queue size: 0).
+2025-07-21 15:12:26 - kaleido.kaleido - INFO - Waiting for all cleanups to finish.
+2025-07-21 15:12:26 - kaleido.kaleido - INFO - Exiting Kaleido
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:12:26 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:12:26 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:12:26 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:12:26 - kaleido.kaleido - INFO - Cancelling tasks.
+2025-07-21 15:12:26 - kaleido.kaleido - INFO - Exiting Kaleido/Choreo
+2025-07-21 15:12:26 - choreographer.browser_async - INFO - Closing browser.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:12:26 - visualization.charts - INFO - 📊 Chart saved: tradingview_AUSDTUSDT_chart_20250721_151128.jpg
+2025-07-21 15:12:26 - TradingSystem - INFO - ✅ A/USDT:USDT - SELL signal generated (15m base)
+2025-07-21 15:12:26 - TradingSystem - INFO - ⚡ 15m→1h/4h MTF PARALLEL ANALYSIS COMPLETED!
+2025-07-21 15:12:26 - TradingSystem - INFO -    Execution Time: 317.9s
+2025-07-21 15:12:26 - TradingSystem - INFO -    MTF Confirmations: Strong: 1, Partial: 2, None: 2
+2025-07-21 15:12:26 - utils.database_manager - INFO - 📊 Saving results to MySQL database for scan ID: 20250721_151226
+2025-07-21 15:12:26 - utils.database_manager - INFO - ✅ Created scan session: 20250721_151226 (ID: 3) - Primary: 15m, Confirmation: 1h, 4h
+2025-07-21 15:12:26 - utils.database_manager - INFO - ✅ Saved 5 signals to MySQL database
+2025-07-21 15:12:26 - utils.database_manager - INFO - ✅ Saved 5 opportunities to MySQL database
+2025-07-21 15:12:26 - utils.database_manager - INFO - ✅ Saved market summary to MySQL database
+2025-07-21 15:12:26 - utils.database_manager - INFO - 📄 MySQL Database Save Complete (Scan ID: 20250721_151226):
+2025-07-21 15:12:26 - utils.database_manager - INFO -    Primary Timeframe: 15m
+2025-07-21 15:12:26 - utils.database_manager - INFO -    Confirmation Timeframes: 1h, 4h
+2025-07-21 15:12:26 - utils.database_manager - INFO -    Signals: 5
+2025-07-21 15:12:26 - utils.database_manager - INFO -    Opportunities: 5
+2025-07-21 15:12:26 - utils.database_manager - INFO -    Market Summary: ✅
+2025-07-21 15:12:26 - utils.database_manager - INFO -    Performance Metrics: 0
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - TemporaryDirectory.cleanup() worked.
+2025-07-21 15:12:26 - choreographer.utils._tmpfile - INFO - shutil.rmtree worked.

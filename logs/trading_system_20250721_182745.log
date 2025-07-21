@@ -1,0 +1,30 @@
+2025-07-21 18:28:22 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-21 18:28:22 - TradingSystem - INFO - ✅ Multi-Timeframe Confirmation: Primary 15m, Confirmation 1h/4h
+2025-07-21 18:28:22 - TradingSystem - INFO - ✅ Database: bybit_trading_system @ localhost
+2025-07-21 18:28:22 - TradingSystem - INFO - 🚀 STARTING ENHANCED ANALYSIS WITH 15m→1h/4h MTF CONFIRMATION (PARALLEL + MYSQL)
+2025-07-21 18:28:22 - TradingSystem - INFO - ==========================================================================================
+2025-07-21 18:28:28 - TradingSystem - INFO - 📊 Analyzing 219 symbols with MTF confirmation...
+2025-07-21 18:28:28 - TradingSystem - INFO -    Primary Timeframe: 15m
+2025-07-21 18:28:28 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h
+2025-07-21 18:28:28 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
+2025-07-21 18:28:28 - TradingSystem - INFO -    Database: MySQL @ localhost
+2025-07-21 18:29:04 - visualization.charts - ERROR - Error adding Fibonacci levels: Invalid annotation position "middle right"
+2025-07-21 18:29:24 - visualization.charts - INFO - Chart element size: {'height': 1200, 'width': 1800}, location: {'x': 8, 'y': 8}
+2025-07-21 18:29:28 - visualization.charts - INFO - ✅ Screenshot captured with Selenium: tradingview_AVAXUSDTUSDT_screenshot_20250721_182926.png (Full page: 1261px)
+2025-07-21 18:29:28 - visualization.charts - INFO - 📊 Chart saved: HTML=tradingview_AVAXUSDTUSDT_chart_20250721_182905.html, Screenshot=tradingview_AVAXUSDTUSDT_screenshot_20250721_182926.png
+2025-07-21 18:30:16 - TradingSystem - WARNING - Insufficient 15m data for TA/USDT:USDT
+2025-07-21 18:32:04 - TradingSystem - INFO - ⚡ 15m→1h/4h MTF PARALLEL ANALYSIS COMPLETED!
+2025-07-21 18:32:04 - TradingSystem - INFO -    Execution Time: 222.6s
+2025-07-21 18:32:04 - TradingSystem - INFO -    MTF Confirmations: Strong: 0, Partial: 0, None: 1
+2025-07-21 18:32:04 - utils.database_manager - INFO - 📊 Saving results to MySQL database for scan ID: 20250721_183204
+2025-07-21 18:32:04 - utils.database_manager - INFO - ✅ Created scan session: 20250721_183204 (ID: 10) - Primary: 15m, Confirmation: 1h, 4h
+2025-07-21 18:32:05 - utils.database_manager - INFO - ✅ Saved 1 signals to MySQL database
+2025-07-21 18:32:05 - utils.database_manager - INFO - ✅ Saved 1 opportunities to MySQL database
+2025-07-21 18:32:05 - utils.database_manager - INFO - ✅ Saved market summary to MySQL database
+2025-07-21 18:32:05 - utils.database_manager - INFO - 📄 MySQL Database Save Complete (Scan ID: 20250721_183204):
+2025-07-21 18:32:05 - utils.database_manager - INFO -    Primary Timeframe: 15m
+2025-07-21 18:32:05 - utils.database_manager - INFO -    Confirmation Timeframes: 1h, 4h
+2025-07-21 18:32:05 - utils.database_manager - INFO -    Signals: 1
+2025-07-21 18:32:05 - utils.database_manager - INFO -    Opportunities: 1
+2025-07-21 18:32:05 - utils.database_manager - INFO -    Market Summary: ✅
+2025-07-21 18:32:05 - utils.database_manager - INFO -    Performance Metrics: 0

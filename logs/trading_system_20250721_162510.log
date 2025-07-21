@@ -1,0 +1,4 @@
+2025-07-21 16:25:25 - core.exchange - ERROR - Exchange setup failed: bybit GET https://api.bybit.com/v5/market/instruments-info?category=linear&limit=1000
+2025-07-21 16:25:25 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-21 16:25:25 - TradingSystem - INFO - ✅ Multi-Timeframe Confirmation: Primary 15m, Confirmation 1h/4h
+2025-07-21 16:25:25 - TradingSystem - INFO - ✅ Database: bybit_trading_system @ localhost

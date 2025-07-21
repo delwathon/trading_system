@@ -1,33 +1,52 @@
-api_key: null
-api_secret: null
-api_timeout: 20000
-cache_ttl_seconds: 60
-chart_height: 800
-chart_width: 1400
-charts_per_batch: 5
-confirmation_timeframes:
-- 1h
-- 4h
-csv_base_filename: enhanced_bybit_signals_mtf
-ichimoku_window1: 9
-ichimoku_window2: 26
-ichimoku_window3: 52
-max_cache_size: 1000
-max_daily_trades: 20
-max_portfolio_risk: 0.02
-max_requests_per_second: 8.0
-max_single_position_risk: 0.005
-max_symbols_scan: 500
-max_workers: null
-min_volume_24h: 5000000
-ml_profitable_rate: 0.45
-ml_training_samples: 400
-mtf_confirmation_required: true
-mtf_weight_multiplier: 1.5
-sandbox_mode: false
-save_charts: true
-show_charts: true
-stoch_rsi_smooth_d: 3
-stoch_rsi_smooth_k: 3
-stoch_rsi_window: 14
-timeframe: 15m
+# Enhanced Bybit Trading System - Database Configuration
+# All trading system configurations are now stored in the MySQL database.
+# This file only contains database connection settings.
+
+database:
+  # Database type: mysql only
+  type: "mysql"
+  
+  # MySQL settings
+  host: "localhost"
+  port: 3306
+  database: "bybit_trading_system"
+  username: "root"
+  password: "your_secure_password"
+  
+  # Connection pool settings
+  pool_size: 10
+  max_overflow: 20
+  pool_timeout: 30
+  pool_recycle: 3600
+  echo_sql: false
+
+# Configuration Management
+config:
+  # Which configuration to load from database
+  config_name: "default"
+  
+  # Auto-create default config if not found
+  auto_create_default: true
+  
+  # Backup configuration to YAML on changes
+  backup_on_update: true
+  backup_directory: "config_backups"
+
+# System Settings
+system:
+  # Enable database logging
+  enable_db_logging: true
+  
+  # Automatic cleanup settings
+  auto_cleanup_enabled: true
+  cleanup_days_to_keep: 30
+  cleanup_schedule: "daily"  # daily, weekly, monthly
+  
+  # Database maintenance
+  auto_vacuum: true
+  backup_on_startup: false
+
+# Timeframe Configuration (hardcoded for consistency)
+# Primary timeframe: 15m
+# Confirmation timeframes: 1h, 4h
+# These values are enforced in the database configuration

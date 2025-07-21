@@ -50,8 +50,8 @@ def setup_logging(log_level: str = "INFO", log_file: str = None) -> logging.Logg
     
     # Create main logger
     logger = logging.getLogger("TradingSystem")
-    logger.info(f"Logging initialized - Level: {log_level}")
-    logger.info(f"Log file: {log_file}")
+    logger.debug(f"Logging initialized - Level: {log_level}")
+    logger.debug(f"Log file: {log_file}")
     
     return logger
 

@@ -22,7 +22,7 @@ class MultiTimeframeAnalyzer:
     def analyze_symbol_multi_timeframe(self, symbol: str, primary_signal: Dict) -> Dict:
         """Analyze symbol across multiple timeframes for signal confirmation"""
         try:
-            self.logger.info(f"🔍 Multi-timeframe analysis for {symbol}")
+            self.logger.debug(f"🔍 Multi-timeframe analysis for {symbol}")
             
             confirmation_results = {
                 'confirmed_timeframes': [],
@@ -58,13 +58,13 @@ class MultiTimeframeAnalyzer:
                         
                         if timeframe_signal['side'] == primary_side:
                             confirmation_results['confirmed_timeframes'].append(timeframe)
-                            self.logger.info(f"   ✅ {timeframe}: {symbol} {timeframe_signal['side'].upper()} signal confirmed")
+                            self.logger.debug(f"   ✅ {timeframe}: {symbol} {timeframe_signal['side'].upper()} signal confirmed")
                         else:
                             confirmation_results['conflicting_timeframes'].append(timeframe)
                             self.logger.debug(f"   ⚠️ {timeframe}: {symbol} {timeframe_signal['side'].upper()} signal conflicts")
                     else:
                         confirmation_results['neutral_timeframes'].append(timeframe)
-                        self.logger.info(f"   ➖ {timeframe}: {symbol} No clear signal")
+                        self.logger.debug(f"   ➖ {timeframe}: {symbol} No clear signal")
                     
                     # Add small delay to respect rate limits
                     time.sleep(0.1)
@@ -89,8 +89,8 @@ class MultiTimeframeAnalyzer:
                         (net_confirmation / total_timeframes) * (self.config.mtf_weight_multiplier - 1) * 100
                     )
             
-            self.logger.info(f"   📊 Confirmation: {confirmed_count}/{total_timeframes} timeframes")
-            self.logger.info(f"   💪 Strength: {confirmation_results['confirmation_strength']:.1%}")
+            self.logger.debug(f"   📊 Confirmation: {confirmed_count}/{total_timeframes} timeframes")
+            self.logger.debug(f"   💪 Strength: {confirmation_results['confirmation_strength']:.1%}")
             
             return confirmation_results
             
@@ -105,9 +105,13 @@ class MultiTimeframeAnalyzer:
                 'timeframe_signals': {}
             }
     
-    def fetch_timeframe_data(self, symbol: str, timeframe: str, limit: int = 500) -> pd.DataFrame:
-        """Fetch OHLCV data for specific timeframe"""
+    def fetch_timeframe_data(self, symbol: str, timeframe: str, limit: int = None) -> pd.DataFrame:
+        """Fetch OHLCV data for specific timeframe with database-configured limit"""
         try:
+            # Use database-configured limit if not specified
+            if limit is None:
+                limit = self.config.ohlcv_limit_mtf
+                
             ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             
             if not ohlcv:

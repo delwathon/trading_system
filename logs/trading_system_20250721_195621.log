@@ -1,0 +1,17 @@
+2025-07-21 19:56:57 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-21 19:56:57 - TradingSystem - INFO - ✅ Multi-Timeframe Confirmation: Primary 15m, Confirmation 1h/4h
+2025-07-21 19:56:57 - TradingSystem - INFO - ✅ Database: bybit_trading_system @ localhost
+2025-07-21 19:56:57 - TradingSystem - INFO - 🚀 STARTING ENHANCED ANALYSIS WITH 4h→1d/1w MTF CONFIRMATION (PARALLEL + MYSQL)
+2025-07-21 19:56:57 - TradingSystem - INFO - ==========================================================================================
+2025-07-21 19:57:03 - TradingSystem - INFO - 📊 Analyzing 219 symbols with MTF confirmation...
+2025-07-21 19:57:03 - TradingSystem - INFO -    Primary Timeframe: 4h
+2025-07-21 19:57:03 - TradingSystem - INFO -    Confirmation Timeframes: 1d, 1w
+2025-07-21 19:57:03 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
+2025-07-21 19:57:03 - TradingSystem - INFO -    Database: MySQL @ localhost
+2025-07-21 19:57:23 - selenium.webdriver.common.selenium_manager - WARNING - Error sending stats to Plausible: error sending request for url (https://plausible.io/api/event)
+2025-07-21 19:57:28 - selenium.webdriver.common.selenium_manager - WARNING - There was an error managing chromedriver (error sending request for url (https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json)); using driver found in the cache
+2025-07-21 19:57:32 - analysis.multi_timeframe - WARNING -    Insufficient 1w data for HYPE/USDT:USDT
+2025-07-21 19:57:50 - TradingSystem - INFO - Generated 5 charts (limit reached for demo)
+2025-07-21 19:58:20 - TradingSystem - INFO - ⚡ 4h→1d/1w MTF PARALLEL ANALYSIS COMPLETED!
+2025-07-21 19:58:20 - TradingSystem - INFO -    Execution Time: 83.0s
+2025-07-21 19:58:20 - TradingSystem - INFO -    MTF Confirmations: Strong: 0, Partial: 0, None: 5
