@@ -1,0 +1,228 @@
+2025-07-16 16:13:17 - TradingSystem - INFO - Logging initialized - Level: INFO
+2025-07-16 16:13:17 - TradingSystem - INFO - Log file: logs/trading_system_20250716_161317.log
+2025-07-16 16:13:53 - core.exchange - INFO - ✅ Connected to Bybit PRODUCTION
+2025-07-16 16:13:53 - utils.csv_manager - INFO - ✅ CSV files initialized in csv_exports
+2025-07-16 16:13:53 - utils.csv_manager - INFO -    signals: enhanced_bybit_signals_mtf_signals.csv
+2025-07-16 16:13:53 - utils.csv_manager - INFO -    opportunities: enhanced_bybit_signals_mtf_opportunities.csv
+2025-07-16 16:13:53 - utils.csv_manager - INFO -    market_summary: enhanced_bybit_signals_mtf_market_summary.csv
+2025-07-16 16:13:53 - utils.csv_manager - INFO -    scan_history: enhanced_bybit_signals_mtf_scan_history.csv
+2025-07-16 16:13:53 - utils.csv_manager - INFO -    performance_metrics: enhanced_bybit_signals_mtf_performance.csv
+2025-07-16 16:13:53 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME INITIALIZED!
+2025-07-16 16:13:53 - TradingSystem - INFO - ✅ Enhanced Technical Analysis (FIXED Ichimoku & Stochastic RSI)
+2025-07-16 16:13:53 - TradingSystem - INFO - ✅ Volume Profile Analysis
+2025-07-16 16:13:53 - TradingSystem - INFO - ✅ Fibonacci & Confluence Analysis
+2025-07-16 16:13:53 - TradingSystem - INFO - ✅ Interactive Chart Generation
+2025-07-16 16:13:53 - TradingSystem - INFO - ✅ Multi-Timeframe Confirmation (1h, 4h)
+2025-07-16 16:13:53 - TradingSystem - INFO - 🚀 STARTING ENHANCED ANALYSIS WITH MULTI-TIMEFRAME CONFIRMATION (PARALLEL)
+2025-07-16 16:13:53 - TradingSystem - INFO - ================================================================================
+2025-07-16 16:13:58 - TradingSystem - INFO - 📊 Analyzing 188 symbols with MTF confirmation...
+2025-07-16 16:13:58 - TradingSystem - INFO -    Primary Timeframe: 15m
+2025-07-16 16:13:58 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h
+2025-07-16 16:13:58 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
+2025-07-16 16:13:58 - TradingSystem - INFO - [Thread-0] [1] Analyzing ETH/USDT:USDT with MTF...
+2025-07-16 16:13:58 - TradingSystem - INFO - 📊 Analyzing ETH/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:13:58 - TradingSystem - INFO - [Thread-2] [2] Analyzing SOL/USDT:USDT with MTF...
+2025-07-16 16:13:58 - TradingSystem - INFO - 📊 Analyzing SOL/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:13:58 - TradingSystem - INFO - [Thread-1] [3] Analyzing BTC/USDT:USDT with MTF...
+2025-07-16 16:13:58 - TradingSystem - INFO - 📊 Analyzing BTC/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:13:58 - TradingSystem - INFO - [Thread-4] [4] Analyzing 1000PEPE/USDT:USDT with MTF...
+2025-07-16 16:13:58 - TradingSystem - INFO - 📊 Analyzing 1000PEPE/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:13:58 - TradingSystem - INFO - [Thread-3] [5] Analyzing XRP/USDT:USDT with MTF...
+2025-07-16 16:13:58 - TradingSystem - INFO - 📊 Analyzing XRP/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:13:58 - TradingSystem - INFO - [Thread-5] [6] Analyzing DOGE/USDT:USDT with MTF...
+2025-07-16 16:13:58 - TradingSystem - INFO - 📊 Analyzing DOGE/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:03 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:03 - TradingSystem - INFO - [Thread-0] [7] Analyzing SUI/USDT:USDT with MTF...
+2025-07-16 16:14:03 - TradingSystem - INFO - 📊 Analyzing SUI/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:03 - TradingSystem - INFO - 📈 Progress: 1/188 (0.5%) - Signals: 0
+2025-07-16 16:14:03 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:03 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:03 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:04 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:04 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:05 - TradingSystem - INFO - [Thread-1] [8] Analyzing 1000BONK/USDT:USDT with MTF...
+2025-07-16 16:14:05 - TradingSystem - INFO - 📊 Analyzing 1000BONK/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:05 - TradingSystem - INFO - 📈 Progress: 2/188 (1.1%) - Signals: 0
+2025-07-16 16:14:05 - TradingSystem - INFO - [Thread-2] [9] Analyzing FARTCOIN/USDT:USDT with MTF...
+2025-07-16 16:14:05 - TradingSystem - INFO - 📈 Progress: 3/188 (1.6%) - Signals: 0
+2025-07-16 16:14:06 - TradingSystem - INFO - 📊 Analyzing FARTCOIN/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:06 - TradingSystem - INFO - [Thread-3] [10] Analyzing PENGU/USDT:USDT with MTF...
+2025-07-16 16:14:06 - TradingSystem - INFO - 📊 Analyzing PENGU/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:06 - TradingSystem - INFO - [Thread-4] [11] Analyzing PUMPFUN/USDT:USDT with MTF...
+2025-07-16 16:14:06 - TradingSystem - INFO - 📈 Progress: 4/188 (2.1%) - Signals: 0
+2025-07-16 16:14:06 - TradingSystem - INFO - 📊 Analyzing PUMPFUN/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:06 - TradingSystem - INFO - 📈 Progress: 5/188 (2.7%) - Signals: 0
+2025-07-16 16:14:06 - TradingSystem - INFO - 🔍 Running multi-timeframe confirmation for XRP/USDT:USDT...
+2025-07-16 16:14:06 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for XRP/USDT:USDT
+2025-07-16 16:14:08 - analysis.multi_timeframe - INFO -    ➖ 1h: XRP/USDT:USDT No clear signal
+2025-07-16 16:14:08 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:08 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:08 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:08 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:08 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:10 - TradingSystem - INFO - [Thread-5] [12] Analyzing WIF/USDT:USDT with MTF...
+2025-07-16 16:14:10 - TradingSystem - INFO - 📊 Analyzing WIF/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:10 - TradingSystem - INFO - 📈 Progress: 6/188 (3.2%) - Signals: 0
+2025-07-16 16:14:10 - TradingSystem - INFO - 🔍 Running multi-timeframe confirmation for SUI/USDT:USDT...
+2025-07-16 16:14:10 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for SUI/USDT:USDT
+2025-07-16 16:14:10 - TradingSystem - INFO - [Thread-0] [13] Analyzing ADA/USDT:USDT with MTF...
+2025-07-16 16:14:10 - TradingSystem - INFO - 📊 Analyzing ADA/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:10 - TradingSystem - INFO - 📈 Progress: 7/188 (3.7%) - Signals: 0
+2025-07-16 16:14:10 - TradingSystem - INFO - 🔍 Running multi-timeframe confirmation for FARTCOIN/USDT:USDT...
+2025-07-16 16:14:10 - TradingSystem - INFO - [Thread-1] [14] Analyzing SEI/USDT:USDT with MTF...
+2025-07-16 16:14:10 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for FARTCOIN/USDT:USDT
+2025-07-16 16:14:10 - TradingSystem - INFO - 📈 Progress: 8/188 (4.3%) - Signals: 0
+2025-07-16 16:14:10 - TradingSystem - INFO - 📊 Analyzing SEI/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:13 - analysis.multi_timeframe - INFO -    ➖ 1h: FARTCOIN/USDT:USDT No clear signal
+2025-07-16 16:14:13 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:13 - analysis.multi_timeframe - INFO -    ➖ 4h: XRP/USDT:USDT No clear signal
+2025-07-16 16:14:13 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:13 - analysis.multi_timeframe - INFO -    📊 Confirmation: 0/2 timeframes
+2025-07-16 16:14:13 - analysis.multi_timeframe - INFO -    💪 Strength: 0.0%
+2025-07-16 16:14:13 - TradingSystem - INFO -    📊 MTF Status: NONE (0/2)
+2025-07-16 16:14:13 - analysis.multi_timeframe - INFO -    ➖ 1h: SUI/USDT:USDT No clear signal
+2025-07-16 16:14:13 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:14 - TradingSystem - INFO - 🔍 Running multi-timeframe confirmation for SEI/USDT:USDT...
+2025-07-16 16:14:14 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for SEI/USDT:USDT
+2025-07-16 16:14:14 - TradingSystem - INFO - 🔍 Running multi-timeframe confirmation for ADA/USDT:USDT...
+2025-07-16 16:14:14 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for ADA/USDT:USDT
+2025-07-16 16:14:14 - TradingSystem - INFO - [Thread-2] [15] Analyzing XLM/USDT:USDT with MTF...
+2025-07-16 16:14:14 - TradingSystem - INFO - 📊 Analyzing XLM/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:14 - TradingSystem - INFO - 📈 Progress: 9/188 (4.8%) - Signals: 0
+2025-07-16 16:14:14 - visualization.charts - ERROR - Chart generation error: 
+Image export using the "kaleido" engine requires the Kaleido package,
+which can be installed using pip:
+
+    $ pip install --upgrade kaleido
+
+2025-07-16 16:14:14 - TradingSystem - INFO - ✅ XRP/USDT:USDT - BUY signal generated
+2025-07-16 16:14:14 - TradingSystem - INFO - [Thread-3] ✅ XRP/USDT:USDT - BUY signal (MTF: NONE)
+2025-07-16 16:14:14 - TradingSystem - INFO - [Thread-3] [16] Analyzing TRUMP/USDT:USDT with MTF...
+2025-07-16 16:14:14 - TradingSystem - INFO - 📊 Analyzing TRUMP/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:14 - TradingSystem - INFO - 📈 Progress: 10/188 (5.3%) - Signals: 1
+2025-07-16 16:14:18 - analysis.multi_timeframe - INFO -    ➖ 1h: SEI/USDT:USDT No clear signal
+2025-07-16 16:14:18 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:18 - analysis.multi_timeframe - INFO -    ➖ 4h: SUI/USDT:USDT No clear signal
+2025-07-16 16:14:18 - analysis.multi_timeframe - INFO -    ✅ 1h: ADA/USDT:USDT BUY signal confirmed
+2025-07-16 16:14:18 - analysis.multi_timeframe - INFO -    📊 Confirmation: 0/2 timeframes
+2025-07-16 16:14:18 - analysis.multi_timeframe - INFO -    📊 Confirmation: 0/2 timeframes
+2025-07-16 16:14:18 - analysis.multi_timeframe - INFO -    💪 Strength: 0.0%
+2025-07-16 16:14:18 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:18 - analysis.multi_timeframe - INFO -    💪 Strength: 0.0%
+2025-07-16 16:14:18 - TradingSystem - INFO -    📊 MTF Status: NONE (0/2)
+2025-07-16 16:14:18 - TradingSystem - INFO - [Thread-4] [17] Analyzing HYPE/USDT:USDT with MTF...
+2025-07-16 16:14:18 - TradingSystem - INFO -    📊 MTF Status: NONE (0/2)
+2025-07-16 16:14:18 - TradingSystem - INFO - 📈 Progress: 11/188 (5.9%) - Signals: 1
+2025-07-16 16:14:18 - TradingSystem - INFO - 📊 Analyzing HYPE/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:18 - visualization.charts - ERROR - Chart generation error: 
+Image export using the "kaleido" engine requires the Kaleido package,
+which can be installed using pip:
+
+    $ pip install --upgrade kaleido
+
+2025-07-16 16:14:18 - TradingSystem - INFO - ✅ FARTCOIN/USDT:USDT - BUY signal generated
+2025-07-16 16:14:18 - TradingSystem - INFO - [Thread-2] ✅ FARTCOIN/USDT:USDT - BUY signal (MTF: NONE)
+2025-07-16 16:14:18 - TradingSystem - INFO - [Thread-5] [18] Analyzing AAVE/USDT:USDT with MTF...
+2025-07-16 16:14:18 - visualization.charts - ERROR - Chart generation error: 
+Image export using the "kaleido" engine requires the Kaleido package,
+which can be installed using pip:
+
+    $ pip install --upgrade kaleido
+
+2025-07-16 16:14:18 - TradingSystem - INFO - 📊 Analyzing AAVE/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:18 - TradingSystem - INFO - ✅ SUI/USDT:USDT - SELL signal generated
+2025-07-16 16:14:18 - TradingSystem - INFO - 📈 Progress: 12/188 (6.4%) - Signals: 2
+2025-07-16 16:14:18 - TradingSystem - INFO - [Thread-0] ✅ SUI/USDT:USDT - SELL signal (MTF: NONE)
+2025-07-16 16:14:18 - TradingSystem - INFO - [Thread-0] [19] Analyzing ENA/USDT:USDT with MTF...
+2025-07-16 16:14:18 - TradingSystem - INFO - 📊 Analyzing ENA/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:18 - TradingSystem - INFO - 📈 Progress: 13/188 (6.9%) - Signals: 3
+2025-07-16 16:14:19 - TradingSystem - INFO - [Thread-1] [20] Analyzing LINK/USDT:USDT with MTF...
+2025-07-16 16:14:19 - TradingSystem - INFO - 📈 Progress: 14/188 (7.4%) - Signals: 3
+2025-07-16 16:14:19 - TradingSystem - INFO - 📊 Analyzing LINK/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:23 - analysis.multi_timeframe - INFO -    ➖ 4h: SEI/USDT:USDT No clear signal
+2025-07-16 16:14:23 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:23 - analysis.multi_timeframe - INFO -    📊 Confirmation: 0/2 timeframes
+2025-07-16 16:14:23 - analysis.multi_timeframe - INFO -    ✅ 4h: ADA/USDT:USDT BUY signal confirmed
+2025-07-16 16:14:23 - analysis.multi_timeframe - INFO -    💪 Strength: 0.0%
+2025-07-16 16:14:23 - TradingSystem - INFO -    📊 MTF Status: NONE (0/2)
+2025-07-16 16:14:23 - analysis.multi_timeframe - INFO -    📊 Confirmation: 2/2 timeframes
+2025-07-16 16:14:23 - analysis.multi_timeframe - INFO -    💪 Strength: 100.0%
+2025-07-16 16:14:23 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:23 - TradingSystem - INFO -    📈 Confidence boosted: 95.0% → 95.0%
+2025-07-16 16:14:23 - TradingSystem - INFO -    📊 MTF Status: STRONG (2/2)
+2025-07-16 16:14:23 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:23 - visualization.charts - ERROR - Chart generation error: 
+Image export using the "kaleido" engine requires the Kaleido package,
+which can be installed using pip:
+
+    $ pip install --upgrade kaleido
+
+2025-07-16 16:14:23 - TradingSystem - INFO - ✅ SEI/USDT:USDT - BUY signal generated
+2025-07-16 16:14:23 - TradingSystem - INFO - [Thread-1] ✅ SEI/USDT:USDT - BUY signal (MTF: NONE)
+2025-07-16 16:14:23 - TradingSystem - INFO - [Thread-2] [21] Analyzing ARB/USDT:USDT with MTF...
+2025-07-16 16:14:23 - TradingSystem - INFO - 📊 Analyzing ARB/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:23 - TradingSystem - INFO - 📈 Progress: 15/188 (8.0%) - Signals: 4
+2025-07-16 16:14:24 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:24 - visualization.charts - ERROR - Chart generation error: 
+Image export using the "kaleido" engine requires the Kaleido package,
+which can be installed using pip:
+
+    $ pip install --upgrade kaleido
+
+2025-07-16 16:14:24 - TradingSystem - INFO - ✅ ADA/USDT:USDT - BUY signal generated
+2025-07-16 16:14:24 - TradingSystem - INFO - [Thread-0] ✅ ADA/USDT:USDT - BUY signal (MTF: STRONG)
+2025-07-16 16:14:24 - TradingSystem - INFO - [Thread-4] [22] Analyzing HBAR/USDT:USDT with MTF...
+2025-07-16 16:14:24 - TradingSystem - INFO - 📈 Progress: 16/188 (8.5%) - Signals: 4
+2025-07-16 16:14:24 - TradingSystem - INFO - 📊 Analyzing HBAR/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:24 - TradingSystem - INFO - [Thread-3] [23] Analyzing CRV/USDT:USDT with MTF...
+2025-07-16 16:14:24 - TradingSystem - INFO - 📊 Analyzing CRV/USDT:USDT (MTF: 1h, 4h)...
+2025-07-16 16:14:24 - TradingSystem - INFO - 📈 Progress: 17/188 (9.0%) - Signals: 5
+2025-07-16 16:14:24 - TradingSystem - INFO - Generated 5 charts (limit reached for demo)
+2025-07-16 16:14:24 - TradingSystem - INFO - 🔍 Running multi-timeframe confirmation for ENA/USDT:USDT...
+2025-07-16 16:14:24 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for ENA/USDT:USDT
+2025-07-16 16:14:25 - TradingSystem - INFO - 🔍 Running multi-timeframe confirmation for AAVE/USDT:USDT...
+2025-07-16 16:14:25 - analysis.multi_timeframe - INFO - 🔍 Multi-timeframe analysis for AAVE/USDT:USDT
+2025-07-16 16:14:28 - analysis.multi_timeframe - INFO -    ✅ 1h: AAVE/USDT:USDT BUY signal confirmed
+2025-07-16 16:14:28 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:28 - analysis.multi_timeframe - INFO -    ✅ 1h: ENA/USDT:USDT BUY signal confirmed
+2025-07-16 16:14:28 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:28 - root - INFO - ✅ All technical indicators calculated successfully
+2025-07-16 16:14:33 - analysis.multi_timeframe - INFO -    ✅ 4h: ENA/USDT:USDT BUY signal confirmed
+2025-07-16 16:14:33 - analysis.multi_timeframe - INFO -    ✅ 4h: AAVE/USDT:USDT BUY signal confirmed
+2025-07-16 16:14:33 - analysis.multi_timeframe - INFO -    📊 Confirmation: 2/2 timeframes
+2025-07-16 16:14:33 - analysis.multi_timeframe - INFO -    💪 Strength: 100.0%
+2025-07-16 16:14:33 - TradingSystem - INFO -    📈 Confidence boosted: 95.0% → 95.0%
+2025-07-16 16:14:33 - TradingSystem - INFO -    📊 MTF Status: STRONG (2/2)
+2025-07-16 16:14:33 - analysis.multi_timeframe - INFO -    📊 Confirmation: 2/2 timeframes
+2025-07-16 16:14:33 - analysis.multi_timeframe - INFO -    💪 Strength: 100.0%
+2025-07-16 16:14:33 - TradingSystem - INFO -    📈 Confidence boosted: 90.0% → 95.0%
+2025-07-16 16:14:33 - TradingSystem - INFO -    📊 MTF Status: STRONG (2/2)
+2025-07-16 16:14:33 - visualization.charts - ERROR - Chart generation error: 
+Image export using the "kaleido" engine requires the Kaleido package,
+which can be installed using pip:
+
+    $ pip install --upgrade kaleido
+
+2025-07-16 16:14:33 - TradingSystem - INFO - ✅ ENA/USDT:USDT - BUY signal generated
+2025-07-16 16:14:33 - TradingSystem - INFO - [Thread-0] ✅ ENA/USDT:USDT - BUY signal (MTF: STRONG)
+2025-07-16 16:14:33 - visualization.charts - ERROR - Chart generation error: 
+Image export using the "kaleido" engine requires the Kaleido package,
+which can be installed using pip:
+
+    $ pip install --upgrade kaleido
+
+2025-07-16 16:14:33 - TradingSystem - INFO - ✅ AAVE/USDT:USDT - BUY signal generated
+2025-07-16 16:14:33 - TradingSystem - INFO - [Thread-5] ✅ AAVE/USDT:USDT - BUY signal (MTF: STRONG)
+2025-07-16 16:14:33 - TradingSystem - INFO - ⚡ MTF PARALLEL ANALYSIS COMPLETED!
+2025-07-16 16:14:33 - TradingSystem - INFO -    Execution Time: 40.7s
+2025-07-16 16:14:33 - TradingSystem - INFO -    MTF Confirmations: Strong: 1, Partial: 0, None: 4
+2025-07-16 16:14:33 - utils.csv_manager - INFO - 📊 Exporting results for scan ID: 20250716_161433
+2025-07-16 16:14:33 - utils.csv_manager - INFO - ✅ Appended 5 signals to enhanced_bybit_signals_mtf_signals.csv
+2025-07-16 16:14:33 - utils.csv_manager - INFO - ✅ Appended 5 opportunities to enhanced_bybit_signals_mtf_opportunities.csv
+2025-07-16 16:14:33 - utils.csv_manager - INFO - ✅ Appended market summary to enhanced_bybit_signals_mtf_market_summary.csv
+2025-07-16 16:14:33 - utils.csv_manager - INFO - ✅ Appended scan history to enhanced_bybit_signals_mtf_scan_history.csv
+2025-07-16 16:14:33 - utils.csv_manager - INFO - 📄 CSV Export Complete (Scan ID: 20250716_161433):
+2025-07-16 16:14:33 - utils.csv_manager - INFO -    Signals: enhanced_bybit_signals_mtf_signals.csv (0.0MB, 41 rows)
+2025-07-16 16:14:33 - utils.csv_manager - INFO -    Opportunities: enhanced_bybit_signals_mtf_opportunities.csv (0.0MB, 41 rows)
+2025-07-16 16:14:33 - utils.csv_manager - INFO -    Market Summary: enhanced_bybit_signals_mtf_market_summary.csv (0.0MB, 3 rows)
+2025-07-16 16:14:33 - utils.csv_manager - INFO -    Scan History: enhanced_bybit_signals_mtf_scan_history.csv (0.0MB, 3 rows)

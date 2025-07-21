@@ -1,0 +1,3 @@
+- Change CSV and configuration to database
+- Change html visualization to JPG
+- 

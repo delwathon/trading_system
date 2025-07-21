@@ -1,0 +1,15 @@
+2025-07-18 20:07:18 - TradingSystem - INFO - Logging initialized - Level: INFO
+2025-07-18 20:07:18 - TradingSystem - INFO - Log file: logs/trading_system_20250718_200718.log
+2025-07-18 20:07:19 - core.exchange - ERROR - Exchange setup failed: bybit GET https://api.bybit.com/v5/market/instruments-info?category=spot
+2025-07-18 20:07:19 - utils.csv_manager - INFO - ✅ CSV files initialized in csv_exports
+2025-07-18 20:07:19 - utils.csv_manager - INFO -    signals: enhanced_bybit_signals_mtf_signals.csv
+2025-07-18 20:07:19 - utils.csv_manager - INFO -    opportunities: enhanced_bybit_signals_mtf_opportunities.csv
+2025-07-18 20:07:19 - utils.csv_manager - INFO -    market_summary: enhanced_bybit_signals_mtf_market_summary.csv
+2025-07-18 20:07:19 - utils.csv_manager - INFO -    scan_history: enhanced_bybit_signals_mtf_scan_history.csv
+2025-07-18 20:07:19 - utils.csv_manager - INFO -    performance_metrics: enhanced_bybit_signals_mtf_performance.csv
+2025-07-18 20:07:19 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME INITIALIZED!
+2025-07-18 20:07:19 - TradingSystem - INFO - ✅ Enhanced Technical Analysis (FIXED Ichimoku & Stochastic RSI)
+2025-07-18 20:07:19 - TradingSystem - INFO - ✅ Volume Profile Analysis
+2025-07-18 20:07:19 - TradingSystem - INFO - ✅ Fibonacci & Confluence Analysis
+2025-07-18 20:07:19 - TradingSystem - INFO - ✅ Interactive Chart Generation
+2025-07-18 20:07:19 - TradingSystem - INFO - ✅ Multi-Timeframe Confirmation (1h, 4h)
