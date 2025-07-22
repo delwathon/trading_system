@@ -17,8 +17,8 @@ class SignalGenerator:
         self.logger = logging.getLogger(__name__)
         
     def generate_enhanced_signal(self, df: pd.DataFrame, symbol_data: Dict, 
-                            volume_entry: Dict, confluence_zones: List[Dict]) -> Optional[Dict]:
-        """Generate enhanced trading signal using all analysis methods - FIXED LOGIC"""
+                               volume_entry: Dict, confluence_zones: List[Dict]) -> Optional[Dict]:
+        """Generate enhanced trading signal using all analysis methods"""
         try:
             latest = df.iloc[-1]
             current_price = symbol_data['current_price']
@@ -32,45 +32,28 @@ class SignalGenerator:
             volume_ratio = latest.get('volume_ratio', 1)
             bb_position = latest.get('bb_position', 0.5)
             
-            # Stochastic RSI values
+            # Additional indicators with safer defaults
             stoch_rsi_k = latest.get('stoch_rsi_k', 50)
             stoch_rsi_d = latest.get('stoch_rsi_d', 50)
-            
-            # Ichimoku signals
             ichimoku_bullish = latest.get('ichimoku_bullish', False)
             ichimoku_bearish = latest.get('ichimoku_bearish', False)
             
             signal = None
             
-            # ===== FIXED: BUY CONDITIONS =====
-            # Primary trend and momentum conditions
-            primary_buy_conditions = [
-                30 < rsi < 75,                    # RSI not overbought, some room to go up
-                macd > macd_signal,               # MACD bullish crossover
-                ema_12 > ema_26,                  # Short EMA above long EMA (uptrend)
-                current_price > latest.get('sma_20', current_price),  # Price above SMA20
-                volume_ratio > 1.0,               # Above average volume
-                bb_position < 0.8                 # Not too close to upper BB (room to grow)
-            ]
+            # BUY conditions
+            buy_conditions_met = (
+                30 < rsi < 75 and
+                macd > macd_signal and
+                ema_12 > ema_26 and
+                volume_ratio > 1.0 and
+                bb_position < 0.8
+            )
             
-            # ===== FIXED: Stochastic RSI Analysis =====
-            # Stoch RSI signals for BUY
-            stoch_rsi_oversold = stoch_rsi_k < 30          # Oversold condition
-            stoch_rsi_bullish_cross = stoch_rsi_k > stoch_rsi_d  # %K above %D (bullish)
-            stoch_rsi_recovering = stoch_rsi_k > 20        # Not in deep oversold
+            # Additional conditions as bonuses
+            stoch_rsi_bullish = stoch_rsi_k > stoch_rsi_d and stoch_rsi_k < 80
+            ichimoku_support = ichimoku_bullish or not ichimoku_bearish
             
-            # Stoch RSI BUY signals
-            stoch_rsi_buy_signals = [
-                stoch_rsi_oversold,               # In oversold territory (bullish setup)
-                stoch_rsi_recovering,             # Not too deep (can recover)
-                stoch_rsi_bullish_cross           # Bullish crossover
-            ]
-            
-            primary_buy_score = sum(primary_buy_conditions)
-            stoch_rsi_buy_score = sum(stoch_rsi_buy_signals)
-            
-            # Enhanced BUY signal generation
-            if primary_buy_score >= 4:  # Need at least 4/6 primary conditions
+            if buy_conditions_met:
                 # Build entry candidates
                 entry_candidates = [current_price]
                 
@@ -78,7 +61,7 @@ class SignalGenerator:
                     entry_candidates.append(volume_entry['entry_price'])
                 
                 buy_zones = [zone for zone in confluence_zones 
-                        if zone['zone_type'] == 'support' and zone['price'] < current_price]
+                           if zone['zone_type'] == 'support' and zone['price'] < current_price]
                 if buy_zones:
                     entry_candidates.append(buy_zones[0]['price'])
                 
@@ -89,8 +72,8 @@ class SignalGenerator:
                 optimal_entry = np.mean(entry_candidates)
                 distance_pct = abs(optimal_entry - current_price) / current_price
                 
-                # Order type logic - FIXED
-                if distance_pct > 0.005 or stoch_rsi_oversold:  # Use limit if oversold or far entry
+                # Order type logic
+                if distance_pct > 0.005 or stoch_rsi_k < 30:
                     order_type = 'limit'
                 else:
                     order_type = 'market'
@@ -106,28 +89,18 @@ class SignalGenerator:
                 reward_amount = take_profit_2 - optimal_entry
                 risk_reward_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
                 
-                # ===== FIXED: Confidence Calculation =====
-                base_confidence = 60
-                
-                # Primary condition bonuses
+                # Calculate confidence with bonuses
+                base_confidence = 65
                 if volume_entry['confidence'] > 0.7:
                     base_confidence += 10
                 if len(buy_zones) > 0:
-                    base_confidence += 8
-                if rsi < 60:  # Not overbought
+                    base_confidence += 10
+                if rsi < 60:
                     base_confidence += 5
-                if volume_ratio > 2:  # High volume
+                if volume_ratio > 2:
                     base_confidence += 5
-                
-                # ===== FIXED: Stochastic RSI Bonus Logic =====
-                if stoch_rsi_oversold and stoch_rsi_bullish_cross:
-                    base_confidence += 12  # Strong oversold bounce setup
-                elif stoch_rsi_oversold:
-                    base_confidence += 8   # Oversold setup
-                elif stoch_rsi_bullish_cross:
-                    base_confidence += 6   # Bullish crossover
-                
-                # Ichimoku bonus
+                if stoch_rsi_bullish:
+                    base_confidence += 5
                 if ichimoku_bullish:
                     base_confidence += 8
                 
@@ -149,40 +122,25 @@ class SignalGenerator:
                         'volume_profile': volume_entry,
                         'confluence_zones': len(buy_zones),
                         'technical_analysis': True,
-                        'stoch_rsi_oversold': stoch_rsi_oversold,
-                        'stoch_rsi_bullish_cross': stoch_rsi_bullish_cross,
+                        'stoch_rsi': stoch_rsi_bullish,
                         'ichimoku': ichimoku_bullish
                     }
                 }
             
-            # ===== FIXED: SELL CONDITIONS =====
-            # Primary trend and momentum conditions for SELL
-            primary_sell_conditions = [
-                25 < rsi < 70,                    # RSI not oversold, some room to go down
-                macd < macd_signal,               # MACD bearish crossover
-                ema_12 < ema_26,                  # Short EMA below long EMA (downtrend)
-                current_price < latest.get('sma_20', current_price),  # Price below SMA20
-                volume_ratio > 1.0,               # Above average volume
-                bb_position > 0.2                 # Not too close to lower BB
-            ]
+            # SELL conditions
+            sell_conditions_met = (
+                25 < rsi < 70 and
+                macd < macd_signal and
+                ema_12 < ema_26 and
+                volume_ratio > 1.0 and
+                bb_position > 0.2
+            )
             
-            # ===== FIXED: Stochastic RSI for SELL =====
-            stoch_rsi_overbought = stoch_rsi_k > 70        # Overbought condition
-            stoch_rsi_bearish_cross = stoch_rsi_k < stoch_rsi_d  # %K below %D (bearish)
-            stoch_rsi_topping = stoch_rsi_k < 80           # Not in extreme overbought
+            # Additional conditions as bonuses
+            stoch_rsi_bearish = stoch_rsi_k < stoch_rsi_d and stoch_rsi_k > 20
+            ichimoku_resistance = ichimoku_bearish or not ichimoku_bullish
             
-            # Stoch RSI SELL signals
-            stoch_rsi_sell_signals = [
-                stoch_rsi_overbought,             # In overbought territory (bearish setup)
-                stoch_rsi_topping,                # Not too extreme (can fall)
-                stoch_rsi_bearish_cross           # Bearish crossover
-            ]
-            
-            primary_sell_score = sum(primary_sell_conditions)
-            stoch_rsi_sell_score = sum(stoch_rsi_sell_signals)
-            
-            # Enhanced SELL signal generation - only if no BUY signal
-            if not signal and primary_sell_score >= 4:  # Need at least 4/6 primary conditions
+            if sell_conditions_met and not signal:  # Only if no buy signal
                 # Build entry candidates
                 entry_candidates = [current_price]
                 
@@ -197,8 +155,7 @@ class SignalGenerator:
                 optimal_entry = np.mean(entry_candidates)
                 distance_pct = abs(optimal_entry - current_price) / current_price
                 
-                # Order type logic - FIXED
-                if distance_pct > 0.005 or stoch_rsi_overbought:  # Use limit if overbought or far entry
+                if distance_pct > 0.005 or stoch_rsi_k > 70:
                     order_type = 'limit'
                 else:
                     order_type = 'market'
@@ -213,26 +170,15 @@ class SignalGenerator:
                 reward_amount = optimal_entry - take_profit_2
                 risk_reward_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
                 
-                # ===== FIXED: SELL Confidence Calculation =====
-                base_confidence = 60
-                
-                # Primary condition bonuses
+                base_confidence = 65
                 if len(sell_zones) > 0:
-                    base_confidence += 8
-                if rsi > 40:  # Not oversold
+                    base_confidence += 10
+                if rsi > 40:
                     base_confidence += 5
-                if volume_ratio > 2:  # High volume
+                if volume_ratio > 2:
                     base_confidence += 5
-                
-                # ===== FIXED: Stochastic RSI SELL Bonus Logic =====
-                if stoch_rsi_overbought and stoch_rsi_bearish_cross:
-                    base_confidence += 12  # Strong overbought reversal setup
-                elif stoch_rsi_overbought:
-                    base_confidence += 8   # Overbought setup
-                elif stoch_rsi_bearish_cross:
-                    base_confidence += 6   # Bearish crossover
-                
-                # Ichimoku bonus
+                if stoch_rsi_bearish:
+                    base_confidence += 5
                 if ichimoku_bearish:
                     base_confidence += 8
                 
@@ -254,8 +200,7 @@ class SignalGenerator:
                         'volume_profile': volume_entry,
                         'confluence_zones': len(sell_zones),
                         'technical_analysis': True,
-                        'stoch_rsi_overbought': stoch_rsi_overbought,
-                        'stoch_rsi_bearish_cross': stoch_rsi_bearish_cross,
+                        'stoch_rsi': stoch_rsi_bearish,
                         'ichimoku': ichimoku_bearish
                     }
                 }
@@ -265,7 +210,7 @@ class SignalGenerator:
         except Exception as e:
             self.logger.error(f"Signal generation error: {e}")
             return None
-
+    
     def rank_opportunities_with_mtf(self, signals: List[Dict]) -> List[Dict]:
         """Rank trading opportunities with MTF confirmation priority"""
         try:

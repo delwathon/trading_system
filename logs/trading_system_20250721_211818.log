@@ -1,0 +1,26 @@
+2025-07-21 21:18:54 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-21 21:18:54 - TradingSystem - INFO - 🚀 STARTING OPTIMIZED ANALYSIS WITH 1h→4h/6h/12h MTF CONFIRMATION
+2025-07-21 21:18:54 - TradingSystem - INFO -    📊 Charts generated ONLY for top-ranked signals (after analysis complete)
+2025-07-21 21:18:54 - TradingSystem - INFO - ==========================================================================================
+2025-07-21 21:19:03 - TradingSystem - INFO - 📊 Analyzing 219 symbols with MTF confirmation...
+2025-07-21 21:19:03 - TradingSystem - INFO -    Primary Timeframe: 1h
+2025-07-21 21:19:03 - TradingSystem - INFO -    Confirmation Timeframes: 4h, 6h, 12h
+2025-07-21 21:19:03 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
+2025-07-21 21:19:03 - TradingSystem - INFO -    Database: MySQL @ localhost
+2025-07-21 21:19:03 - TradingSystem - INFO -    Chart Strategy: Top 5 signals only
+2025-07-21 21:19:03 - TradingSystem - INFO - 📈 PHASE 1: Signal Generation (No Charts)
+2025-07-21 21:20:19 - TradingSystem - WARNING - Insufficient 1h data for TA/USDT:USDT
+2025-07-21 21:22:27 - TradingSystem - INFO - 📊 PHASE 2: Signal Ranking (2 signals in 213.6s)
+2025-07-21 21:22:27 - TradingSystem - INFO - 🏆 Top 10 Signals After Ranking:
+2025-07-21 21:22:27 - TradingSystem - INFO -    1. LAUNCHCOIN/USDT:USDT SELL - 95% conf - MTF: STRONG
+2025-07-21 21:22:27 - TradingSystem - INFO -    2. CVX/USDT:USDT SELL - 95% conf - MTF: NONE
+2025-07-21 21:22:27 - TradingSystem - INFO - 📊 PHASE 3: Chart Generation (Top 2 signals only)
+2025-07-21 21:22:27 - TradingSystem - INFO - 📊 Generating charts for TOP 2 signals only...
+2025-07-21 21:23:21 - selenium.webdriver.common.selenium_manager - WARNING - Error sending stats to Plausible: error sending request for url (https://plausible.io/api/event)
+2025-07-21 21:24:30 - TradingSystem - INFO - ✅ Chart generation complete: 2/2 charts created
+2025-07-21 21:24:30 - TradingSystem - INFO - ⚡ 1h→4h/6h/12h OPTIMIZED MTF ANALYSIS COMPLETED!
+2025-07-21 21:24:30 - TradingSystem - INFO -    Total Execution Time: 336.7s
+2025-07-21 21:24:30 - TradingSystem - INFO -    Signal Generation: 213.6s (2 signals)
+2025-07-21 21:24:30 - TradingSystem - INFO -    Chart Generation: 123.1s (2 charts)
+2025-07-21 21:24:30 - TradingSystem - INFO -    Chart Efficiency: 2/2 = 100.0% charted
+2025-07-21 21:24:30 - TradingSystem - INFO -    MTF Confirmations: Strong: 1, Partial: 0, None: 1

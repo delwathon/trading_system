@@ -1,0 +1,14 @@
+2025-07-21 21:16:03 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-21 21:16:03 - TradingSystem - INFO - 🚀 STARTING OPTIMIZED ANALYSIS WITH 4h→6h/12h/1d MTF CONFIRMATION
+2025-07-21 21:16:03 - TradingSystem - INFO -    📊 Charts generated ONLY for top-ranked signals (after analysis complete)
+2025-07-21 21:16:03 - TradingSystem - INFO - ==========================================================================================
+2025-07-21 21:16:16 - TradingSystem - INFO - 📊 Analyzing 219 symbols with MTF confirmation...
+2025-07-21 21:16:16 - TradingSystem - INFO -    Primary Timeframe: 4h
+2025-07-21 21:16:16 - TradingSystem - INFO -    Confirmation Timeframes: 6h, 12h, 1d
+2025-07-21 21:16:16 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
+2025-07-21 21:16:16 - TradingSystem - INFO -    Database: MySQL @ localhost
+2025-07-21 21:16:16 - TradingSystem - INFO -    Chart Strategy: Top 5 signals only
+2025-07-21 21:16:16 - TradingSystem - INFO - 📈 PHASE 1: Signal Generation (No Charts)
+2025-07-21 21:17:16 - TradingSystem - WARNING - Insufficient 4h data for C/USDT:USDT
+2025-07-21 21:17:26 - TradingSystem - WARNING - Insufficient 4h data for ERA/USDT:USDT
+2025-07-21 21:17:31 - TradingSystem - WARNING - Insufficient 4h data for TA/USDT:USDT

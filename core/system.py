@@ -78,7 +78,7 @@ class CompleteEnhancedBybitSystem:
         self.logger.debug(f"✅ Database: {self.config.db_config.database} @ {self.config.db_config.host}")
     
     def analyze_symbol_complete_with_mtf(self, symbol_data: Dict) -> Optional[Dict]:
-        """Complete analysis with multi-timeframe confirmation"""
+        """Complete analysis with multi-timeframe confirmation - NO CHART GENERATION"""
         try:
             symbol = symbol_data['symbol']
             self.logger.debug(f"📊 Analyzing {symbol} (15m → 1h/4h MTF)...")
@@ -156,14 +156,11 @@ class CompleteEnhancedBybitSystem:
                     primary_signal['mtf_status'] = 'DISABLED'
                     primary_signal['priority_boost'] = 0
                 
-                # APPROACH 4: Generate Interactive Chart
-                chart_file = self.chart_generator.create_comprehensive_chart(
-                    symbol, df, primary_signal, volume_profile, fibonacci_data, confluence_zones
-                )
+                # ===== REMOVED: Chart generation moved to post-ranking phase =====
+                # Chart will be generated later only for top signals
+                primary_signal['chart_file'] = None  # Will be populated later for top signals
                 
-                primary_signal['chart_file'] = chart_file
-                
-                # Add comprehensive analysis data
+                # Add comprehensive analysis data (needed for chart generation later)
                 primary_signal['analysis'] = {
                     'volume_profile': volume_profile,
                     'fibonacci_data': fibonacci_data,
@@ -172,7 +169,13 @@ class CompleteEnhancedBybitSystem:
                     'risk_assessment': self.signal_generator.assess_signal_risk(primary_signal, df)
                 }
                 
-                self.logger.debug(f"✅ {symbol} - {primary_signal['side'].upper()} signal generated ({self.config.timeframe} base)")
+                # Store raw data for later chart generation (for top signals only)
+                primary_signal['_chart_data'] = {
+                    'df': df,  # Store processed dataframe
+                    'symbol_data': symbol_data
+                }
+                
+                self.logger.debug(f"✅ {symbol} - {primary_signal['side'].upper()} signal generated ({self.config.timeframe} base) - Chart: Pending")
                 return primary_signal
             
             return None
@@ -180,8 +183,69 @@ class CompleteEnhancedBybitSystem:
         except Exception as e:
             self.logger.error(f"MTF analysis failed for {symbol_data.get('symbol', 'unknown')}: {e}")
             return None
-    
-    
+
+    def generate_charts_for_top_signals(self, top_signals: List[Dict]) -> int:
+        """Generate charts (HTML + Screenshot) for top-ranked signals only"""
+        charts_generated = 0
+        
+        try:
+            self.logger.info(f"📊 Generating charts for TOP {len(top_signals)} signals only...")
+            
+            for i, signal in enumerate(top_signals):
+                try:
+                    symbol = signal['symbol']
+                    mtf_status = signal.get('mtf_status', 'UNKNOWN')
+                    confidence = signal.get('confidence', 0)
+                    
+                    self.logger.debug(f"   Generating chart {i+1}/{len(top_signals)}: {symbol} ({confidence}% conf, {mtf_status} MTF)")
+                    
+                    # Retrieve stored chart data
+                    chart_data = signal.get('_chart_data', {})
+                    if not chart_data:
+                        self.logger.warning(f"   Missing chart data for {symbol}, skipping chart generation")
+                        signal['chart_file'] = "Chart data unavailable"
+                        continue
+                    
+                    df = chart_data.get('df')
+                    symbol_data = chart_data.get('symbol_data')
+                    analysis = signal.get('analysis', {})
+                    
+                    if df is None or df.empty:
+                        self.logger.warning(f"   Invalid dataframe for {symbol}, skipping chart")
+                        signal['chart_file'] = "Invalid chart data"
+                        continue
+                    
+                    # Generate comprehensive chart (HTML + Screenshot)
+                    chart_file = self.chart_generator.create_comprehensive_chart(
+                        symbol=symbol,
+                        df=df,
+                        signal_data=signal,
+                        volume_profile=analysis.get('volume_profile', {}),
+                        fibonacci_data=analysis.get('fibonacci_data', {}),
+                        confluence_zones=analysis.get('confluence_zones', [])
+                    )
+                    
+                    # Update signal with chart file path
+                    signal['chart_file'] = chart_file
+                    charts_generated += 1
+                    
+                    self.logger.debug(f"   ✅ Chart {i+1}: {symbol} - {chart_file}")
+                    
+                    # Clean up stored chart data to save memory
+                    if '_chart_data' in signal:
+                        del signal['_chart_data']
+                    
+                except Exception as e:
+                    self.logger.error(f"   Error generating chart for {signal.get('symbol', 'unknown')}: {e}")
+                    signal['chart_file'] = f"Chart generation failed: {str(e)}"
+            
+            self.logger.info(f"✅ Chart generation complete: {charts_generated}/{len(top_signals)} charts created")
+            return charts_generated
+            
+        except Exception as e:
+            self.logger.error(f"Chart generation process failed: {e}")
+            return charts_generated
+
     def analyze_symbol_thread_safe_mtf(self, symbol_data: Dict, thread_id: int) -> Optional[Dict]:
         """Thread-safe version of MTF symbol analysis"""
         try:
@@ -209,11 +273,12 @@ class CompleteEnhancedBybitSystem:
             return None
     
     def run_complete_analysis_parallel_mtf(self) -> Dict:
-        """Parallel analysis with multi-timeframe confirmation and MySQL storage"""
+        """Parallel analysis with multi-timeframe confirmation and optimized chart generation"""
         start_time = time.time()
         
         timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"
-        self.logger.info(f"🚀 STARTING ENHANCED ANALYSIS WITH {timeframe_display} MTF CONFIRMATION (PARALLEL + MYSQL)")
+        self.logger.info(f"🚀 STARTING OPTIMIZED ANALYSIS WITH {timeframe_display} MTF CONFIRMATION")
+        self.logger.info("   📊 Charts generated ONLY for top-ranked signals (after analysis complete)")
         self.logger.info("=" * 90)
         
         # Get top symbols
@@ -227,14 +292,16 @@ class CompleteEnhancedBybitSystem:
         self.logger.info(f"   Confirmation Timeframes: {', '.join(self.config.confirmation_timeframes)}")
         self.logger.info(f"   MTF Weight Multiplier: {self.config.mtf_weight_multiplier}x")
         self.logger.info(f"   Database: MySQL @ {self.config.db_config.host}")
+        self.logger.info(f"   Chart Strategy: Top {self.config.charts_per_batch} signals only")
         
         # Initialize counters
         self.processed_count = 0
         all_signals = []
         analysis_results = []
-        charts_generated = 0
         
-        # Create thread pool and submit tasks
+        # ===== PHASE 1: SIGNAL GENERATION (NO CHARTS) =====
+        self.logger.info("📈 PHASE 1: Signal Generation (No Charts)")
+        
         with ThreadPoolExecutor(max_workers=self.config.max_workers) as executor:
             future_to_symbol = {}
             
@@ -275,9 +342,8 @@ class CompleteEnhancedBybitSystem:
                     
                     # Progress update
                     progress = (completed_tasks / len(symbols)) * 100
-                    self.logger.debug(f"📈 Progress: {completed_tasks}/{len(symbols)} ({progress:.1f}%) - Signals: {len(all_signals)}")
-                    
-                    # NO EARLY BREAK HERE - Let all symbols complete first
+                    if completed_tasks % 10 == 0 or completed_tasks == len(symbols):
+                        self.logger.debug(f"   Progress: {completed_tasks}/{len(symbols)} ({progress:.1f}%) - Signals: {len(all_signals)}")
                     
                 except Exception as e:
                     self.logger.error(f"Error processing {symbol_data['symbol']}: {e}")
@@ -287,13 +353,11 @@ class CompleteEnhancedBybitSystem:
                         'error': str(e)
                     })
 
-        execution_time = time.time() - start_time
-        
-        # NOW SORT ALL SIGNALS BY PROPER RANKING (MTF priority + confidence)
-        self.logger.info(f"📊 Sorting {len(all_signals)} signals by MTF priority and confidence...")
+        # ===== PHASE 2: SIGNAL RANKING =====
+        analysis_time = time.time() - start_time
+        self.logger.info(f"📊 PHASE 2: Signal Ranking ({len(all_signals)} signals in {analysis_time:.1f}s)")
         
         # Sort signals by MTF priority first, then confidence
-        # Priority order: MTF status (STRONG > PARTIAL > NONE), then confidence
         def get_sort_key(signal):
             mtf_status = signal.get('mtf_status', 'NONE')
             confidence = signal.get('confidence', 0)
@@ -307,51 +371,34 @@ class CompleteEnhancedBybitSystem:
                 'DISABLED': 0
             }.get(mtf_status, 0)
             
-            # Return tuple for sorting: (MTF_priority, confidence, priority_boost)
-            # Higher values = better ranking
             return (mtf_priority, confidence, priority_boost)
         
         # Sort in descending order (highest priority first)
         all_signals.sort(key=get_sort_key, reverse=True)
         
-        # Log the top signals after sorting
-        self.logger.info("🏆 Top 10 Signals After Ranking:")
-        for i, signal in enumerate(all_signals[:10]):
+        # Log top signals after ranking
+        self.logger.info("🏆 Top 5 Signals After Ranking:")
+        for i, signal in enumerate(all_signals[:5]):
             mtf_status = signal.get('mtf_status', 'UNKNOWN')
             confidence = signal.get('confidence', 0)
             symbol = signal.get('symbol', 'UNKNOWN')
             side = signal.get('side', 'UNKNOWN')
-            self.logger.info(f"   {i+1}. {symbol} {side.upper()} - Confidence: {confidence}% - MTF: {mtf_status}")
+            self.logger.info(f"   {i+1}. {symbol} {side.upper()} - {confidence}% conf - MTF: {mtf_status}")
         
-        # AFTER sorting, generate charts for top signals only
-        self.logger.info(f"📊 Generating charts for top {self.config.charts_per_batch} signals...")
-        for i, signal in enumerate(all_signals[:self.config.charts_per_batch]):
-            try:
-                # Re-generate chart for this top signal if needed
-                symbol = signal['symbol']
-                if signal.get('chart_file', '').endswith('Chart generated'):
-                    # Chart was not properly generated, create it now
-                    symbol_data = {'symbol': symbol, 'current_price': signal['current_price'], 'volume_24h': signal['volume_24h']}
-                    
-                    # Fetch data again for charting
-                    df = self.exchange_manager.fetch_ohlcv_data(symbol, self.config.timeframe)
-                    if not df.empty:
-                        df = self.enhanced_ta.calculate_all_indicators(df, self.config)
-                        volume_profile = self.volume_analyzer.calculate_volume_profile(df)
-                        fibonacci_data = self.fibonacci_analyzer.calculate_fibonacci_levels(df)
-                        confluence_zones = self.fibonacci_analyzer.find_confluence_zones(df, volume_profile, signal['current_price'])
-                        
-                        chart_file = self.chart_generator.create_comprehensive_chart(
-                            symbol, df, signal, volume_profile, fibonacci_data, confluence_zones
-                        )
-                        signal['chart_file'] = chart_file
-                        charts_generated += 1
-                        
-                self.logger.debug(f"   Chart {i+1}: {signal['symbol']} ({signal.get('mtf_status', 'UNKNOWN')} MTF)")
-            except Exception as e:
-                self.logger.error(f"Error generating chart for {signal.get('symbol', 'unknown')}: {e}")
+        # ===== PHASE 3: OPTIMIZED CHART GENERATION =====
+        # Generate charts ONLY for top N signals
+        charts_generated = 0
+        top_signals_for_charts = all_signals[:self.config.charts_per_batch]
         
-        # Update charts_generated count
+        if top_signals_for_charts:
+            self.logger.info(f"📊 PHASE 3: Chart Generation (Top {len(top_signals_for_charts)} signals only)")
+            charts_generated = self.generate_charts_for_top_signals(top_signals_for_charts)
+        else:
+            self.logger.info("📊 PHASE 3: No signals found for chart generation")
+        
+        execution_time = time.time() - start_time
+        
+        # ===== PHASE 4: RESULTS COMPILATION =====
         scan_info = {
             'timestamp': datetime.now(),
             'execution_time_seconds': execution_time,
@@ -363,7 +410,8 @@ class CompleteEnhancedBybitSystem:
             'threads_used': self.config.max_workers,
             'mtf_enabled': self.config.mtf_confirmation_required,
             'confirmation_timeframes': self.config.confirmation_timeframes,
-            'primary_timeframe': self.config.timeframe
+            'primary_timeframe': self.config.timeframe,
+            'optimization': 'charts_for_top_signals_only'
         }
 
         # Create comprehensive results with properly sorted signals
@@ -380,14 +428,16 @@ class CompleteEnhancedBybitSystem:
                 'mtf_boost_avg': np.mean([s['confidence'] - s.get('original_confidence', s['confidence']) for s in all_signals]) if all_signals else 0,
                 'order_type_distribution': self.get_order_type_distribution(all_signals),
                 'mtf_distribution': self.get_mtf_status_distribution(all_signals),
-                'speedup_factor': self.calculate_speedup_factor(execution_time, len(symbols))
+                'speedup_factor': self.calculate_speedup_factor(execution_time, len(symbols)),
+                'chart_efficiency': f"{charts_generated}/{len(all_signals)} signals charted"
             }
         }
         
-        self.logger.info(f"⚡ {timeframe_display} MTF PARALLEL ANALYSIS COMPLETED!")
-        self.logger.info(f"   Execution Time: {execution_time:.1f}s")
-        self.logger.info(f"   Total Signals: {len(all_signals)}")
-        self.logger.info(f"   Charts Generated: {charts_generated}")
+        self.logger.info(f"⚡ {timeframe_display} OPTIMIZED MTF ANALYSIS COMPLETED!")
+        self.logger.info(f"   Total Execution Time: {execution_time:.1f}s")
+        self.logger.info(f"   Signal Generation: {analysis_time:.1f}s ({len(all_signals)} signals)")
+        self.logger.info(f"   Chart Generation: {execution_time - analysis_time:.1f}s ({charts_generated} charts)")
+        self.logger.info(f"   Chart Efficiency: {charts_generated}/{len(all_signals)} = {charts_generated/max(1,len(all_signals))*100:.1f}% charted")
         self.logger.info(f"   MTF Confirmations: {self.count_mtf_confirmations(all_signals)}")
 
         return results
@@ -529,7 +579,7 @@ class CompleteEnhancedBybitSystem:
             return 1.0
     
     def print_comprehensive_results_with_mtf(self, results: Dict):
-        """Print comprehensive analysis results with MTF information"""
+        """Print comprehensive analysis results with MTF information and chart status"""
         if not results:
             print("❌ No results to display")
             return
@@ -538,24 +588,38 @@ class CompleteEnhancedBybitSystem:
         market_summary = results['market_summary']
         opportunities = results['top_opportunities']
         
-        # Enhanced Top Opportunities Table with MTF
+        # Enhanced Top Opportunities Table with Chart Status
         timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"
         print(f"\n🏆 TOP TRADING OPPORTUNITIES ({timeframe_display} MTF CONFIRMATION):")
+        print(f"📊 Charts generated for TOP {scan_info.get('charts_generated', 0)} signals only (Optimized)")
+        
         if opportunities:
-            print("=" * 200)
+            print("=" * 210)
             header = (
                 f"{'Rank':<4} | {'Symbol':<25} | {'Side':<7} | {'Type':<6} | "
                 f"{'Conf':<8} | {'MTF':<4} | {'Entry':<12} | {'Stop':<12} | {'TP1':<12} | {'TP2':<12} | "
-                f"{'R/R':<5} | {'Volume':<8} | {'MTF Status':<12} | {'Confirmed':<10} | {'Chart':<15}"
+                f"{'R/R':<5} | {'Volume':<8} | {'MTF Status':<20} | {'Confirmed':<10} | {'Chart Status':<20}"
             )
             print(header)
-            print("-" * 200)
+            print("-" * 210)
             
-            for opp in opportunities[:15]:  # Top 15
+            for opp in opportunities[:5]:  # Top 15
                 try:
                     side_emoji = "🟢" if opp['side'] == 'BUY' else "🔴"
                     volume_str = f"${opp['volume_24h']/1e6:.0f}M"
-                    chart_available = "✅ Available" if opp.get('chart_file', '').endswith('.jpg') else "❌ None"
+                    
+                    # Enhanced chart status
+                    chart_file = opp.get('chart_file', '')
+                    if chart_file and chart_file.endswith('.png'):
+                        chart_status = "✅ HTML + Screenshot"
+                    elif chart_file and chart_file.endswith('.html'):
+                        chart_status = "📄 HTML Only"  
+                    elif chart_file and 'Chart generated' in chart_file:
+                        chart_status = "⚠️ Generated"
+                    elif chart_file == None:
+                        chart_status = "❌ Not Generated"
+                    else:
+                        chart_status = "❌ Failed"
                     
                     # MTF status with emojis
                     mtf_status = opp.get('mtf_status', 'UNKNOWN')
@@ -568,7 +632,7 @@ class CompleteEnhancedBybitSystem:
                     else:
                         mtf_display = "❌ DISABLED"
                     
-                    # MTF confirmation count (configurable total)
+                    # MTF confirmation count
                     total_confirmation_timeframes = len(self.config.confirmation_timeframes)
                     mtf_count = f"{opp.get('mtf_confirmation_count', 0)}/{total_confirmation_timeframes}"
                     
@@ -590,17 +654,29 @@ class CompleteEnhancedBybitSystem:
                         f"${opp['entry_price']:<11.4f} | ${opp['stop_loss']:<11.4f} | "
                         f"${tp1_value:<11.4f} | ${tp2_value:<11.4f} | "
                         f"{opp['risk_reward_ratio']:<5.1f} | "
-                        f"{volume_str:<8} | {mtf_display:<12} | {confirmed_tfs:<10} | {chart_available:<15}"
+                        f"{volume_str:<8} | {mtf_display:<20} | {confirmed_tfs:<10} | {chart_status:<20}"
                     )
                     print(f"{row}")
                     
                 except Exception as e:
                     print(f"Error displaying opportunity: {e}")
             
-            print("-" * 200)
+            print("-" * 210)
+            
+            # Chart Generation Summary
+            charts_generated = scan_info.get('charts_generated', 0)
+            total_signals = scan_info.get('signals_generated', 0)
+            chart_efficiency = f"{charts_generated}/{total_signals}" if total_signals > 0 else "0/0"
+            
+            print(f"\n📊 CHART GENERATION SUMMARY:")
+            print(f"   Charts Generated: {charts_generated} (Top signals only)")
+            print(f"   Total Signals: {total_signals}")
+            print(f"   Chart Efficiency: {chart_efficiency} = {charts_generated/max(1,total_signals)*100:.1f}% of signals charted")
+            print(f"   Optimization: Charts generated ONLY after ranking (saves resources)")
+            
         else:
             print("   No trading opportunities found")
-    
+
     def save_results_to_database(self, results: Dict) -> Dict[str, Any]:
         """Save all results to MySQL database (replaces CSV export)"""
         return self.enhanced_db_manager.save_all_results(results)

@@ -1,0 +1,23 @@
+2025-07-21 22:18:00 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-21 22:18:00 - TradingSystem - INFO - 🚀 STARTING OPTIMIZED ANALYSIS WITH 30m→1h/6h/12h MTF CONFIRMATION
+2025-07-21 22:18:00 - TradingSystem - INFO -    📊 Charts generated ONLY for top-ranked signals (after analysis complete)
+2025-07-21 22:18:00 - TradingSystem - INFO - ==========================================================================================
+2025-07-21 22:18:12 - TradingSystem - INFO - 📊 Analyzing 219 symbols with MTF confirmation...
+2025-07-21 22:18:12 - TradingSystem - INFO -    Primary Timeframe: 30m
+2025-07-21 22:18:12 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 6h, 12h
+2025-07-21 22:18:12 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
+2025-07-21 22:18:12 - TradingSystem - INFO -    Database: MySQL @ localhost
+2025-07-21 22:18:12 - TradingSystem - INFO -    Chart Strategy: Top 5 signals only
+2025-07-21 22:18:12 - TradingSystem - INFO - 📈 PHASE 1: Signal Generation (No Charts)
+2025-07-21 22:19:27 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for PUMPFUN/USDT:USDT
+2025-07-21 22:19:32 - analysis.multi_timeframe - WARNING -    Insufficient 12h data for PUMPFUN/USDT:USDT
+2025-07-21 22:21:58 - analysis.multi_timeframe - WARNING -    Insufficient 12h data for M/USDT:USDT
+2025-07-21 22:22:13 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for C/USDT:USDT
+2025-07-21 22:22:17 - analysis.multi_timeframe - WARNING -    Insufficient 12h data for C/USDT:USDT
+2025-07-21 22:22:33 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for CROSS/USDT:USDT
+2025-07-21 22:22:38 - analysis.multi_timeframe - WARNING -    Insufficient 12h data for CROSS/USDT:USDT
+2025-07-21 22:22:48 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for USELESS/USDT:USDT
+2025-07-21 22:22:53 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for ERA/USDT:USDT
+2025-07-21 22:22:53 - analysis.multi_timeframe - WARNING -    Insufficient 12h data for USELESS/USDT:USDT
+2025-07-21 22:22:58 - analysis.multi_timeframe - WARNING -    Insufficient 12h data for ERA/USDT:USDT
+2025-07-21 22:22:58 - TradingSystem - WARNING - Insufficient 30m data for TA/USDT:USDT
