@@ -1,7 +1,7 @@
 """
 Complete Enhanced Bybit System Integration with Multi-Timeframe Analysis and MySQL Database.
 Updated to use database storage instead of CSV export.
-Primary timeframe: 15m, Confirmation timeframes: 1h, 4h
+Primary timeframe: 30m, Confirmation timeframes: 1h, 4h, 6h
 """
 
 import pandas as pd
@@ -74,14 +74,14 @@ class CompleteEnhancedBybitSystem:
         self.logger.debug("✅ Interactive Chart Generation")
         self.logger.debug("✅ MySQL Database Storage (Replaces CSV)")
         if self.config.mtf_confirmation_required:
-            self.logger.debug(f"✅ Multi-Timeframe Confirmation: Primary 15m, Confirmation 1h/4h")
+            self.logger.debug(f"✅ Multi-Timeframe Confirmation: Primary 30m, Confirmation 1h/4h/6h")
         self.logger.debug(f"✅ Database: {self.config.db_config.database} @ {self.config.db_config.host}")
     
     def analyze_symbol_complete_with_mtf(self, symbol_data: Dict) -> Optional[Dict]:
         """Complete analysis with multi-timeframe confirmation - NO CHART GENERATION"""
         try:
             symbol = symbol_data['symbol']
-            self.logger.debug(f"📊 Analyzing {symbol} (15m → 1h/4h MTF)...")
+            self.logger.debug(f"📊 Analyzing {symbol} (30m → 1h/4h/6h MTF)...")
             
             # Fetch primary timeframe data (configurable)
             df = self.exchange_manager.fetch_ohlcv_data(symbol, self.config.timeframe)
@@ -104,7 +104,7 @@ class CompleteEnhancedBybitSystem:
                 df, volume_profile, symbol_data['current_price']
             )
             
-            # Generate primary signal on 15m timeframe
+            # Generate primary signal on 30m timeframe
             primary_signal = self.signal_generator.generate_enhanced_signal(
                 df, symbol_data, volume_entry, confluence_zones
             )

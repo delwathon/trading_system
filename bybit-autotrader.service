@@ -1,0 +1,33 @@
+[Unit]
+Description=Enhanced Bybit Auto-Trading System
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=delwathon
+WorkingDirectory=/home/delwathon/Desktop/trading_system
+ExecStart=/home/delwathon/Desktop/trading_system/venv/bin/python main.py
+Restart=always
+RestartSec=30
+Environment=PYTHONPATH=/home/delwathon/Desktop/trading_system
+Environment=PYTHONUNBUFFERED=1
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bybit-autotrader
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/delwathon/Desktop/trading_system
+
+# Resource limits
+LimitNOFILE=65536
+MemoryAccounting=true
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target

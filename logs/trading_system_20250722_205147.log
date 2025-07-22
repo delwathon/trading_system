@@ -1,0 +1,39 @@
+2025-07-22 20:51:47 - TradingSystem - INFO - Loading database configuration from enhanced_config.yaml
+2025-07-22 20:51:47 - TradingSystem - INFO - Database config loaded:
+2025-07-22 20:51:47 - TradingSystem - INFO -    Host: localhost:3306
+2025-07-22 20:51:47 - TradingSystem - INFO -    Database: bybit_trading_system
+2025-07-22 20:51:47 - TradingSystem - INFO -    Username: root
+2025-07-22 20:51:47 - TradingSystem - INFO -    Password: ***
+2025-07-22 20:51:47 - TradingSystem - INFO - Loading system configuration from MySQL database...
+2025-07-22 20:51:47 - config.config - INFO - Loading configuration 'default' from MySQL database
+2025-07-22 20:51:47 - utils.encryption - WARNING - Using default password for secret decryption. Set SECRET_PASSWORD environment variable.
+2025-07-22 20:51:47 - notifier.telegram - INFO - ✅ Telegram bot initialized successfully
+2025-07-22 20:51:47 - TradingSystem - INFO - 🤖 AUTO-TRADING CONFIGURATION:
+2025-07-22 20:51:47 - TradingSystem - INFO - ==================================================
+2025-07-22 20:51:47 - TradingSystem - INFO - 📊 Trading Parameters:
+2025-07-22 20:51:47 - TradingSystem - INFO -    Leverage: max
+2025-07-22 20:51:47 - TradingSystem - INFO -    Risk Amount per Trade: 10.0% of account balance
+2025-07-22 20:51:47 - TradingSystem - INFO -    Max Concurrent Positions: 5
+2025-07-22 20:51:47 - TradingSystem - INFO -    Max Executions per Scan: 2
+2025-07-22 20:51:47 - TradingSystem - INFO -    Auto-Close Profit Target: 10.0%
+2025-07-22 20:51:47 - TradingSystem - INFO - ⏰ Scheduling Parameters:
+2025-07-22 20:51:47 - TradingSystem - INFO -    Daily Start Time: 01:00
+2025-07-22 20:51:47 - TradingSystem - INFO -    Scan Interval: 4.0 hours (14400 seconds)
+2025-07-22 20:51:47 - TradingSystem - INFO - 📈 Analysis Configuration:
+2025-07-22 20:51:47 - TradingSystem - INFO -    Primary Timeframe: 30m
+2025-07-22 20:51:47 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h, 6h
+2025-07-22 20:51:47 - TradingSystem - INFO -    MTF Confirmation Required: True
+2025-07-22 20:51:47 - TradingSystem - INFO -    Min Volume 24h: $5,000,000.0
+2025-07-22 20:51:47 - TradingSystem - INFO - ⚠️ Risk Management:
+2025-07-22 20:51:47 - TradingSystem - INFO -    Risk per Trade: 10.0% of account balance
+2025-07-22 20:51:47 - TradingSystem - INFO -    Max Total Risk Exposure: 50.0% of account balance
+2025-07-22 20:51:47 - TradingSystem - INFO -    Max Leveraged Exposure: 50.0% × Max Leverage
+2025-07-22 20:51:47 - TradingSystem - INFO -    Portfolio Risk Limit: 2.0%
+2025-07-22 20:51:47 - TradingSystem - INFO - 🔧 Trading Mode: PRODUCTION
+2025-07-22 20:51:47 - TradingSystem - INFO - 📱 Telegram Configuration:
+2025-07-22 20:51:47 - TradingSystem - INFO -    Bot Token: Configured
+2025-07-22 20:51:47 - TradingSystem - INFO -    User ID: 6708641837
+2025-07-22 20:51:47 - TradingSystem - INFO - ==================================================
+2025-07-22 20:51:47 - utils.encryption - WARNING - Using default password for secret decryption. Set SECRET_PASSWORD environment variable.
+2025-07-22 20:51:48 - core.exchange - ERROR - Exchange setup failed: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1753213908486}
+2025-07-22 20:51:48 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!

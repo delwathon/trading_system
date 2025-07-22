@@ -1,6 +1,7 @@
 """
 Database models for the Enhanced Bybit Trading System.
-SQLAlchemy models for storing trading signals, market data, and system configuration.
+SQLAlchemy models for storing trading signals, market data, system configuration, and auto-trading data.
+UPDATED: Added encryption_password field for database-stored encryption key.
 """
 
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey, text
@@ -13,7 +14,7 @@ Base = declarative_base()
 
 
 class SystemConfig(Base):
-    """System configuration stored in database"""
+    """System configuration stored in database - UPDATED with encryption password"""
     __tablename__ = 'system_config'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -26,10 +27,13 @@ class SystemConfig(Base):
     demo_api_secret = Column(String(255), nullable=True)
     sandbox_mode = Column(Boolean, default=False)
     
+    # NEW: Encryption password for API secrets
+    encryption_password = Column(String(255), default='bybit_trading_system_secure_key_2024')
+    
     # Market Scanning
     min_volume_24h = Column(Float, default=5_000_000)
     max_symbols_scan = Column(Integer, default=100)
-    timeframe = Column(String(10), default='15m')
+    timeframe = Column(String(10), default='30m')
     
     # Multi-Timeframe Configuration
     confirmation_timeframes = Column(JSON, default=['1h', '4h'])
@@ -56,9 +60,6 @@ class SystemConfig(Base):
     ml_training_samples = Column(Integer, default=400)
     ml_profitable_rate = Column(Float, default=0.45)
     
-    # CSV Output
-    csv_base_filename = Column(String(255), default="enhanced_bybit_signals")
-    
     # Chart Settings
     show_charts = Column(Boolean, default=True)
     save_charts = Column(Boolean, default=False)
@@ -74,10 +75,25 @@ class SystemConfig(Base):
     ichimoku_window2 = Column(Integer, default=26)
     ichimoku_window3 = Column(Integer, default=52)
     
-    # ===== NEW: OHLCV Data Limits =====
-    ohlcv_limit_primary = Column(Integer, default=500)     # Primary timeframe data limit
-    ohlcv_limit_mtf = Column(Integer, default=200)         # MTF confirmation data limit
-    ohlcv_limit_analysis = Column(Integer, default=500)    # General analysis data limit
+    # OHLCV Data Limits
+    ohlcv_limit_primary = Column(Integer, default=500)
+    ohlcv_limit_mtf = Column(Integer, default=200)
+    ohlcv_limit_analysis = Column(Integer, default=500)
+    
+    # Telegram & Trading Configuration
+    telegram_id = Column(String(50), default='6708641837')
+    telegram_bot_token = Column(String(255), default='8088506547:AAHZZxiY_wlh48IN4ldPNRJtM9qi7qxfLdM')
+    
+    # FIXED: Leverage - Single string value instead of JSON array
+    leverage = Column(String(10), default='max')  # Must be one of: '10', '12.5', '25', '50', 'max'
+    risk_amount = Column(Float, default=5.0)  # Risk percentage of account balance (e.g., 5.0 = 5%)
+    
+    # NEW: Auto-Trading Configuration
+    max_concurrent_positions = Column(Integer, default=5)
+    max_execution_per_trade = Column(Integer, default=2)
+    day_trade_start_hour = Column(String(10), default='01:00')
+    scan_interval = Column(Integer, default=10800)  # 3 hours in seconds
+    auto_close_profit_at = Column(Float, default=10.0)  # 10% profit target
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -92,10 +108,11 @@ class SystemConfig(Base):
             'demo_api_key': self.demo_api_key,
             'demo_api_secret': self.demo_api_secret,
             'sandbox_mode': self.sandbox_mode,
+            'encryption_password': self.encryption_password,  # NEW
             'min_volume_24h': self.min_volume_24h,
             'max_symbols_scan': self.max_symbols_scan,
             'timeframe': self.timeframe,
-            'confirmation_timeframes': self.confirmation_timeframes or ['1h', '4h'],
+            'confirmation_timeframes': self.confirmation_timeframes or ['1h', '4h', '6h'],
             'mtf_confirmation_required': self.mtf_confirmation_required,
             'mtf_weight_multiplier': self.mtf_weight_multiplier,
             'max_requests_per_second': self.max_requests_per_second,
@@ -108,7 +125,6 @@ class SystemConfig(Base):
             'max_cache_size': self.max_cache_size,
             'ml_training_samples': self.ml_training_samples,
             'ml_profitable_rate': self.ml_profitable_rate,
-            'csv_base_filename': self.csv_base_filename,
             'show_charts': self.show_charts,
             'save_charts': self.save_charts,
             'charts_per_batch': self.charts_per_batch,
@@ -120,14 +136,113 @@ class SystemConfig(Base):
             'ichimoku_window1': self.ichimoku_window1,
             'ichimoku_window2': self.ichimoku_window2,
             'ichimoku_window3': self.ichimoku_window3,
-            # ===== NEW: Add OHLCV limits to dictionary =====
             'ohlcv_limit_primary': self.ohlcv_limit_primary,
             'ohlcv_limit_mtf': self.ohlcv_limit_mtf,
-            'ohlcv_limit_analysis': self.ohlcv_limit_analysis
+            'ohlcv_limit_analysis': self.ohlcv_limit_analysis,
+            'telegram_id': self.telegram_id,
+            'telegram_bot_token': self.telegram_bot_token,
+            # FIXED: Return single leverage value
+            'leverage': self.leverage,
+            'risk_amount': self.risk_amount,  # Risk percentage of account balance
+            # NEW: Auto-trading fields
+            'max_concurrent_positions': self.max_concurrent_positions,
+            'max_execution_per_trade': self.max_execution_per_trade,
+            'day_trade_start_hour': self.day_trade_start_hour,
+            'scan_interval': self.scan_interval,
+            'auto_close_profit_at': self.auto_close_profit_at
         }
 
+
+class TradingPosition(Base):
+    """NEW: Track auto-trading positions"""
+    __tablename__ = 'trading_positions'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    scan_session_id = Column(Integer, ForeignKey('scan_sessions.id'), nullable=True)
+    
+    # Position identification
+    position_id = Column(String(100), unique=True, nullable=False)  # Bybit position ID
+    symbol = Column(String(20), nullable=False)
+    side = Column(String(10), nullable=False)  # 'buy' or 'sell'
+    
+    # Position details
+    entry_price = Column(Float, nullable=False)
+    position_size = Column(Float, nullable=False)
+    leverage = Column(String(10), nullable=False)
+    risk_amount = Column(Float, nullable=False)  # Actual USDT amount used for this position
+    risk_percentage = Column(Float, nullable=True)  # Original risk percentage (e.g., 5.0 for 5%)
+    
+    # Orders
+    entry_order_id = Column(String(100), nullable=True)
+    stop_loss_order_id = Column(String(100), nullable=True)
+    take_profit_order_id = Column(String(100), nullable=True)
+    
+    # Targets
+    stop_loss_price = Column(Float, nullable=True)
+    take_profit_price = Column(Float, nullable=True)
+    auto_close_profit_target = Column(Float, nullable=False)  # e.g., 10.0 for 10%
+    
+    # Status tracking
+    status = Column(String(20), default='open')  # 'open', 'closed', 'error'
+    current_price = Column(Float, nullable=True)
+    unrealized_pnl = Column(Float, default=0.0)
+    unrealized_pnl_pct = Column(Float, default=0.0)
+    leveraged_pnl_pct = Column(Float, default=0.0)  # PnL considering leverage
+    
+    # Timestamps
+    opened_at = Column(DateTime, default=datetime.utcnow)
+    closed_at = Column(DateTime, nullable=True)
+    last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Metadata
+    signal_confidence = Column(Float, nullable=True)
+    mtf_status = Column(String(20), nullable=True)
+    auto_closed = Column(Boolean, default=False)
+    close_reason = Column(String(100), nullable=True)  # 'profit_target', 'stop_loss', 'manual'
+    
+    # Relationships
+    scan_session = relationship("ScanSession", back_populates="positions")
+
+
+class AutoTradingSession(Base):
+    """NEW: Track auto-trading sessions"""
+    __tablename__ = 'auto_trading_sessions'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(50), unique=True, nullable=False)
+    
+    # Session details
+    started_at = Column(DateTime, default=datetime.utcnow)
+    ended_at = Column(DateTime, nullable=True)
+    status = Column(String(20), default='active')  # 'active', 'stopped', 'error'
+    
+    # Configuration snapshot
+    config_snapshot = Column(JSON)
+    
+    # Statistics
+    total_scans = Column(Integer, default=0)
+    total_trades_placed = Column(Integer, default=0)
+    total_trades_closed = Column(Integer, default=0)
+    total_profit_trades = Column(Integer, default=0)
+    total_loss_trades = Column(Integer, default=0)
+    total_pnl = Column(Float, default=0.0)
+    
+    # Performance
+    success_rate = Column(Float, default=0.0)
+    average_trade_duration_minutes = Column(Float, default=0.0)
+    max_concurrent_positions_reached = Column(Integer, default=0)
+    
+    # Risk metrics
+    max_drawdown = Column(Float, default=0.0)
+    total_risk_exposed = Column(Float, default=0.0)
+    
+    # Last scan info
+    last_scan_at = Column(DateTime, nullable=True)
+    next_scan_at = Column(DateTime, nullable=True)
+
+
 class ScanSession(Base):
-    """Scan session information"""
+    """Scan session information - UPDATED with position relationship"""
     __tablename__ = 'scan_sessions'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -145,10 +260,15 @@ class ScanSession(Base):
     confirmation_timeframes = Column(JSON)
     mtf_weight_multiplier = Column(Float)
     
+    # NEW: Auto-trading session link
+    auto_trading_session_id = Column(Integer, ForeignKey('auto_trading_sessions.id'), nullable=True)
+    trades_executed_count = Column(Integer, default=0)
+    
     # Relationships
     signals = relationship("TradingSignal", back_populates="scan_session")
     opportunities = relationship("TradingOpportunity", back_populates="scan_session")
     market_summary = relationship("MarketSummary", back_populates="scan_session", uselist=False)
+    positions = relationship("TradingPosition", back_populates="scan_session")  # NEW
 
 
 class TradingSignal(Base):
@@ -200,6 +320,13 @@ class TradingSignal(Base):
     volume_score = Column(Float)
     fibonacci_score = Column(Float)
     confluence_zones_count = Column(Integer)
+    
+    # NEW: Auto-trading fields
+    selected_for_execution = Column(Boolean, default=False)
+    execution_attempted = Column(Boolean, default=False)
+    execution_successful = Column(Boolean, default=False)
+    execution_error = Column(String(255), nullable=True)
+    position_id = Column(String(100), nullable=True)  # Link to actual position
     
     # Additional analysis data (JSON)
     technical_summary = Column(JSON)
@@ -258,6 +385,11 @@ class TradingOpportunity(Base):
     distance_from_current = Column(Float)
     volume_score = Column(Float)
     technical_strength = Column(Float)
+    
+    # NEW: Auto-trading execution tracking
+    selected_for_execution = Column(Boolean, default=False)
+    execution_attempted = Column(Boolean, default=False)
+    execution_successful = Column(Boolean, default=False)
     
     # Relationships
     scan_session = relationship("ScanSession", back_populates="opportunities")

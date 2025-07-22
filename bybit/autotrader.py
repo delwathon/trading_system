@@ -1,0 +1,970 @@
+"""
+Auto-Trading System for Enhanced Bybit Trading System.
+Handles scheduled scanning, position management, and automated trading with leverage support.
+"""
+
+import asyncio
+import time
+import logging
+import threading
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+import uuid
+import ccxt
+
+from config.config import EnhancedSystemConfig
+from core.system import CompleteEnhancedBybitSystem
+from database.models import DatabaseManager, TradingPosition, AutoTradingSession
+from utils.database_manager import EnhancedDatabaseManager
+from notifier.telegram import send_trading_notification
+
+
+@dataclass
+class PositionData:
+    """Data class for position tracking"""
+    symbol: str
+    side: str
+    size: float
+    entry_price: float
+    leverage: float
+    risk_amount: float
+    stop_loss: float
+    take_profit: float
+    position_id: str
+    unrealized_pnl: float = 0.0
+    unrealized_pnl_pct: float = 0.0
+
+
+class LeverageManager:
+    """Handle leverage validation and conversion"""
+    
+    ACCEPTABLE_LEVERAGE = ['10', '12.5', '25', '50', 'max']
+    
+    def __init__(self, exchange):
+        self.exchange = exchange
+        self.logger = logging.getLogger(__name__)
+    
+    def validate_leverage(self, leverage_str: str) -> bool:
+        """Validate leverage is acceptable"""
+        return leverage_str in self.ACCEPTABLE_LEVERAGE
+    
+    def convert_leverage_to_float(self, leverage_str: str, symbol: str) -> float:
+        """Convert leverage string to float, handling 'max' case"""
+        try:
+            if leverage_str == 'max':
+                # Get maximum leverage for symbol from exchange
+                market_info = self.exchange.market(symbol)
+                max_leverage = market_info.get('limits', {}).get('leverage', {}).get('max', 100)
+                self.logger.debug(f"Max leverage for {symbol}: {max_leverage}")
+                return float(max_leverage)
+            else:
+                return float(leverage_str)
+        except Exception as e:
+            self.logger.error(f"Error converting leverage {leverage_str} for {symbol}: {e}")
+            return 10.0  # Fallback to safe leverage
+    
+    def set_symbol_leverage(self, symbol: str, leverage: float) -> bool:
+        """Set leverage for symbol on exchange"""
+        try:
+            # Set leverage on Bybit
+            result = self.exchange.set_leverage(leverage, symbol)
+            self.logger.debug(f"✅ Set leverage {leverage}x for {symbol}")
+            return True
+        except Exception as e:
+            self.logger.error(f"❌ Failed to set leverage {leverage}x for {symbol}: {e}")
+            return False
+    
+    def get_max_leverage_for_symbol(self, symbol: str) -> float:
+        """Get maximum available leverage for symbol"""
+        try:
+            market_info = self.exchange.market(symbol)
+            return float(market_info.get('limits', {}).get('leverage', {}).get('max', 100))
+        except Exception as e:
+            self.logger.error(f"Error getting max leverage for {symbol}: {e}")
+            return 50.0  # Conservative fallback
+
+
+class PositionSizer:
+    """Calculate position sizes with leverage"""
+    
+    def __init__(self, exchange):
+        self.exchange = exchange
+        self.logger = logging.getLogger(__name__)
+    
+    def calculate_position_size(self, risk_amount_pct: float, leverage: float, entry_price: float) -> float:
+        """
+        Calculate position size using: (account_balance × risk_percentage × leverage) / entry_price
+        
+        Args:
+            risk_amount_pct: Risk percentage of account balance (e.g., 5.0 for 5%)
+            leverage: Trading leverage (e.g., 25)
+            entry_price: Entry price for the position
+            
+        Returns:
+            Position size in base currency units
+        """
+        try:
+            if entry_price <= 0 or leverage <= 0:
+                raise ValueError(f"Invalid entry_price ({entry_price}) or leverage ({leverage})")
+            
+            # Get current account balance
+            account_balance = self.get_available_balance()
+            if account_balance <= 0:
+                raise ValueError(f"Invalid account balance: {account_balance}")
+            
+            # Calculate risk amount in USDT
+            risk_amount_usdt = account_balance * (risk_amount_pct / 100)
+            
+            # Calculate position size: (risk_amount_usdt × leverage) / entry_price
+            position_size = (risk_amount_usdt * leverage) / entry_price
+            
+            self.logger.debug(f"Position size calculation:")
+            self.logger.debug(f"  Account Balance: {account_balance} USDT")
+            self.logger.debug(f"  Risk Percentage: {risk_amount_pct}%")
+            self.logger.debug(f"  Risk Amount: {risk_amount_usdt} USDT")
+            self.logger.debug(f"  Leverage: {leverage}x")
+            self.logger.debug(f"  Entry Price: {entry_price}")
+            self.logger.debug(f"  Position Size: ({risk_amount_usdt} × {leverage}) / {entry_price} = {position_size}")
+            
+            return position_size
+        except Exception as e:
+            self.logger.error(f"Error calculating position size: {e}")
+            return 0.0
+    
+    def validate_position_size(self, symbol: str, size: float) -> Tuple[bool, float]:
+        """Validate position size against exchange limits"""
+        try:
+            market_info = self.exchange.market(symbol)
+            limits = market_info.get('limits', {})
+            amount_limits = limits.get('amount', {})
+            
+            min_size = amount_limits.get('min', 0.001)
+            max_size = amount_limits.get('max', 1000000)
+            
+            if size < min_size:
+                self.logger.warning(f"Position size {size} below minimum {min_size} for {symbol}")
+                return False, min_size
+            
+            if size > max_size:
+                self.logger.warning(f"Position size {size} above maximum {max_size} for {symbol}")
+                return False, max_size
+            
+            return True, size
+        except Exception as e:
+            self.logger.error(f"Error validating position size for {symbol}: {e}")
+            return False, 0.0
+    
+    def get_available_balance(self) -> float:
+        """Get available USDT balance"""
+        try:
+            balance = self.exchange.fetch_balance()
+            return float(balance['USDT']['free'])
+        except Exception as e:
+            self.logger.error(f"Error getting balance: {e}")
+            return 0.0
+
+
+class ScheduleManager:
+    """Handle scan timing and scheduling logic"""
+    
+    def __init__(self, config: EnhancedSystemConfig):
+        self.config = config
+        self.logger = logging.getLogger(__name__)
+    
+    def parse_start_hour(self, start_hour_str: str) -> Tuple[int, int]:
+        """Parse start hour string like '01:00' to (hour, minute)"""
+        try:
+            hour, minute = start_hour_str.split(':')
+            return int(hour), int(minute)
+        except Exception as e:
+            self.logger.error(f"Error parsing start hour {start_hour_str}: {e}")
+            return 1, 0  # Default to 01:00
+    
+    def calculate_next_scan_time(self) -> datetime:
+        """Calculate next scheduled scan time"""
+        try:
+            now = datetime.now()
+            start_hour, start_minute = self.parse_start_hour(self.config.day_trade_start_hour)
+            scan_interval_hours = self.config.scan_interval / 3600  # Convert seconds to hours
+            
+            # Create today's start time
+            today_start = now.replace(hour=start_hour, minute=start_minute, second=0, microsecond=0)
+            
+            # Find next scan time
+            if now < today_start:
+                # If current time is before today's start, next scan is today's start
+                next_scan = today_start
+            else:
+                # Calculate how many intervals have passed since start
+                elapsed = now - today_start
+                elapsed_hours = elapsed.total_seconds() / 3600
+                intervals_passed = int(elapsed_hours / scan_interval_hours)
+                
+                # Next scan is the next interval
+                next_scan = today_start + timedelta(hours=(intervals_passed + 1) * scan_interval_hours)
+                
+                # If next scan is tomorrow, move to next day's start time
+                if next_scan.date() > now.date():
+                    tomorrow_start = (now + timedelta(days=1)).replace(
+                        hour=start_hour, minute=start_minute, second=0, microsecond=0
+                    )
+                    next_scan = tomorrow_start
+            
+            self.logger.debug(f"Next scan calculated: {next_scan}")
+            return next_scan
+        except Exception as e:
+            self.logger.error(f"Error calculating next scan time: {e}")
+            # Fallback: scan in 1 hour
+            return datetime.now() + timedelta(hours=1)
+    
+    def is_scan_time(self) -> bool:
+        """Check if it's time to scan (within 1 minute of scheduled time)"""
+        try:
+            next_scan = self.calculate_next_scan_time()
+            now = datetime.now()
+            
+            # Check if we're within 1 minute of scan time
+            time_diff = abs((next_scan - now).total_seconds())
+            return time_diff <= 60
+        except Exception as e:
+            self.logger.error(f"Error checking scan time: {e}")
+            return False
+    
+    def wait_for_next_scan(self) -> datetime:
+        """Wait until next scheduled scan time"""
+        try:
+            next_scan = self.calculate_next_scan_time()
+            now = datetime.now()
+            
+            if next_scan > now:
+                wait_seconds = (next_scan - now).total_seconds()
+                self.logger.info(f"⏰ Next scan scheduled for: {next_scan}")
+                self.logger.info(f"⏳ Waiting {wait_seconds / 60:.1f} minutes...")
+                
+                time.sleep(wait_seconds)
+            
+            return next_scan
+        except Exception as e:
+            self.logger.error(f"Error waiting for next scan: {e}")
+            time.sleep(3600)  # Wait 1 hour on error
+            return datetime.now()
+
+
+class LeveragedProfitMonitor:
+    """Monitor leveraged profits and auto-close positions"""
+    
+    def __init__(self, exchange, config: EnhancedSystemConfig):
+        self.exchange = exchange
+        self.config = config
+        self.logger = logging.getLogger(__name__)
+        self.monitoring = False
+        self.monitor_thread = None
+    
+    def calculate_leveraged_profit_pct(self, position: PositionData, current_price: float) -> float:
+        """Calculate profit percentage considering leverage"""
+        try:
+            if position.entry_price <= 0:
+                return 0.0
+            
+            # Calculate price change percentage
+            price_change_pct = ((current_price - position.entry_price) / position.entry_price) * 100
+            
+            # Apply leverage multiplier
+            leveraged_profit_pct = price_change_pct * position.leverage
+            
+            # Consider position side
+            if position.side.lower() == 'sell':
+                leveraged_profit_pct = -leveraged_profit_pct
+            
+            return leveraged_profit_pct
+        except Exception as e:
+            self.logger.error(f"Error calculating leveraged profit for {position.symbol}: {e}")
+            return 0.0
+    
+    def should_auto_close(self, position: PositionData, current_price: float) -> bool:
+        """Check if position should be auto-closed based on profit target"""
+        try:
+            leveraged_profit_pct = self.calculate_leveraged_profit_pct(position, current_price)
+            return leveraged_profit_pct >= self.config.auto_close_profit_at
+        except Exception as e:
+            self.logger.error(f"Error checking auto-close for {position.symbol}: {e}")
+            return False
+    
+    def close_position(self, position: PositionData) -> bool:
+        """Close a position on the exchange"""
+        try:
+            # Determine order side (opposite of position side)
+            close_side = 'sell' if position.side.lower() == 'buy' else 'buy'
+            
+            # Place market order to close position
+            order = self.exchange.create_order(
+                symbol=position.symbol,
+                type='market',
+                side=close_side,
+                amount=position.size,
+                params={'reduceOnly': True}  # Ensure this closes the position
+            )
+            
+            self.logger.info(f"✅ Closed position {position.symbol} - Profit target reached")
+            self.logger.debug(f"Close order: {order}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"❌ Failed to close position {position.symbol}: {e}")
+            return False
+    
+    def get_current_positions(self) -> List[PositionData]:
+        """Get current positions from exchange"""
+        try:
+            positions = self.exchange.fetch_positions()
+            active_positions = []
+            
+            for pos in positions:
+                if pos['contracts'] > 0:  # Active position
+                    position_data = PositionData(
+                        symbol=pos['symbol'],
+                        side=pos['side'],
+                        size=pos['contracts'],
+                        entry_price=pos['entryPrice'],
+                        leverage=pos.get('leverage', 1.0),
+                        risk_amount=0.0,  # Will be updated from database
+                        stop_loss=0.0,
+                        take_profit=0.0,
+                        position_id=pos.get('id', ''),
+                        unrealized_pnl=pos.get('unrealizedPnl', 0.0),
+                        unrealized_pnl_pct=pos.get('percentage', 0.0)
+                    )
+                    active_positions.append(position_data)
+            
+            return active_positions
+        except Exception as e:
+            self.logger.error(f"Error getting current positions: {e}")
+            return []
+    
+    def monitor_positions(self):
+        """Main monitoring loop"""
+        try:
+            while self.monitoring:
+                positions = self.get_current_positions()
+                
+                for position in positions:
+                    try:
+                        # Get current price
+                        ticker = self.exchange.fetch_ticker(position.symbol)
+                        current_price = ticker['last']
+                        
+                        # Check if should auto-close
+                        if self.should_auto_close(position, current_price):
+                            leveraged_profit = self.calculate_leveraged_profit_pct(position, current_price)
+                            self.logger.info(
+                                f"🎯 Auto-close triggered for {position.symbol}: "
+                                f"{leveraged_profit:.2f}% profit (target: {self.config.auto_close_profit_at}%)"
+                            )
+                            
+                            if self.close_position(position):
+                                # Update database record
+                                self.update_position_in_database(position, 'closed', 'profit_target')
+                        
+                    except Exception as e:
+                        self.logger.error(f"Error monitoring position {position.symbol}: {e}")
+                
+                # Sleep between monitoring cycles
+                time.sleep(30)  # Check every 30 seconds
+                
+        except Exception as e:
+            self.logger.error(f"Error in monitoring loop: {e}")
+    
+    def start_monitoring(self):
+        """Start position monitoring in background thread"""
+        if not self.monitoring:
+            self.monitoring = True
+            self.monitor_thread = threading.Thread(target=self.monitor_positions, daemon=True)
+            self.monitor_thread.start()
+            self.logger.info("📊 Started position monitoring")
+    
+    def stop_monitoring(self):
+        """Stop position monitoring"""
+        self.monitoring = False
+        if self.monitor_thread:
+            self.monitor_thread.join(timeout=5)
+        self.logger.info("🛑 Stopped position monitoring")
+    
+    def update_position_in_database(self, position: PositionData, status: str, close_reason: str = None):
+        """Update position status in database"""
+        # This would be implemented to update the TradingPosition table
+        # Left as placeholder for database integration
+        pass
+
+
+class OrderExecutor:
+    """Execute leveraged orders with proper sizing"""
+    
+    def __init__(self, exchange, config: EnhancedSystemConfig, leverage_manager: LeverageManager, position_sizer: PositionSizer):
+        self.exchange = exchange
+        self.config = config
+        self.leverage_manager = leverage_manager
+        self.position_sizer = position_sizer
+        self.logger = logging.getLogger(__name__)
+    
+    def place_leveraged_order(self, signal: Dict, risk_amount_pct: float, leverage_str: str) -> Tuple[bool, str, Dict]:
+        """Place a leveraged order based on signal with percentage-based risk"""
+        try:
+            symbol = signal['symbol']
+            side = signal['side']
+            entry_price = signal['entry_price']
+            stop_loss = signal['stop_loss']
+            take_profit = signal.get('take_profit_1', signal.get('take_profit', 0))
+            
+            self.logger.info(f"🚀 Placing {side.upper()} order for {symbol}")
+            
+            # Convert leverage to float
+            leverage = self.leverage_manager.convert_leverage_to_float(leverage_str, symbol)
+            
+            # Set leverage on exchange
+            if not self.leverage_manager.set_symbol_leverage(symbol, leverage):
+                return False, "Failed to set leverage", {}
+            
+            # Calculate position size using percentage-based risk
+            position_size = self.position_sizer.calculate_position_size(risk_amount_pct, leverage, entry_price)
+            
+            # Validate position size
+            is_valid, adjusted_size = self.position_sizer.validate_position_size(symbol, position_size)
+            if not is_valid:
+                return False, f"Invalid position size: {position_size}", {}
+            
+            position_size = adjusted_size
+            
+            # Check available balance and calculate required margin
+            available_balance = self.position_sizer.get_available_balance()
+            required_margin = (position_size * entry_price) / leverage
+            risk_amount_usdt = available_balance * (risk_amount_pct / 100)
+            
+            if required_margin > available_balance:
+                return False, f"Insufficient balance: need {required_margin}, have {available_balance}", {}
+            
+            self.logger.info(f"💰 Risk calculation:")
+            self.logger.info(f"   Account Balance: {available_balance} USDT")
+            self.logger.info(f"   Risk Percentage: {risk_amount_pct}%")
+            self.logger.info(f"   Risk Amount: {risk_amount_usdt} USDT")
+            self.logger.info(f"   Position Size: {position_size} units")
+            self.logger.info(f"   Required Margin: {required_margin} USDT")
+            
+            # Place entry order
+            order_type = 'market' if signal.get('order_type') == 'market' else 'limit'
+            
+            if order_type == 'market':
+                entry_order = self.exchange.create_order(
+                    symbol=symbol,
+                    type='market',
+                    side=side,
+                    amount=position_size
+                )
+            else:
+                entry_order = self.exchange.create_order(
+                    symbol=symbol,
+                    type='limit',
+                    side=side,
+                    amount=position_size,
+                    price=entry_price
+                )
+            
+            self.logger.info(f"✅ Entry order placed: {entry_order['id']}")
+            
+            # Set stop loss and take profit
+            sl_order = None
+            tp_order = None
+            
+            try:
+                if stop_loss > 0:
+                    sl_side = 'sell' if side == 'buy' else 'buy'
+                    sl_order = self.exchange.create_order(
+                        symbol=symbol,
+                        type='stop_market',
+                        side=sl_side,
+                        amount=position_size,
+                        params={'stopPrice': stop_loss, 'reduceOnly': True}
+                    )
+                    self.logger.debug(f"Stop loss set: {sl_order['id']}")
+                
+                if take_profit > 0:
+                    tp_side = 'sell' if side == 'buy' else 'buy'
+                    tp_order = self.exchange.create_order(
+                        symbol=symbol,
+                        type='limit',
+                        side=tp_side,
+                        amount=position_size,
+                        price=take_profit,
+                        params={'reduceOnly': True}
+                    )
+                    self.logger.debug(f"Take profit set: {tp_order['id']}")
+                    
+            except Exception as e:
+                self.logger.warning(f"Failed to set SL/TP for {symbol}: {e}")
+            
+            # Create position tracking data
+            position_data = {
+                'symbol': symbol,
+                'side': side,
+                'position_size': position_size,
+                'entry_price': entry_price,
+                'leverage': leverage,
+                'risk_amount': risk_amount_usdt,  # Store actual USDT amount
+                'risk_percentage': risk_amount_pct,  # Store percentage for reference
+                'stop_loss': stop_loss,
+                'take_profit': take_profit,
+                'entry_order_id': entry_order['id'],
+                'stop_loss_order_id': sl_order['id'] if sl_order else None,
+                'take_profit_order_id': tp_order['id'] if tp_order else None,
+                'signal_confidence': signal.get('confidence', 0),
+                'mtf_status': signal.get('mtf_status', ''),
+                'auto_close_profit_target': self.config.auto_close_profit_at
+            }
+            
+            return True, "Order placed successfully", position_data
+            
+        except Exception as e:
+            error_msg = f"Failed to place order for {signal.get('symbol', 'unknown')}: {e}"
+            self.logger.error(error_msg)
+            return False, error_msg, {}
+
+
+class PositionManager:
+    """Track and manage concurrent positions"""
+    
+    def __init__(self, exchange, config: EnhancedSystemConfig, db_manager: DatabaseManager):
+        self.exchange = exchange
+        self.config = config
+        self.db_manager = db_manager
+        self.logger = logging.getLogger(__name__)
+    
+    def get_current_positions_count(self) -> int:
+        """Get count of current active positions"""
+        try:
+            positions = self.exchange.fetch_positions()
+            active_count = sum(1 for pos in positions if pos['contracts'] > 0)
+            return active_count
+        except Exception as e:
+            self.logger.error(f"Error getting positions count: {e}")
+            return 0
+    
+    def can_open_new_positions(self, requested_count: int) -> Tuple[bool, int]:
+        """Check if we can open new positions"""
+        try:
+            current_count = self.get_current_positions_count()
+            max_positions = self.config.max_concurrent_positions
+            available_slots = max_positions - current_count
+            
+            if available_slots <= 0:
+                return False, 0
+            
+            can_open = min(requested_count, available_slots)
+            return True, can_open
+        except Exception as e:
+            self.logger.error(f"Error checking position availability: {e}")
+            return False, 0
+    
+    def save_position_to_database(self, position_data: Dict, scan_session_id: int = None) -> str:
+        """Save position to database and return position ID"""
+        try:
+            session = self.db_manager.get_session()
+            
+            position_id = str(uuid.uuid4())
+            
+            position = TradingPosition(
+                position_id=position_id,
+                scan_session_id=scan_session_id,
+                symbol=position_data['symbol'],
+                side=position_data['side'],
+                entry_price=position_data['entry_price'],
+                position_size=position_data['position_size'],
+                leverage=str(position_data['leverage']),
+                risk_amount=position_data['risk_amount'],
+                entry_order_id=position_data.get('entry_order_id'),
+                stop_loss_order_id=position_data.get('stop_loss_order_id'),
+                take_profit_order_id=position_data.get('take_profit_order_id'),
+                stop_loss_price=position_data.get('stop_loss', 0),
+                take_profit_price=position_data.get('take_profit', 0),
+                auto_close_profit_target=position_data.get('auto_close_profit_target', 10.0),
+                signal_confidence=position_data.get('signal_confidence'),
+                mtf_status=position_data.get('mtf_status'),
+                status='open'
+            )
+            
+            session.add(position)
+            session.commit()
+            session.close()
+            
+            self.logger.debug(f"Position saved to database: {position_id}")
+            return position_id
+            
+        except Exception as e:
+            self.logger.error(f"Error saving position to database: {e}")
+            return ""
+    
+    def update_position_status(self, position_id: str, status: str, close_reason: str = None):
+        """Update position status in database"""
+        try:
+            session = self.db_manager.get_session()
+            
+            position = session.query(TradingPosition).filter(
+                TradingPosition.position_id == position_id
+            ).first()
+            
+            if position:
+                position.status = status
+                if close_reason:
+                    position.close_reason = close_reason
+                if status == 'closed':
+                    position.closed_at = datetime.utcnow()
+                
+                session.commit()
+                self.logger.debug(f"Updated position {position_id} status to {status}")
+            
+            session.close()
+            
+        except Exception as e:
+            self.logger.error(f"Error updating position status: {e}")
+
+
+class AutoTrader:
+    """Main auto-trading orchestration class"""
+    
+    def __init__(self, config: EnhancedSystemConfig):
+        self.config = config
+        self.logger = logging.getLogger(__name__)
+        
+        # Initialize database components
+        self.db_manager = DatabaseManager(config.db_config.get_database_url())
+        self.enhanced_db_manager = EnhancedDatabaseManager(self.db_manager)
+        
+        # Initialize trading system
+        self.trading_system = CompleteEnhancedBybitSystem(config)
+        self.exchange = self.trading_system.exchange_manager.exchange
+        
+        if not self.exchange:
+            raise Exception("Failed to initialize exchange connection")
+        
+        # Initialize auto-trading components
+        self.leverage_manager = LeverageManager(self.exchange)
+        self.position_sizer = PositionSizer(self.exchange)
+        self.schedule_manager = ScheduleManager(config)
+        self.position_manager = PositionManager(self.exchange, config, self.db_manager)
+        self.profit_monitor = LeveragedProfitMonitor(self.exchange, config)
+        self.order_executor = OrderExecutor(
+            self.exchange, config, self.leverage_manager, self.position_sizer
+        )
+        
+        # Session tracking
+        self.trading_session_id = None
+        self.is_running = False
+    
+    def start_trading_session(self) -> str:
+        """Start new auto-trading session"""
+        try:
+            session_id = f"autotrader_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            self.trading_session_id = session_id
+            
+            # Save session to database
+            session = self.db_manager.get_session()
+            
+            auto_session = AutoTradingSession(
+                session_id=session_id,
+                config_snapshot=self.config.to_dict()
+            )
+            
+            session.add(auto_session)
+            session.commit()
+            session.close()
+            
+            self.logger.info(f"🚀 Started auto-trading session: {session_id}")
+            self.logger.info(f"⚙️ Configuration:")
+            self.logger.info(f"   Max concurrent positions: {self.config.max_concurrent_positions}")
+            self.logger.info(f"   Max executions per scan: {self.config.max_execution_per_trade}")
+            self.logger.info(f"   Risk amount per trade: {self.config.risk_amount} USDT")
+            self.logger.info(f"   Leverage: {self.config.leverage}")
+            self.logger.info(f"   Auto-close profit target: {self.config.auto_close_profit_at}%")
+            self.logger.info(f"   Scan interval: {self.config.scan_interval / 3600:.1f} hours")
+            
+            return session_id
+            
+        except Exception as e:
+            self.logger.error(f"Failed to start trading session: {e}")
+            raise
+    
+    async def run_scan_and_execute(self) -> Tuple[int, int]:
+        """Run signal scan and execute trades"""
+        try:
+            self.logger.info("📊 Running signal analysis...")
+            
+            # Run the existing signal analysis system
+            results = self.trading_system.run_complete_analysis_parallel_mtf()
+            
+            if not results or not results.get('signals'):
+                self.logger.warning("No signals generated in this scan")
+                return 0, 0
+            
+            signals_count = len(results['signals'])
+            self.logger.info(f"📈 Generated {signals_count} signals")
+            
+            # Get top opportunities for execution
+            opportunities = results.get('top_opportunities', [])
+            
+            # Check position availability
+            can_trade, available_slots = self.position_manager.can_open_new_positions(
+                self.config.max_execution_per_trade
+            )
+            
+            if not can_trade:
+                self.logger.warning(
+                    f"⚠️ Cannot open new positions - at max capacity "
+                    f"({self.config.max_concurrent_positions})"
+                )
+                return signals_count, 0
+            
+            # Select opportunities for execution
+            execution_count = min(available_slots, self.config.max_execution_per_trade, len(opportunities))
+            selected_opportunities = opportunities[:execution_count]
+            
+            self.logger.info(
+                f"🎯 Executing {execution_count} trades "
+                f"(available slots: {available_slots})"
+            )
+            
+            # Execute selected trades
+            executed_count = 0
+            for i, opportunity in enumerate(selected_opportunities):
+                try:
+                    self.logger.info(f"📝 Executing trade {i+1}/{execution_count}: {opportunity['symbol']}")
+                    
+                    success, message, position_data = self.order_executor.place_leveraged_order(
+                        opportunity, self.config.risk_amount, self.config.leverage
+                    )
+                    
+                    if success:
+                        # Save position to database
+                        position_id = self.position_manager.save_position_to_database(position_data)
+                        executed_count += 1
+                        
+                        self.logger.info(
+                            f"✅ Trade executed: {opportunity['symbol']} "
+                            f"({opportunity['confidence']:.1f}% confidence, "
+                            f"MTF: {opportunity.get('mtf_status', 'N/A')})"
+                        )
+                        
+                        # Send Telegram notification
+                        await self.send_trade_notification(opportunity, position_data, success=True)
+                    else:
+                        self.logger.error(f"❌ Trade failed: {opportunity['symbol']} - {message}")
+                        
+                        # Send failure notification
+                        await self.send_trade_notification(opportunity, {}, success=False, error_message=message)
+                
+                except Exception as e:
+                    self.logger.error(f"Error executing trade for {opportunity.get('symbol', 'unknown')}: {e}")
+            
+            return signals_count, executed_count
+            
+        except Exception as e:
+            self.logger.error(f"Error in scan and execute: {e}")
+            return 0, 0
+    
+    def main_trading_loop(self):
+        """Main auto-trading loop"""
+        try:
+            self.is_running = True
+            session_id = self.start_trading_session()
+            
+            # Start profit monitoring
+            self.profit_monitor.start_monitoring()
+            
+            self.logger.info("🤖 Auto-trading loop started")
+            
+            while self.is_running:
+                try:
+                    # Wait for next scheduled scan
+                    next_scan_time = self.schedule_manager.wait_for_next_scan()
+                    
+                    if not self.is_running:
+                        break
+                    
+                    self.logger.info(f"⏰ Scan time reached: {next_scan_time}")
+                    
+                    # Run scan and execute trades
+                    signals_count, executed_count = self.run_scan_and_execute()
+                    
+                    self.logger.info(
+                        f"📊 Scan complete - Signals: {signals_count}, "
+                        f"Executed: {executed_count}"
+                    )
+                    
+                    # Update session statistics
+                    self.update_session_stats(signals_count, executed_count)
+                    
+                except KeyboardInterrupt:
+                    self.logger.info("🛑 Received interrupt signal")
+                    break
+                except Exception as e:
+                    self.logger.error(f"Error in main trading loop: {e}")
+                    time.sleep(300)  # Wait 5 minutes before retrying
+            
+        except Exception as e:
+            self.logger.error(f"Critical error in trading loop: {e}")
+        finally:
+            self.stop_trading()
+    
+    def stop_trading(self):
+        """Stop auto-trading"""
+        try:
+            self.is_running = False
+            self.profit_monitor.stop_monitoring()
+            
+            if self.trading_session_id:
+                # Update session end time in database
+                session = self.db_manager.get_session()
+                auto_session = session.query(AutoTradingSession).filter(
+                    AutoTradingSession.session_id == self.trading_session_id
+                ).first()
+                
+                if auto_session:
+                    auto_session.ended_at = datetime.utcnow()
+                    auto_session.status = 'stopped'
+                    session.commit()
+                
+                session.close()
+            
+            self.logger.info("🛑 Auto-trading stopped")
+            
+        except Exception as e:
+            self.logger.error(f"Error stopping trading: {e}")
+    
+    async def send_trade_notification(self, opportunity: Dict, position_data: Dict, success: bool, error_message: str = None):
+        """Send Telegram notification for trade execution"""
+        try:
+            symbol = opportunity['symbol']
+            side = opportunity['side'].upper()
+            confidence = opportunity.get('confidence', 0)
+            mtf_status = opportunity.get('mtf_status', 'N/A')
+            
+            if success:
+                # Success notification
+                risk_usdt = position_data.get('risk_amount', 0)
+                leverage = position_data.get('leverage', 0)
+                position_size = position_data.get('position_size', 0)
+                entry_price = position_data.get('entry_price', 0)
+                
+                message = f"🚀 **TRADE EXECUTED**\n\n"
+                message += f"📊 **{symbol}** {side}\n"
+                message += f"💰 Entry Price: ${entry_price:.6f}\n"
+                message += f"📈 Position Size: {position_size:.4f} units\n"
+                message += f"⚡ Leverage: {leverage}x\n"
+                message += f"💵 Risk: {risk_usdt:.2f} USDT ({self.config.risk_amount}%)\n\n"
+                message += f"🎯 **Signal Quality:**\n"
+                message += f"   Confidence: {confidence:.1f}%\n"
+                message += f"   MTF Status: {mtf_status}\n\n"
+                message += f"🎯 Profit Target: {self.config.auto_close_profit_at}%\n"
+                message += f"🕒 {datetime.now().strftime('%H:%M:%S')}"
+                
+                # Add inline keyboard for position management
+                keyboard = [
+                    [{"text": "📊 Check Position", "callback_data": f"check_pos_{symbol}"}],
+                    [{"text": "🔴 Close Position", "callback_data": f"close_pos_{symbol}"}]
+                ]
+                
+            else:
+                # Failure notification
+                message = f"❌ **TRADE FAILED**\n\n"
+                message += f"📊 **{symbol}** {side}\n"
+                message += f"🎯 Confidence: {confidence:.1f}%\n"
+                message += f"📈 MTF Status: {mtf_status}\n\n"
+                message += f"💥 **Error:** {error_message}\n\n"
+                message += f"🕒 {datetime.now().strftime('%H:%M:%S')}"
+                
+                keyboard = None
+            
+            await send_trading_notification(self.config, message, keyboard)
+            
+        except Exception as e:
+            self.logger.error(f"Failed to send trade notification: {e}")
+    
+    async def send_scan_notification(self, signals_count: int, executed_count: int):
+        """Send scan completion notification"""
+        try:
+            next_scan = self.schedule_manager.calculate_next_scan_time()
+            
+            message = f"📊 **SCAN COMPLETE**\n\n"
+            message += f"🔍 Signals Found: {signals_count}\n"
+            message += f"⚡ Trades Executed: {executed_count}\n"
+            message += f"📈 Success Rate: {(executed_count/signals_count*100) if signals_count > 0 else 0:.1f}%\n\n"
+            message += f"⏰ Next Scan: {next_scan.strftime('%H:%M')}\n"
+            message += f"🕒 {datetime.now().strftime('%H:%M:%S')}"
+            
+            await send_trading_notification(self.config, message)
+            
+        except Exception as e:
+            self.logger.error(f"Failed to send scan notification: {e}")
+    
+    def update_session_stats(self, signals_count: int, executed_count: int):
+        """Update session statistics in database"""
+        try:
+            if not self.trading_session_id:
+                return
+            
+            session = self.db_manager.get_session()
+            auto_session = session.query(AutoTradingSession).filter(
+                AutoTradingSession.session_id == self.trading_session_id
+            ).first()
+            
+            if auto_session:
+                auto_session.total_scans += 1
+                auto_session.total_trades_placed += executed_count
+                auto_session.last_scan_at = datetime.utcnow()
+                auto_session.next_scan_at = self.schedule_manager.calculate_next_scan_time()
+                
+                session.commit()
+            
+            session.close()
+            
+            # Send scan notification
+            asyncio.create_task(self.send_scan_notification(signals_count, executed_count))
+            
+        except Exception as e:
+            self.logger.error(f"Error updating session stats: {e}")
+
+
+# Main execution function for standalone usage
+def main():
+    """Main function for running the auto-trader"""
+    try:
+        from config.config import DatabaseConfig, EnhancedSystemConfig
+        from utils.logging import setup_logging
+        
+        # Setup logging
+        logger = setup_logging("INFO")
+        
+        # Load configuration
+        db_config = DatabaseConfig()  # Load from environment or defaults
+        config = EnhancedSystemConfig.from_database(db_config, 'default')
+        
+        # Validate auto-trading configuration
+        if not config.leverage or config.leverage not in LeverageManager.ACCEPTABLE_LEVERAGE:
+            logger.error(f"Invalid leverage configuration: {config.leverage}")
+            return
+        
+        if config.risk_amount <= 0:
+            logger.error(f"Invalid risk amount: {config.risk_amount}")
+            return
+        
+        # Start auto-trader
+        auto_trader = AutoTrader(config)
+        auto_trader.main_trading_loop()
+        
+    except KeyboardInterrupt:
+        logger.info("Auto-trader stopped by user")
+    except Exception as e:
+        logger.error(f"Auto-trader failed: {e}")
+        raise
+
+
+if __name__ == "__main__":
+    main()

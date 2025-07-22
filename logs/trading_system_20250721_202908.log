@@ -1,9 +1,0 @@
-2025-07-21 20:29:44 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
-2025-07-21 20:29:44 - TradingSystem - INFO - 🚀 STARTING ENHANCED ANALYSIS WITH 15m→1h/4h MTF CONFIRMATION (PARALLEL + MYSQL)
-2025-07-21 20:29:44 - TradingSystem - INFO - ==========================================================================================
-2025-07-21 20:29:49 - TradingSystem - INFO - 📊 Analyzing 219 symbols with MTF confirmation...
-2025-07-21 20:29:49 - TradingSystem - INFO -    Primary Timeframe: 15m
-2025-07-21 20:29:49 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h
-2025-07-21 20:29:49 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
-2025-07-21 20:29:49 - TradingSystem - INFO -    Database: MySQL @ localhost
-2025-07-21 20:31:04 - TradingSystem - WARNING - Insufficient 15m data for TA/USDT:USDT

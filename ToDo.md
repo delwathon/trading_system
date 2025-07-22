@@ -35,3 +35,14 @@ ohlcv_limit_analysis = 1000
 # High-Confidence Setup
 timeframe='15m'
 confirmation_timeframes=['30m', '1h', '4h', '1d']  # 4 confirmations
+
+
+
+
+I want us to incorporate user management into the system. As the super user, my details are already stored in the database, inside_system config table. I do not want to share the same table with other users.
+
+This system is going to be a paid system for other users.
+
+There are 4 categories of users:
+
+sapphire, platinum, premium, awoof
