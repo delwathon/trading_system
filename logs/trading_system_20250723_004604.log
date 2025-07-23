@@ -1,0 +1,11 @@
+2025-07-23 00:46:04 - TradingSystem - INFO - Loading database configuration from enhanced_config.yaml
+2025-07-23 00:46:04 - TradingSystem - INFO - Database config loaded:
+2025-07-23 00:46:04 - TradingSystem - INFO -    Host: localhost:3306
+2025-07-23 00:46:04 - TradingSystem - INFO -    Database: bybit_trading_system
+2025-07-23 00:46:04 - TradingSystem - INFO -    Username: root
+2025-07-23 00:46:04 - TradingSystem - INFO -    Password: ***
+2025-07-23 00:46:04 - TradingSystem - INFO - Loading system configuration from MySQL database...
+2025-07-23 00:46:04 - config.config - INFO - Loading configuration 'default' from MySQL database
+2025-07-23 00:46:04 - config.config - INFO - Adjusting rate limit from 8.0 to 6.0 req/s for connection pool optimization
+2025-07-23 00:46:04 - config.config - INFO - Increasing API timeout from 20000 to 30000ms for better connection stability
+2025-07-23 00:46:05 - notifier.telegram - INFO - ✅ Telegram bot initialized successfully

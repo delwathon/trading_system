@@ -3,6 +3,7 @@ Database-based configuration management for the Enhanced Bybit Trading System.
 Replaces YAML-based configuration with database storage.
 Primary timeframe: 30m, Confirmation timeframes: 1h, 4h, 6h
 UPDATED: Fixed leverage storage and added auto-trading configuration.
+UPDATED: Added connection pool optimization settings.
 COMPLETE: Includes all functionality from project knowledge.
 """
 
@@ -143,9 +144,9 @@ class EnhancedSystemConfig:
                 mtf_confirmation_required=True,
                 mtf_weight_multiplier=1.5,
                 
-                # Rate Limiting
-                max_requests_per_second=8.0,
-                api_timeout=20000,
+                # Rate Limiting - UPDATED: Reduced for connection pool optimization
+                max_requests_per_second=6.0,  # Reduced from 8.0 to 6.0
+                api_timeout=30000,  # Increased from 20000 to 30000
                 
                 # Risk Management
                 max_portfolio_risk=0.02,
@@ -198,7 +199,7 @@ class EnhancedSystemConfig:
                 max_concurrent_positions=5,
                 max_execution_per_trade=2,
                 day_trade_start_hour='01:00',
-                scan_interval=10800,  # 3 hours in seconds
+                scan_interval=3600,  # 3 hours in seconds
                 auto_close_profit_at=10.0  # 10% profit target
             )
             
@@ -240,8 +241,8 @@ class EnhancedSystemConfig:
         self.confirmation_timeframes = ['1h', '4h', '6h']
         self.mtf_confirmation_required = True
         self.mtf_weight_multiplier = 1.5
-        self.max_requests_per_second = 8.0
-        self.api_timeout = 20000
+        self.max_requests_per_second = 6.0  # Reduced for connection pool optimization
+        self.api_timeout = 30000  # Increased timeout
         self.max_portfolio_risk = 0.02
         self.max_daily_trades = 20
         self.max_single_position_risk = 0.005
@@ -282,7 +283,7 @@ class EnhancedSystemConfig:
         self.max_concurrent_positions = 5
         self.max_execution_per_trade = 2
         self.day_trade_start_hour = '01:00'
-        self.scan_interval = 10800  # 3 hours
+        self.scan_interval = 3600  # 3 hours
         self.auto_close_profit_at = 10.0  # 10% profit
         
         self._post_init()
@@ -297,8 +298,8 @@ class EnhancedSystemConfig:
         if self.confirmation_timeframes is None:
             self.confirmation_timeframes = ['1h', '4h']
         
-        # Validate ranges
-        self.max_requests_per_second = max(1.0, min(20.0, self.max_requests_per_second))
+        # Validate ranges with connection pool optimization
+        self.max_requests_per_second = max(1.0, min(8.0, self.max_requests_per_second))
         self.max_portfolio_risk = max(0.001, min(0.1, self.max_portfolio_risk))
         self.ml_profitable_rate = max(0.2, min(0.8, self.ml_profitable_rate))
         self.mtf_weight_multiplier = max(1.0, min(3.0, self.mtf_weight_multiplier))
@@ -315,6 +316,16 @@ class EnhancedSystemConfig:
         if self.leverage not in acceptable_leverage:
             self.logger.warning(f"Invalid leverage '{self.leverage}', defaulting to 'max'")
             self.leverage = 'max'
+        
+        # OPTIMIZATION: Adjust rate limiting for connection pool efficiency
+        if self.max_requests_per_second > 6.0:
+            self.logger.info(f"Adjusting rate limit from {self.max_requests_per_second} to 6.0 req/s for connection pool optimization")
+            self.max_requests_per_second = 6.0
+        
+        # Ensure adequate timeout for connection reuse
+        if self.api_timeout < 25000:
+            self.logger.info(f"Increasing API timeout from {self.api_timeout} to 30000ms for better connection stability")
+            self.api_timeout = 30000
     
     def update_config(self, **kwargs) -> bool:
         """Update configuration in MySQL database"""
@@ -495,8 +506,8 @@ class EnhancedSystemConfig:
             'confirmation_timeframes': getattr(self, 'confirmation_timeframes', ['1h', '4h', '6h']),
             'mtf_confirmation_required': getattr(self, 'mtf_confirmation_required', True),
             'mtf_weight_multiplier': getattr(self, 'mtf_weight_multiplier', 1.5),
-            'max_requests_per_second': getattr(self, 'max_requests_per_second', 8.0),
-            'api_timeout': getattr(self, 'api_timeout', 20000),
+            'max_requests_per_second': getattr(self, 'max_requests_per_second', 6.0),
+            'api_timeout': getattr(self, 'api_timeout', 30000),
             'max_portfolio_risk': getattr(self, 'max_portfolio_risk', 0.02),
             'max_daily_trades': getattr(self, 'max_daily_trades', 20),
             'max_single_position_risk': getattr(self, 'max_single_position_risk', 0.005),
@@ -530,7 +541,7 @@ class EnhancedSystemConfig:
             'max_concurrent_positions': getattr(self, 'max_concurrent_positions', 5),
             'max_execution_per_trade': getattr(self, 'max_execution_per_trade', 2),
             'day_trade_start_hour': getattr(self, 'day_trade_start_hour', '01:00'),
-            'scan_interval': getattr(self, 'scan_interval', 10800),
+            'scan_interval': getattr(self, 'scan_interval', 3600),
             'auto_close_profit_at': getattr(self, 'auto_close_profit_at', 10.0)
         }
     

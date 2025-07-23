@@ -67,13 +67,36 @@ class LeverageManager:
     def set_symbol_leverage(self, symbol: str, leverage: float) -> bool:
         """Set leverage for symbol on exchange"""
         try:
+            # Get current leverage first
+            try:
+                positions = self.exchange.fetch_positions([symbol])
+                current_leverage = None
+                for pos in positions:
+                    if pos['symbol'] == symbol:
+                        current_leverage = pos.get('leverage', 1)
+                        break
+                
+                # If leverage is already set correctly, skip
+                if current_leverage and abs(float(current_leverage) - leverage) < 0.1:
+                    self.logger.debug(f"✅ Leverage already set to {current_leverage}x for {symbol}")
+                    return True
+                    
+            except Exception as e:
+                self.logger.debug(f"Could not check current leverage for {symbol}: {e}")
+            
             # Set leverage on Bybit
             result = self.exchange.set_leverage(leverage, symbol)
             self.logger.debug(f"✅ Set leverage {leverage}x for {symbol}")
             return True
         except Exception as e:
-            self.logger.error(f"❌ Failed to set leverage {leverage}x for {symbol}: {e}")
-            return False
+            error_msg = str(e)
+            # If leverage not modified error, it might already be set correctly
+            if "110043" in error_msg or "leverage not modified" in error_msg:
+                self.logger.warning(f"⚠️ Leverage not modified for {symbol} - may already be set correctly")
+                return True  # Continue with trade execution
+            else:
+                self.logger.error(f"❌ Failed to set leverage {leverage}x for {symbol}: {e}")
+                return False
     
     def get_max_leverage_for_symbol(self, symbol: str) -> float:
         """Get maximum available leverage for symbol"""
@@ -294,15 +317,40 @@ class LeveragedProfitMonitor:
     def close_position(self, position: PositionData) -> bool:
         """Close a position on the exchange"""
         try:
-            # Determine order side (opposite of position side)
-            close_side = 'sell' if position.side.lower() == 'buy' else 'buy'
+            # Get current position details from exchange
+            positions = self.exchange.fetch_positions([position.symbol])
+            current_position = None
+            
+            for pos in positions:
+                if pos['symbol'] == position.symbol and pos['contracts'] > 0:
+                    current_position = pos
+                    break
+            
+            if not current_position:
+                self.logger.warning(f"No active position found for {position.symbol}")
+                return False
+            
+            # Determine correct close side based on current position
+            current_side = current_position['side']
+            position_size = current_position['contracts']
+            
+            # FIXED: Use proper capitalized sides for Bybit API
+            if current_side.lower() == 'long':
+                close_side = 'Sell'  # Capitalized
+            elif current_side.lower() == 'short':
+                close_side = 'Buy'   # Capitalized
+            else:
+                self.logger.error(f"Unknown position side: {current_side}")
+                return False
+            
+            self.logger.debug(f"Closing {current_side} position of {position_size} {position.symbol} with {close_side} order")
             
             # Place market order to close position
             order = self.exchange.create_order(
                 symbol=position.symbol,
                 type='market',
-                side=close_side,
-                amount=position.size,
+                side=close_side,  # Use capitalized side
+                amount=position_size,
                 params={'reduceOnly': True}  # Ensure this closes the position
             )
             
@@ -311,7 +359,18 @@ class LeveragedProfitMonitor:
             return True
             
         except Exception as e:
-            self.logger.error(f"❌ Failed to close position {position.symbol}: {e}")
+            error_msg = str(e)
+            if "110017" in error_msg or "reduce-only order has same side" in error_msg:
+                self.logger.error(f"❌ Close order side error for {position.symbol}. Trying alternative method...")
+                # Try closing with position close API instead
+                try:
+                    close_result = self.exchange.close_position(position.symbol)
+                    self.logger.info(f"✅ Closed position {position.symbol} using close_position API")
+                    return True
+                except Exception as e2:
+                    self.logger.error(f"❌ Alternative close method also failed for {position.symbol}: {e2}")
+            else:
+                self.logger.error(f"❌ Failed to close position {position.symbol}: {e}")
             return False
     
     def get_current_positions(self) -> List[PositionData]:
@@ -322,9 +381,12 @@ class LeveragedProfitMonitor:
             
             for pos in positions:
                 if pos['contracts'] > 0:  # Active position
+                    # Map exchange position side to our format
+                    side = 'buy' if pos['side'].lower() == 'long' else 'sell'
+                    
                     position_data = PositionData(
                         symbol=pos['symbol'],
-                        side=pos['side'],
+                        side=side,
                         size=pos['contracts'],
                         entry_price=pos['entryPrice'],
                         leverage=pos.get('leverage', 1.0),
@@ -450,62 +512,51 @@ class OrderExecutor:
             self.logger.info(f"   Position Size: {position_size} units")
             self.logger.info(f"   Required Margin: {required_margin} USDT")
             
-            # Place entry order
+            # FIXED: Capitalize the side parameter for Bybit API
+            bybit_side = side.capitalize()  # 'buy' -> 'Buy', 'sell' -> 'Sell'
+            
+            # Place entry order with integrated SL/TP
             order_type = 'market' if signal.get('order_type') == 'market' else 'limit'
+            
+            # Prepare order parameters with integrated SL/TP
+            order_params = {}
+            if stop_loss > 0:
+                order_params['stopLoss'] = stop_loss
+            if take_profit > 0:
+                order_params['takeProfit'] = take_profit
             
             if order_type == 'market':
                 entry_order = self.exchange.create_order(
                     symbol=symbol,
                     type='market',
-                    side=side,
-                    amount=position_size
+                    side=bybit_side,  # Use capitalized side
+                    amount=position_size,
+                    params=order_params  # Include SL/TP in main order
                 )
             else:
                 entry_order = self.exchange.create_order(
                     symbol=symbol,
                     type='limit',
-                    side=side,
+                    side=bybit_side,  # Use capitalized side
                     amount=position_size,
-                    price=entry_price
+                    price=entry_price,
+                    params=order_params  # Include SL/TP in main order
                 )
             
             self.logger.info(f"✅ Entry order placed: {entry_order['id']}")
+            if stop_loss > 0:
+                self.logger.debug(f"✅ Stop loss integrated: ${stop_loss:.6f}")
+            if take_profit > 0:
+                self.logger.debug(f"✅ Take profit integrated: ${take_profit:.6f}")
             
-            # Set stop loss and take profit
+            # SL/TP are now integrated - no separate orders needed
             sl_order = None
             tp_order = None
-            
-            try:
-                if stop_loss > 0:
-                    sl_side = 'sell' if side == 'buy' else 'buy'
-                    sl_order = self.exchange.create_order(
-                        symbol=symbol,
-                        type='stop_market',
-                        side=sl_side,
-                        amount=position_size,
-                        params={'stopPrice': stop_loss, 'reduceOnly': True}
-                    )
-                    self.logger.debug(f"Stop loss set: {sl_order['id']}")
-                
-                if take_profit > 0:
-                    tp_side = 'sell' if side == 'buy' else 'buy'
-                    tp_order = self.exchange.create_order(
-                        symbol=symbol,
-                        type='limit',
-                        side=tp_side,
-                        amount=position_size,
-                        price=take_profit,
-                        params={'reduceOnly': True}
-                    )
-                    self.logger.debug(f"Take profit set: {tp_order['id']}")
-                    
-            except Exception as e:
-                self.logger.warning(f"Failed to set SL/TP for {symbol}: {e}")
             
             # Create position tracking data
             position_data = {
                 'symbol': symbol,
-                'side': side,
+                'side': side,  # Keep original lowercase for internal tracking
                 'position_size': position_size,
                 'entry_price': entry_price,
                 'leverage': leverage,
@@ -542,7 +593,7 @@ class PositionManager:
         """Get count of current active positions"""
         try:
             positions = self.exchange.fetch_positions()
-            active_count = sum(1 for pos in positions if pos['contracts'] > 0)
+            active_count = sum(1 for pos in positions if pos.get('contracts', 0) > 0 or pos.get('size', 0) > 0)
             return active_count
         except Exception as e:
             self.logger.error(f"Error getting positions count: {e}")
@@ -707,6 +758,21 @@ class AutoTrader:
             signals_count = len(results['signals'])
             self.logger.info(f"📈 Generated {signals_count} signals")
             
+            # ADDED: Save results to database (replaces CSV export)
+            self.logger.info("💾 Saving results to MySQL database...")
+            save_result = self.enhanced_db_manager.save_all_results(results)
+            if save_result.get('error'):
+                self.logger.error(f"Failed to save results: {save_result['error']}")
+            else:
+                self.logger.debug(f"✅ Results saved - Scan ID: {save_result.get('scan_id', 'Unknown')}")
+            
+            # ADDED: Display the comprehensive results table
+            print("\n" + "=" * 100)
+            print("📊 SCAN RESULTS - TOP TRADING OPPORTUNITIES")
+            print("=" * 100)
+            self.trading_system.print_comprehensive_results_with_mtf(results)
+            print("=" * 100 + "\n")
+            
             # Get top opportunities for execution
             opportunities = results.get('top_opportunities', [])
             
@@ -720,11 +786,18 @@ class AutoTrader:
                     f"⚠️ Cannot open new positions - at max capacity "
                     f"({self.config.max_concurrent_positions})"
                 )
+                print(f"⚠️  POSITION LIMIT REACHED: {self.config.max_concurrent_positions} concurrent positions")
+                print(f"   No new trades will be executed until positions are closed")
                 return signals_count, 0
             
             # Select opportunities for execution
             execution_count = min(available_slots, self.config.max_execution_per_trade, len(opportunities))
             selected_opportunities = opportunities[:execution_count]
+            
+            print(f"🎯 EXECUTING {execution_count} TRADES:")
+            print(f"   Available Position Slots: {available_slots}")
+            print(f"   Max Executions per Scan: {self.config.max_execution_per_trade}")
+            print(f"   Selected for Execution: {execution_count}")
             
             self.logger.info(
                 f"🎯 Executing {execution_count} trades "
@@ -735,6 +808,13 @@ class AutoTrader:
             executed_count = 0
             for i, opportunity in enumerate(selected_opportunities):
                 try:
+                    print(f"\n📝 EXECUTING TRADE {i+1}/{execution_count}:")
+                    print(f"   Symbol: {opportunity['symbol']}")
+                    print(f"   Side: {opportunity['side'].upper()}")
+                    print(f"   Confidence: {opportunity['confidence']:.1f}%")
+                    print(f"   MTF Status: {opportunity.get('mtf_status', 'N/A')}")
+                    print(f"   Entry Price: ${opportunity['entry_price']:.6f}")
+                    
                     self.logger.info(f"📝 Executing trade {i+1}/{execution_count}: {opportunity['symbol']}")
                     
                     success, message, position_data = self.order_executor.place_leveraged_order(
@@ -746,6 +826,11 @@ class AutoTrader:
                         position_id = self.position_manager.save_position_to_database(position_data)
                         executed_count += 1
                         
+                        print(f"   ✅ TRADE EXECUTED SUCCESSFULLY!")
+                        print(f"   Position Size: {position_data['position_size']:.4f} units")
+                        print(f"   Risk Amount: {position_data['risk_amount']:.2f} USDT")
+                        print(f"   Leverage: {position_data['leverage']}x")
+                        
                         self.logger.info(
                             f"✅ Trade executed: {opportunity['symbol']} "
                             f"({opportunity['confidence']:.1f}% confidence, "
@@ -755,13 +840,22 @@ class AutoTrader:
                         # Send Telegram notification
                         await self.send_trade_notification(opportunity, position_data, success=True)
                     else:
+                        print(f"   ❌ TRADE FAILED: {message}")
                         self.logger.error(f"❌ Trade failed: {opportunity['symbol']} - {message}")
                         
                         # Send failure notification
                         await self.send_trade_notification(opportunity, {}, success=False, error_message=message)
                 
                 except Exception as e:
+                    print(f"   ❌ TRADE ERROR: {e}")
                     self.logger.error(f"Error executing trade for {opportunity.get('symbol', 'unknown')}: {e}")
+            
+            # Final execution summary
+            print(f"\n🏁 EXECUTION SUMMARY:")
+            print(f"   Signals Generated: {signals_count}")
+            print(f"   Trades Attempted: {execution_count}")
+            print(f"   Trades Executed: {executed_count}")
+            print(f"   Success Rate: {(executed_count/execution_count*100) if execution_count > 0 else 0:.1f}%")
             
             return signals_count, executed_count
             
@@ -790,8 +884,16 @@ class AutoTrader:
                     
                     self.logger.info(f"⏰ Scan time reached: {next_scan_time}")
                     
-                    # Run scan and execute trades
-                    signals_count, executed_count = self.run_scan_and_execute()
+                    # FIXED: Run scan and execute trades with proper async handling
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    
+                    try:
+                        signals_count, executed_count = loop.run_until_complete(
+                            self.run_scan_and_execute()
+                        )
+                    finally:
+                        loop.close()
                     
                     self.logger.info(
                         f"📊 Scan complete - Signals: {signals_count}, "
@@ -926,7 +1028,12 @@ class AutoTrader:
             session.close()
             
             # Send scan notification
-            asyncio.create_task(self.send_scan_notification(signals_count, executed_count))
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(self.send_scan_notification(signals_count, executed_count))
+            finally:
+                loop.close()
             
         except Exception as e:
             self.logger.error(f"Error updating session stats: {e}")

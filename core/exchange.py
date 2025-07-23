@@ -1,11 +1,13 @@
 """
 Enhanced ExchangeManager with API secret decryption support
 FIXED: Better credential handling and validation
+UPDATED: Connection pool optimization to prevent pool exhaustion
 """
 
 import ccxt
 import pandas as pd
 import logging
+import time
 from typing import Dict, List, Optional
 from config.config import EnhancedSystemConfig
 from utils.encryption import SecretManager
@@ -21,13 +23,23 @@ class ExchangeManager:
         self.exchange = self.setup_exchange()
         
     def setup_exchange(self):
-        """Setup Bybit exchange connection with decrypted API secrets"""
+        """Setup Bybit exchange connection with decrypted API secrets and optimized connection pool"""
         try:
             exchange_config = {
                 'enableRateLimit': True,
-                'rateLimit': 1000,
+                'rateLimit': int(1000 / self.config.max_requests_per_second),  # Dynamic rate limiting
                 'timeout': self.config.api_timeout,
-                'sandbox': self.config.sandbox_mode
+                'sandbox': self.config.sandbox_mode,
+                # FIXED: Connection pool optimization
+                'options': {
+                    'defaultType': 'linear',  # Use linear (USDT) contracts by default
+                    'createMarketBuyOrderRequiresPrice': False,
+                    # Connection pool settings
+                    'maxRetries': 3,
+                    'retryDelay': 1000,
+                    # Session optimization
+                    'keepAlive': True,
+                }
             }
             
             # Test encryption/decryption first
@@ -78,15 +90,51 @@ class ExchangeManager:
             })
             
             # Initialize exchange
-            self.logger.debug("Initializing Bybit exchange...")
+            self.logger.debug("Initializing Bybit exchange with optimized connection pool...")
             exchange = ccxt.bybit(exchange_config)
             
-            # Load markets
-            self.logger.debug("Loading markets...")
-            exchange.load_markets()
+            # Configure connection pool settings if available
+            try:
+                # Try to configure the underlying requests session if it exists
+                if hasattr(exchange, 'session') and exchange.session is not None:
+                    import requests.adapters
+                    
+                    # Create adapter with larger connection pool
+                    adapter = requests.adapters.HTTPAdapter(
+                        pool_connections=20,
+                        pool_maxsize=20,
+                        pool_block=False,
+                        max_retries=3
+                    )
+                    
+                    # Mount adapter for both HTTP and HTTPS
+                    exchange.session.mount('http://', adapter)
+                    exchange.session.mount('https://', adapter)
+                    
+                    self.logger.debug("✅ Enhanced connection pool adapter configured")
+                else:
+                    self.logger.debug("ℹ️ Exchange session not available for optimization")
+                    
+            except Exception as e:
+                self.logger.debug(f"Connection pool optimization not available: {e}")
+            
+            # Load markets with retry logic
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    self.logger.debug(f"Loading markets (attempt {attempt + 1}/{max_retries})...")
+                    exchange.load_markets()
+                    break
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    self.logger.warning(f"Market loading attempt {attempt + 1} failed: {e}")
+                    time.sleep(2 ** attempt)  # Exponential backoff
             
             mode = "DEMO" if self.config.sandbox_mode else "PRODUCTION"
             self.logger.info(f"✅ Connected to Bybit {mode} with decrypted credentials")
+            self.logger.debug(f"   Rate limit: {exchange_config['rateLimit']}ms")
+            self.logger.debug(f"   Timeout: {self.config.api_timeout}ms")
             
             return exchange
             
@@ -177,7 +225,7 @@ class ExchangeManager:
             return {}
     
     def fetch_ohlcv_data(self, symbol: str, timeframe: str = None, limit: int = None) -> pd.DataFrame:
-        """Fetch OHLCV data with error handling"""
+        """Fetch OHLCV data with error handling and connection reuse"""
         if timeframe is None:
             timeframe = self.config.timeframe
             
@@ -188,6 +236,9 @@ class ExchangeManager:
             if not self.exchange:
                 self.logger.error("Exchange not available for data fetching")
                 return pd.DataFrame()
+            
+            # Add small delay to respect rate limits and reduce connection pressure
+            time.sleep(0.1)
             
             ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             
@@ -201,16 +252,27 @@ class ExchangeManager:
             
             return df
             
+        except ccxt.NetworkError as e:
+            self.logger.warning(f"Network error fetching {symbol} data: {e}")
+            time.sleep(1)  # Brief pause before retry
+            return pd.DataFrame()
+        except ccxt.RateLimitExceeded as e:
+            self.logger.warning(f"Rate limit exceeded for {symbol}: {e}")
+            time.sleep(2)  # Longer pause for rate limit
+            return pd.DataFrame()
         except Exception as e:
             self.logger.error(f"Failed to fetch {symbol} data: {e}")
             return pd.DataFrame()
     
     def get_top_symbols(self) -> List[Dict]:
-        """Get top trading symbols by volume"""
+        """Get top trading symbols by volume with connection optimization"""
         try:
             if not self.exchange:
                 self.logger.error("Exchange not available for symbol fetching")
                 return []
+            
+            # Add delay to prevent connection pool exhaustion
+            time.sleep(0.2)
             
             tickers = self.exchange.fetch_tickers()
             
@@ -229,15 +291,25 @@ class ExchangeManager:
             usdt_symbols.sort(key=lambda x: x['volume_24h'], reverse=True)
             return usdt_symbols[:self.config.max_symbols_scan]
             
+        except ccxt.NetworkError as e:
+            self.logger.warning(f"Network error getting symbols: {e}")
+            return []
+        except ccxt.RateLimitExceeded as e:
+            self.logger.warning(f"Rate limit exceeded getting symbols: {e}")
+            time.sleep(2)
+            return []
         except Exception as e:
             self.logger.error(f"Failed to get symbols: {e}")
             return []
     
     def get_account_info(self) -> Dict:
-        """Get account information"""
+        """Get account information with connection reuse"""
         try:
             if not self.exchange:
                 return {}
+            
+            # Add delay to prevent connection pool exhaustion
+            time.sleep(0.1)
             
             balance = self.exchange.fetch_balance()
             
@@ -248,6 +320,37 @@ class ExchangeManager:
                 'currencies': list(balance.keys())
             }
             
+        except ccxt.NetworkError as e:
+            self.logger.warning(f"Network error getting account info: {e}")
+            return {}
+        except ccxt.RateLimitExceeded as e:
+            self.logger.warning(f"Rate limit exceeded getting account info: {e}")
+            time.sleep(1)
+            return {}
         except Exception as e:
             self.logger.error(f"Failed to get account info: {e}")
             return {}
+    
+    def cleanup_connections(self):
+        """Clean up exchange connections to prevent pool exhaustion"""
+        try:
+            if self.exchange:
+                # Check if exchange has a session attribute and it's a valid session object
+                if hasattr(self.exchange, 'session') and self.exchange.session is not None:
+                    # Check if it's a requests session object
+                    if hasattr(self.exchange.session, 'close'):
+                        self.exchange.session.close()
+                        self.logger.debug("✅ Exchange session closed")
+                    else:
+                        self.logger.debug("ℹ️ Exchange session doesn't support close method")
+                else:
+                    self.logger.debug("ℹ️ No exchange session to cleanup")
+        except Exception as e:
+            self.logger.debug(f"Connection cleanup note: {e}")
+    
+    def __del__(self):
+        """Cleanup when object is destroyed"""
+        try:
+            self.cleanup_connections()
+        except:
+            pass

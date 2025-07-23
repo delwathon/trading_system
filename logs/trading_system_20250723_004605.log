@@ -1,0 +1,111 @@
+2025-07-23 00:46:05 - TradingSystem - INFO - 🤖 AUTO-TRADING CONFIGURATION:
+2025-07-23 00:46:05 - TradingSystem - INFO - ==================================================
+2025-07-23 00:46:05 - TradingSystem - INFO - 📊 Trading Parameters:
+2025-07-23 00:46:05 - TradingSystem - INFO -    Leverage: max
+2025-07-23 00:46:05 - TradingSystem - INFO -    Risk Amount per Trade: 5.0% of account balance
+2025-07-23 00:46:05 - TradingSystem - INFO -    Max Concurrent Positions: 5
+2025-07-23 00:46:05 - TradingSystem - INFO -    Max Executions per Scan: 2
+2025-07-23 00:46:05 - TradingSystem - INFO -    Auto-Close Profit Target: 25.0%
+2025-07-23 00:46:05 - TradingSystem - INFO - ⏰ Scheduling Parameters:
+2025-07-23 00:46:05 - TradingSystem - INFO -    Daily Start Time: 01:00
+2025-07-23 00:46:05 - TradingSystem - INFO -    Scan Interval: 0.5 hours (1800 seconds)
+2025-07-23 00:46:05 - TradingSystem - INFO - 📈 Analysis Configuration:
+2025-07-23 00:46:05 - TradingSystem - INFO -    Primary Timeframe: 30m
+2025-07-23 00:46:05 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h, 6h
+2025-07-23 00:46:05 - TradingSystem - INFO -    MTF Confirmation Required: True
+2025-07-23 00:46:05 - TradingSystem - INFO -    Min Volume 24h: $5,000,000.0
+2025-07-23 00:46:05 - TradingSystem - INFO - ⚠️ Risk Management:
+2025-07-23 00:46:05 - TradingSystem - INFO -    Risk per Trade: 5.0% of account balance
+2025-07-23 00:46:05 - TradingSystem - INFO -    Max Total Risk Exposure: 25.0% of account balance
+2025-07-23 00:46:05 - TradingSystem - INFO -    Max Leveraged Exposure: 25.0% × Max Leverage
+2025-07-23 00:46:05 - TradingSystem - INFO -    Portfolio Risk Limit: 2.0%
+2025-07-23 00:46:05 - TradingSystem - INFO - 🔧 Trading Mode: PRODUCTION
+2025-07-23 00:46:05 - TradingSystem - INFO - 📱 Telegram Configuration:
+2025-07-23 00:46:05 - TradingSystem - INFO -    Bot Token: Configured
+2025-07-23 00:46:05 - TradingSystem - INFO -    User ID: 6708641837
+2025-07-23 00:46:05 - TradingSystem - INFO - ==================================================
+2025-07-23 00:46:16 - core.exchange - INFO - ✅ Connected to Bybit PRODUCTION with decrypted credentials
+2025-07-23 00:46:16 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-23 00:46:21 - core.exchange - INFO - ✅ API connection test successful
+2025-07-23 00:46:21 - bybit.autotrader - INFO - 🚀 Started auto-trading session: autotrader_20250723_004621
+2025-07-23 00:46:21 - bybit.autotrader - INFO - ⚙️ Configuration:
+2025-07-23 00:46:21 - bybit.autotrader - INFO -    Max concurrent positions: 5
+2025-07-23 00:46:21 - bybit.autotrader - INFO -    Max executions per scan: 2
+2025-07-23 00:46:21 - bybit.autotrader - INFO -    Risk amount per trade: 5.0 USDT
+2025-07-23 00:46:21 - bybit.autotrader - INFO -    Leverage: max
+2025-07-23 00:46:21 - bybit.autotrader - INFO -    Auto-close profit target: 25.0%
+2025-07-23 00:46:21 - bybit.autotrader - INFO -    Scan interval: 0.5 hours
+2025-07-23 00:46:21 - bybit.autotrader - INFO - 📊 Started position monitoring
+2025-07-23 00:46:21 - bybit.autotrader - INFO - 🤖 Auto-trading loop started
+2025-07-23 00:46:21 - bybit.autotrader - INFO - ⏰ Next scan scheduled for: 2025-07-23 01:00:00
+2025-07-23 00:46:21 - bybit.autotrader - INFO - ⏳ Waiting 13.6 minutes...
+2025-07-23 01:00:00 - bybit.autotrader - INFO - ⏰ Scan time reached: 2025-07-23 01:00:00
+2025-07-23 01:00:00 - bybit.autotrader - INFO - 📊 Running signal analysis...
+2025-07-23 01:00:00 - TradingSystem - INFO - 🚀 STARTING OPTIMIZED ANALYSIS WITH 30m→1h/4h/6h MTF CONFIRMATION
+2025-07-23 01:00:00 - TradingSystem - INFO -    📊 Charts generated ONLY for top-ranked signals (after analysis complete)
+2025-07-23 01:00:00 - TradingSystem - INFO - ==========================================================================================
+2025-07-23 01:00:00 - TradingSystem - INFO - 📊 Analyzing 219 symbols with MTF confirmation...
+2025-07-23 01:00:00 - TradingSystem - INFO -    Primary Timeframe: 30m
+2025-07-23 01:00:00 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h, 6h
+2025-07-23 01:00:00 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
+2025-07-23 01:00:00 - TradingSystem - INFO -    Database: MySQL @ localhost
+2025-07-23 01:00:00 - TradingSystem - INFO -    Chart Strategy: Top 5 signals only
+2025-07-23 01:00:00 - TradingSystem - INFO - 📈 PHASE 1: Signal Generation (No Charts)
+2025-07-23 01:00:54 - analysis.multi_timeframe - WARNING -    Insufficient 4h data for C/USDT:USDT
+2025-07-23 01:00:56 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for C/USDT:USDT
+2025-07-23 01:01:20 - analysis.multi_timeframe - WARNING -    Insufficient 1h data for TA/USDT:USDT
+2025-07-23 01:01:21 - analysis.multi_timeframe - WARNING -    Insufficient 4h data for TA/USDT:USDT
+2025-07-23 01:01:22 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for TA/USDT:USDT
+2025-07-23 01:01:39 - analysis.multi_timeframe - WARNING -    Insufficient 4h data for ERA/USDT:USDT
+2025-07-23 01:01:39 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for ERA/USDT:USDT
+2025-07-23 01:03:03 - analysis.multi_timeframe - WARNING -    Insufficient 4h data for VELVET/USDT:USDT
+2025-07-23 01:03:04 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for VELVET/USDT:USDT
+2025-07-23 01:03:07 - TradingSystem - INFO - 📊 PHASE 2: Signal Ranking (209 signals in 187.1s)
+2025-07-23 01:03:07 - TradingSystem - INFO - 🏆 Top 5 Signals After Ranking:
+2025-07-23 01:03:07 - TradingSystem - INFO -    1. ENA/USDT:USDT BUY - 95% conf - MTF: STRONG
+2025-07-23 01:03:07 - TradingSystem - INFO -    2. XRP/USDT:USDT BUY - 95% conf - MTF: STRONG
+2025-07-23 01:03:07 - TradingSystem - INFO -    3. MOODENG/USDT:USDT BUY - 95% conf - MTF: STRONG
+2025-07-23 01:03:07 - TradingSystem - INFO -    4. ENS/USDT:USDT BUY - 95% conf - MTF: STRONG
+2025-07-23 01:03:07 - TradingSystem - INFO -    5. JTO/USDT:USDT BUY - 95% conf - MTF: STRONG
+2025-07-23 01:03:07 - TradingSystem - INFO - 📊 PHASE 3: Chart Generation (Top 5 signals only)
+2025-07-23 01:03:07 - TradingSystem - INFO - 📊 Generating charts for TOP 5 signals only...
+2025-07-23 01:04:34 - TradingSystem - INFO - ✅ Chart generation complete: 5/5 charts created
+2025-07-23 01:04:34 - TradingSystem - INFO - ⚡ 30m→1h/4h/6h OPTIMIZED MTF ANALYSIS COMPLETED!
+2025-07-23 01:04:34 - TradingSystem - INFO -    Total Execution Time: 274.3s
+2025-07-23 01:04:34 - TradingSystem - INFO -    Signal Generation: 187.1s (209 signals)
+2025-07-23 01:04:34 - TradingSystem - INFO -    Chart Generation: 87.1s (5 charts)
+2025-07-23 01:04:34 - TradingSystem - INFO -    Chart Efficiency: 5/209 = 2.4% charted
+2025-07-23 01:04:34 - TradingSystem - INFO -    MTF Confirmations: Strong: 11, Partial: 89, None: 109
+2025-07-23 01:04:34 - bybit.autotrader - INFO - 📈 Generated 209 signals
+2025-07-23 01:04:34 - bybit.autotrader - INFO - 🎯 Executing 2 trades (available slots: 2)
+2025-07-23 01:04:34 - bybit.autotrader - INFO - 📝 Executing trade 1/2: ENA/USDT:USDT
+2025-07-23 01:04:34 - bybit.autotrader - INFO - 🚀 Placing BUY order for ENA/USDT:USDT
+2025-07-23 01:04:36 - bybit.autotrader - INFO - 💰 Risk calculation:
+2025-07-23 01:04:36 - bybit.autotrader - INFO -    Account Balance: 20.35661674 USDT
+2025-07-23 01:04:36 - bybit.autotrader - INFO -    Risk Percentage: 5.0%
+2025-07-23 01:04:36 - bybit.autotrader - INFO -    Risk Amount: 1.017830837 USDT
+2025-07-23 01:04:36 - bybit.autotrader - INFO -    Position Size: 101.16303775911018 units
+2025-07-23 01:04:36 - bybit.autotrader - INFO -    Required Margin: 1.017830837 USDT
+2025-07-23 01:04:36 - bybit.autotrader - INFO - ✅ Entry order placed: cf517824-8025-430b-8375-5494efb5d1f9
+2025-07-23 01:04:36 - bybit.autotrader - WARNING - Failed to set SL/TP for ENA/USDT:USDT: bybit stop/trigger orders require a triggerDirection parameter, either "ascending" or "descending" to determine the direction of the trigger.
+2025-07-23 01:04:36 - bybit.autotrader - INFO - ✅ Trade executed: ENA/USDT:USDT (95.0% confidence, MTF: STRONG)
+2025-07-23 01:04:37 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8088506547:AAHZZxiY_wlh48IN4ldPNRJtM9qi7qxfLdM/sendMessage "HTTP/1.1 200 OK"
+2025-07-23 01:04:37 - bybit.autotrader - INFO - 📝 Executing trade 2/2: XRP/USDT:USDT
+2025-07-23 01:04:37 - bybit.autotrader - INFO - 🚀 Placing BUY order for XRP/USDT:USDT
+2025-07-23 01:04:38 - bybit.autotrader - INFO - 💰 Risk calculation:
+2025-07-23 01:04:38 - bybit.autotrader - INFO -    Account Balance: 19.28501927 USDT
+2025-07-23 01:04:38 - bybit.autotrader - INFO -    Risk Percentage: 5.0%
+2025-07-23 01:04:38 - bybit.autotrader - INFO -    Risk Amount: 0.9642509635000001 USDT
+2025-07-23 01:04:38 - bybit.autotrader - INFO -    Position Size: 20.630984712653518 units
+2025-07-23 01:04:38 - bybit.autotrader - INFO -    Required Margin: 0.9642509635000001 USDT
+2025-07-23 01:04:39 - bybit.autotrader - INFO - ✅ Entry order placed: e9f6d4ec-5ef1-486d-abb2-4f082a7c754f
+2025-07-23 01:04:39 - bybit.autotrader - WARNING - Failed to set SL/TP for XRP/USDT:USDT: bybit stop/trigger orders require a triggerDirection parameter, either "ascending" or "descending" to determine the direction of the trigger.
+2025-07-23 01:04:39 - bybit.autotrader - INFO - ✅ Trade executed: XRP/USDT:USDT (95.0% confidence, MTF: STRONG)
+2025-07-23 01:04:40 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8088506547:AAHZZxiY_wlh48IN4ldPNRJtM9qi7qxfLdM/sendMessage "HTTP/1.1 200 OK"
+2025-07-23 01:04:40 - bybit.autotrader - INFO - 📊 Scan complete - Signals: 209, Executed: 2
+2025-07-23 01:04:41 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8088506547:AAHZZxiY_wlh48IN4ldPNRJtM9qi7qxfLdM/sendMessage "HTTP/1.1 200 OK"
+2025-07-23 01:04:41 - bybit.autotrader - INFO - ⏰ Next scan scheduled for: 2025-07-23 01:30:00
+2025-07-23 01:04:41 - bybit.autotrader - INFO - ⏳ Waiting 25.3 minutes...
+2025-07-23 01:13:57 - bybit.autotrader - INFO - 🛑 Received interrupt signal
+2025-07-23 01:14:02 - bybit.autotrader - INFO - 🛑 Stopped position monitoring
+2025-07-23 01:14:02 - bybit.autotrader - INFO - 🛑 Auto-trading stopped

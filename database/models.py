@@ -92,7 +92,7 @@ class SystemConfig(Base):
     max_concurrent_positions = Column(Integer, default=5)
     max_execution_per_trade = Column(Integer, default=2)
     day_trade_start_hour = Column(String(10), default='01:00')
-    scan_interval = Column(Integer, default=10800)  # 3 hours in seconds
+    scan_interval = Column(Integer, default=3600)  # 3 hours in seconds
     auto_close_profit_at = Column(Float, default=10.0)  # 10% profit target
     
     # Metadata
@@ -162,7 +162,7 @@ class TradingPosition(Base):
     
     # Position identification
     position_id = Column(String(100), unique=True, nullable=False)  # Bybit position ID
-    symbol = Column(String(20), nullable=False)
+    symbol = Column(String(50), nullable=False)
     side = Column(String(10), nullable=False)  # 'buy' or 'sell'
     
     # Position details
@@ -280,7 +280,7 @@ class TradingSignal(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     
     # Basic signal data
-    symbol = Column(String(20), nullable=False)
+    symbol = Column(String(50), nullable=False)
     side = Column(String(10), nullable=False)  # 'buy' or 'sell'
     order_type = Column(String(10), nullable=False)  # 'market' or 'limit'
     
@@ -348,7 +348,7 @@ class TradingOpportunity(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     
     rank = Column(Integer, nullable=False)
-    symbol = Column(String(20), nullable=False)
+    symbol = Column(String(50), nullable=False)
     side = Column(String(10), nullable=False)
     order_type = Column(String(10), nullable=False)
     
@@ -427,11 +427,11 @@ class MarketSummary(Base):
     mtf_none_signals = Column(Integer, default=0)
     
     # Top movers
-    top_gainer_symbol = Column(String(20))
+    top_gainer_symbol = Column(String(50))
     top_gainer_change = Column(Float)
-    top_loser_symbol = Column(String(20))
+    top_loser_symbol = Column(String(50))
     top_loser_change = Column(Float)
-    highest_volume_symbol = Column(String(20))
+    highest_volume_symbol = Column(String(50))
     
     # Additional market data (JSON)
     market_sentiment_data = Column(JSON)
@@ -455,7 +455,7 @@ class PerformanceMetric(Base):
     value = Column(Float, nullable=False)
     unit = Column(String(20))
     timeframe = Column(String(20))
-    symbol = Column(String(20))
+    symbol = Column(String(50))
     additional_data = Column(JSON)
 
 
@@ -469,7 +469,7 @@ class SystemLog(Base):
     logger_name = Column(String(100))
     message = Column(Text, nullable=False)
     scan_session_id = Column(Integer, ForeignKey('scan_sessions.id'), nullable=True)
-    symbol = Column(String(20), nullable=True)
+    symbol = Column(String(50), nullable=True)
     function_name = Column(String(100), nullable=True)
     error_type = Column(String(100), nullable=True)
     stack_trace = Column(Text, nullable=True)

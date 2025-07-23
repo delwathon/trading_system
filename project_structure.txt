@@ -1,0 +1,140 @@
+trading_system/
+├── main.py                           # Main entry point for auto-trading
+├── setup_bootstrap.py                # Bootstrap setup & validation script
+├── enhanced_config.yaml              # Database configuration file
+├── requirements.txt                  # Python dependencies
+│
+├── config/                           # Configuration management
+│   ├── __init__.py                   # Config module exports
+│   └── config.py                     # Database-based configuration management
+│
+├── core/                             # Core system components
+│   ├── __init__.py                   # Core module exports
+│   ├── exchange.py                   # Exchange connection with encrypted API secrets
+│   └── system.py                     # Main system orchestration with MTF analysis
+│
+├── analysis/                         # Technical analysis modules
+│   ├── __init__.py                   # Analysis module exports
+│   ├── technical.py                  # Enhanced technical analysis (50+ indicators)
+│   ├── volume_profile.py             # Volume profile analysis
+│   ├── fibonacci.py                  # Fibonacci and confluence analysis
+│   └── multi_timeframe.py            # Multi-timeframe confirmation (30m→1h/4h/6h)
+│
+├── signals/                          # Signal generation and ranking
+│   ├── __init__.py                   # Signals module exports
+│   └── generator.py                  # Signal generation and ranking with MTF
+│
+├── visualization/                    # Chart generation and visualization
+│   ├── __init__.py                   # Visualization module exports
+│   └── charts.py                     # Interactive TradingView-style charts
+│
+├── database/                         # Database models and management
+│   ├── __init__.py                   # Database module exports
+│   └── models.py                     # SQLAlchemy models for MySQL
+│
+├── utils/                           # Utility functions and helpers
+│   ├── __init__.py                   # Utils module exports
+│   ├── database_manager.py          # Enhanced database operations
+│   ├── logging.py                    # Logging utilities
+│   └── encryption.py                # API secret encryption/decryption
+│
+├── bybit/                           # Auto-trading system (NEW)
+│   ├── __init__.py                   # Bybit module exports
+│   └── autotrader.py                # Complete auto-trading implementation
+│       ├── AutoTrader              # Main auto-trading orchestration
+│       ├── LeverageManager         # Leverage validation and management
+│       ├── PositionSizer           # Risk-based position sizing
+│       ├── ScheduleManager         # Scan timing and scheduling
+│       ├── LeveragedProfitMonitor  # Auto-close positions at profit targets
+│       ├── OrderExecutor           # Execute leveraged orders
+│       └── PositionManager         # Track concurrent positions
+│
+├── notifier/                        # Telegram integration (NEW)
+│   ├── __init__.py                   # Notifier module exports
+│   └── telegram.py                   # Telegram bot with bootstrap mode
+│       ├── TelegramBootstrapManager # API key configuration via Telegram
+│       ├── run_bootstrap_mode      # Bootstrap mode for missing credentials
+│       ├── check_bootstrap_needed  # Check if bootstrap required
+│       └── send_trading_notification # Real-time trade notifications
+│
+├── charts/                          # Generated chart outputs (auto-created)
+├── logs/                            # System logs (auto-created)
+└── config_backups/                  # Configuration backups (auto-created)
+
+Key Features & Capabilities:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🤖 AUTO-TRADING SYSTEM:
+   • Scheduled scanning with configurable intervals
+   • Automated position management with leverage support
+   • Risk-based position sizing (% of account balance)
+   • Profit-target based auto-closing
+   • Maximum concurrent position limits
+   • Real-time position monitoring
+
+📊 MULTI-TIMEFRAME ANALYSIS:
+   • Primary timeframe: 30m
+   • Confirmation timeframes: 1h, 4h, 6h
+   • Signal confidence boosting via MTF confirmation
+   • Configurable timeframe combinations
+
+🔧 TECHNICAL ANALYSIS:
+   • 50+ technical indicators (FIXED Ichimoku & Stochastic RSI)
+   • Volume profile analysis with POC, VAH, VAL
+   • Fibonacci retracements and confluence zones
+   • Moving averages, MACD, RSI, Bollinger Bands
+   • Support/resistance levels
+
+📱 TELEGRAM INTEGRATION:
+   • Bootstrap mode for secure API key setup
+   • Real-time trade notifications
+   • Position management commands
+   • System status monitoring
+   • Encrypted credential storage
+
+🗄️ DATABASE STORAGE:
+   • MySQL database for all data storage
+   • Trading signals and opportunities
+   • Position tracking and performance metrics
+   • Market summaries and system logs
+   • Auto-trading session management
+   • Configuration management
+
+🔒 SECURITY FEATURES:
+   • Encrypted API secret storage
+   • Database-stored encryption passwords
+   • Secure Telegram bot communication
+   • Environment variable support
+
+📈 VISUALIZATION:
+   • Interactive TradingView-style charts
+   • HTML charts with automatic screenshot capture
+   • Multi-panel layouts (Price + Volume + Indicators)
+   • Signal annotations and technical overlays
+
+⚡ PERFORMANCE OPTIMIZATIONS:
+   • Parallel processing with configurable thread pools
+   • Optimized chart generation (top signals only)
+   • Database connection pooling
+   • Efficient data caching
+
+🎯 RISK MANAGEMENT:
+   • Portfolio risk limits
+   • Position size validation
+   • Leverage constraints
+   • Stop-loss and take-profit automation
+   • Maximum drawdown monitoring
+
+Configuration Flow:
+━━━━━━━━━━━━━━━━━
+1. enhanced_config.yaml → Database connection settings
+2. MySQL Database → System configuration storage
+3. Telegram Bootstrap → Secure API key configuration
+4. Auto-trading → Scheduled execution with monitoring
+
+Entry Points:
+━━━━━━━━━━━━━
+• python main.py           → Full auto-trading system
+• python main.py test      → Single scan test
+• python main.py config    → Show configuration
+• python setup_bootstrap.py → System validation & setup

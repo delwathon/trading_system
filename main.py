@@ -421,19 +421,50 @@ def run_single_scan():
         
         print("✅ Running single scan and execution test...")
         
-        # Run single scan
+        # FIXED: Run single scan with proper results display
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         
         try:
-            signals_count, executed_count = loop.run_until_complete(auto_trader.run_scan_and_execute())
+            # Run the complete analysis (same as the auto-trader uses)
+            print("📊 Running complete multi-timeframe analysis...")
+            results = auto_trader.trading_system.run_complete_analysis_parallel_mtf()
+            
+            if results:
+                # Display the comprehensive results table
+                print("\n" + "=" * 80)
+                auto_trader.trading_system.print_comprehensive_results_with_mtf(results)
+                print("=" * 80)
+                
+                # Show execution simulation
+                if results.get('top_opportunities'):
+                    signals_count = len(results.get('signals', []))
+                    opportunities_count = len(results['top_opportunities'])
+                    
+                    print(f"\n📊 SCAN SIMULATION RESULTS:")
+                    print(f"   Total Signals Generated: {signals_count}")
+                    print(f"   Top Opportunities: {opportunities_count}")
+                    print(f"   Would Execute: {min(config.max_execution_per_trade, opportunities_count)} trades")
+                    print(f"   Available Position Slots: {config.max_concurrent_positions}")
+                    print(f"   Risk per Trade: {config.risk_amount}% of account balance")
+                    
+                    # Show top opportunities that would be executed
+                    execution_count = min(config.max_execution_per_trade, opportunities_count)
+                    if execution_count > 0:
+                        print(f"\n🎯 TRADES THAT WOULD BE EXECUTED:")
+                        for i, opp in enumerate(results['top_opportunities'][:execution_count]):
+                            print(f"   {i+1}. {opp['symbol']} {opp['side'].upper()} - {opp['confidence']:.1f}% confidence - MTF: {opp.get('mtf_status', 'N/A')}")
+                else:
+                    print(f"\n📊 SCAN RESULTS:")
+                    print(f"   No trading opportunities found in this scan")
+                
+            else:
+                print("❌ No analysis results generated")
+            
         finally:
             loop.close()
         
-        print(f"📊 Scan Results:")
-        print(f"   Signals Generated: {signals_count}")
-        print(f"   Trades Executed: {executed_count}")
-        print("✅ Single scan completed successfully!")
+        print("✅ Single scan test completed successfully!")
         
     except Exception as e:
         print(f"❌ Single scan failed: {e}")
