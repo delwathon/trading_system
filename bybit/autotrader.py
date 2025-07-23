@@ -732,7 +732,7 @@ class AutoTrader:
             self.logger.info(f"⚙️ Configuration:")
             self.logger.info(f"   Max concurrent positions: {self.config.max_concurrent_positions}")
             self.logger.info(f"   Max executions per scan: {self.config.max_execution_per_trade}")
-            self.logger.info(f"   Risk amount per trade: {self.config.risk_amount} USDT")
+            self.logger.info(f"   Risk amount per trade: {self.config.risk_amount}%")
             self.logger.info(f"   Leverage: {self.config.leverage}")
             self.logger.info(f"   Auto-close profit target: {self.config.auto_close_profit_at}%")
             self.logger.info(f"   Scan interval: {self.config.scan_interval / 3600:.1f} hours")

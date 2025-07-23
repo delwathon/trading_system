@@ -1,0 +1,60 @@
+2025-07-23 15:00:16 - TradingSystem - INFO - Loading database configuration from enhanced_config.yaml
+2025-07-23 15:00:16 - TradingSystem - INFO - Database config loaded:
+2025-07-23 15:00:16 - TradingSystem - INFO -    Host: localhost:3306
+2025-07-23 15:00:16 - TradingSystem - INFO -    Database: bybit_trading_system
+2025-07-23 15:00:16 - TradingSystem - INFO -    Username: root
+2025-07-23 15:00:16 - TradingSystem - INFO -    Password: ***
+2025-07-23 15:00:16 - TradingSystem - INFO - Loading system configuration from MySQL database...
+2025-07-23 15:00:16 - config.config - INFO - Loading configuration 'default' from MySQL database
+2025-07-23 15:00:16 - notifier.telegram - INFO - ✅ Telegram bot initialized successfully
+2025-07-23 15:00:16 - TradingSystem - INFO - 🤖 AUTO-TRADING CONFIGURATION:
+2025-07-23 15:00:16 - TradingSystem - INFO - ==================================================
+2025-07-23 15:00:16 - TradingSystem - INFO - 📊 Trading Parameters:
+2025-07-23 15:00:16 - TradingSystem - INFO -    Leverage: max
+2025-07-23 15:00:16 - TradingSystem - INFO -    Risk Amount per Trade: 5.0% of account balance
+2025-07-23 15:00:16 - TradingSystem - INFO -    Max Concurrent Positions: 5
+2025-07-23 15:00:16 - TradingSystem - INFO -    Max Executions per Scan: 2
+2025-07-23 15:00:16 - TradingSystem - INFO -    Auto-Close Profit Target: 50.0%
+2025-07-23 15:00:16 - TradingSystem - INFO - ⏰ Scheduling Parameters:
+2025-07-23 15:00:16 - TradingSystem - INFO -    Daily Start Time: 01:00
+2025-07-23 15:00:16 - TradingSystem - INFO -    Scan Interval: 0.2 hours (900 seconds)
+2025-07-23 15:00:16 - TradingSystem - INFO - 📈 Analysis Configuration:
+2025-07-23 15:00:16 - TradingSystem - INFO -    Primary Timeframe: 30m
+2025-07-23 15:00:16 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h, 6h
+2025-07-23 15:00:16 - TradingSystem - INFO -    MTF Confirmation Required: True
+2025-07-23 15:00:16 - TradingSystem - INFO -    Min Volume 24h: $5,000,000.0
+2025-07-23 15:00:16 - TradingSystem - INFO - ⚠️ Risk Management:
+2025-07-23 15:00:16 - TradingSystem - INFO -    Risk per Trade: 5.0% of account balance
+2025-07-23 15:00:16 - TradingSystem - INFO -    Max Total Risk Exposure: 25.0% of account balance
+2025-07-23 15:00:16 - TradingSystem - INFO -    Max Leveraged Exposure: 25.0% × Max Leverage
+2025-07-23 15:00:16 - TradingSystem - INFO -    Portfolio Risk Limit: 2.0%
+2025-07-23 15:00:16 - TradingSystem - INFO - 🔧 Trading Mode: PRODUCTION
+2025-07-23 15:00:16 - TradingSystem - INFO - 📱 Telegram Configuration:
+2025-07-23 15:00:16 - TradingSystem - INFO -    Bot Token: Configured
+2025-07-23 15:00:16 - TradingSystem - INFO -    User ID: 6708641837
+2025-07-23 15:00:16 - TradingSystem - INFO - ==================================================
+2025-07-23 15:00:16 - core.exchange - INFO - 🌍 Using API endpoint: https://api.bybitglobal.com
+2025-07-23 15:00:24 - core.exchange - INFO - ✅ Connected to Bybit PRODUCTION via Global API
+2025-07-23 15:00:24 - core.exchange - INFO - 🌍 API Endpoint: https://api.bybitglobal.com
+2025-07-23 15:00:24 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-23 15:00:26 - core.exchange - INFO - ✅ Global API connection test successful
+2025-07-23 15:00:26 - core.exchange - INFO - 🌍 Connected via: https://api.bybitglobal.com
+2025-07-23 15:00:26 - bybit.autotrader - INFO - 🚀 Started auto-trading session: autotrader_20250723_150026
+2025-07-23 15:00:26 - bybit.autotrader - INFO - ⚙️ Configuration:
+2025-07-23 15:00:26 - bybit.autotrader - INFO -    Max concurrent positions: 5
+2025-07-23 15:00:26 - bybit.autotrader - INFO -    Max executions per scan: 2
+2025-07-23 15:00:26 - bybit.autotrader - INFO -    Risk amount per trade: 5.0%
+2025-07-23 15:00:26 - bybit.autotrader - INFO -    Leverage: max
+2025-07-23 15:00:26 - bybit.autotrader - INFO -    Auto-close profit target: 50.0%
+2025-07-23 15:00:26 - bybit.autotrader - INFO -    Scan interval: 0.2 hours
+2025-07-23 15:00:26 - bybit.autotrader - INFO - 📊 Started position monitoring
+2025-07-23 15:00:26 - bybit.autotrader - INFO - 🤖 Auto-trading loop started
+2025-07-23 15:00:26 - bybit.autotrader - INFO - ⏰ Next scan scheduled for: 2025-07-23 15:15:00
+2025-07-23 15:00:26 - bybit.autotrader - INFO - ⏳ Waiting 14.6 minutes...
+2025-07-23 15:01:35 - bybit.autotrader - INFO - 🎯 Auto-close triggered for MOODENG/USDT:USDT: 52.24% profit (target: 50.0%)
+2025-07-23 15:01:37 - bybit.autotrader - INFO - ✅ Closed position MOODENG/USDT:USDT - Profit target reached
+2025-07-23 15:01:39 - bybit.autotrader - INFO - 🎯 Auto-close triggered for LINK/USDT:USDT: 56.75% profit (target: 50.0%)
+2025-07-23 15:01:41 - bybit.autotrader - INFO - ✅ Closed position LINK/USDT:USDT - Profit target reached
+2025-07-23 15:08:14 - bybit.autotrader - INFO - 🛑 Received interrupt signal
+2025-07-23 15:08:19 - bybit.autotrader - INFO - 🛑 Stopped position monitoring
+2025-07-23 15:08:19 - bybit.autotrader - INFO - 🛑 Auto-trading stopped

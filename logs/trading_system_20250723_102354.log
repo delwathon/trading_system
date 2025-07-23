@@ -1,0 +1,25 @@
+2025-07-23 10:23:54 - TradingSystem - INFO - Loading database configuration from enhanced_config.yaml
+2025-07-23 10:23:54 - TradingSystem - INFO - Database config loaded:
+2025-07-23 10:23:54 - TradingSystem - INFO -    Host: localhost:3306
+2025-07-23 10:23:54 - TradingSystem - INFO -    Database: bybit_trading_system
+2025-07-23 10:23:54 - TradingSystem - INFO -    Username: root
+2025-07-23 10:23:54 - TradingSystem - INFO -    Password: ***
+2025-07-23 10:23:54 - TradingSystem - INFO - Loading system configuration from MySQL database...
+2025-07-23 10:23:54 - config.config - INFO - Loading configuration 'default' from MySQL database
+2025-07-23 10:23:54 - notifier.telegram - INFO - ✅ Telegram bot initialized successfully
+2025-07-23 10:23:55 - core.exchange - INFO - 🌍 Using API endpoint: https://api.bybitglobal.com
+2025-07-23 10:24:07 - core.exchange - INFO - ✅ Connected to Bybit PRODUCTION via Global API
+2025-07-23 10:24:07 - core.exchange - INFO - 🌍 API Endpoint: https://api.bybitglobal.com
+2025-07-23 10:24:07 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-23 10:24:09 - core.exchange - INFO - ✅ Global API connection test successful
+2025-07-23 10:24:09 - core.exchange - INFO - 🌍 Connected via: https://api.bybitglobal.com
+2025-07-23 10:24:09 - TradingSystem - INFO - 🚀 STARTING OPTIMIZED ANALYSIS WITH 30m→1h/4h/6h MTF CONFIRMATION
+2025-07-23 10:24:09 - TradingSystem - INFO -    📊 Charts generated ONLY for top-ranked signals (after analysis complete)
+2025-07-23 10:24:09 - TradingSystem - INFO - ==========================================================================================
+2025-07-23 10:24:10 - TradingSystem - INFO - 📊 Analyzing 202 symbols with MTF confirmation...
+2025-07-23 10:24:10 - TradingSystem - INFO -    Primary Timeframe: 30m
+2025-07-23 10:24:10 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h, 6h
+2025-07-23 10:24:10 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
+2025-07-23 10:24:10 - TradingSystem - INFO -    Database: MySQL @ localhost
+2025-07-23 10:24:10 - TradingSystem - INFO -    Chart Strategy: Top 5 signals only
+2025-07-23 10:24:10 - TradingSystem - INFO - 📈 PHASE 1: Signal Generation (No Charts)

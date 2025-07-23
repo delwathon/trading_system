@@ -1,9 +1,12 @@
 - Change CSV and configuration to database -- DONE
 - Change html visualization to JPG         -- DONE
-- Telegram Notification for myself only
+- Telegram Notification for myself only    -- DONE
 - Price decimal point per symbol
-- Auto trading using max leverage & 5%
-
+- Auto trading using max leverage & 5%     -- DONE
+- During startup, take note of active positions and orders.... if new signal generated is already present in current position, do not place that order, take on the next signal instead.
+- Ensure to update db at every closed trade, be it manual or tp, or auto-close at profit level... So that active positions and orders state can be updated
+- Among the top generated signal, only place order for top max_execution_per_trade the ones that has the potential of hitting auto_close_profit_at 
+- Store only the top selected signals in database.... Not the entire signals generated.
 
 
 

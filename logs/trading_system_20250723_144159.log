@@ -1,0 +1,168 @@
+2025-07-23 14:41:59 - TradingSystem - INFO - Loading database configuration from enhanced_config.yaml
+2025-07-23 14:41:59 - TradingSystem - INFO - Database config loaded:
+2025-07-23 14:41:59 - TradingSystem - INFO -    Host: localhost:3306
+2025-07-23 14:41:59 - TradingSystem - INFO -    Database: bybit_trading_system
+2025-07-23 14:41:59 - TradingSystem - INFO -    Username: root
+2025-07-23 14:41:59 - TradingSystem - INFO -    Password: ***
+2025-07-23 14:41:59 - TradingSystem - INFO - Loading system configuration from MySQL database...
+2025-07-23 14:41:59 - config.config - INFO - Loading configuration 'default' from MySQL database
+2025-07-23 14:41:59 - notifier.telegram - INFO - ✅ Telegram bot initialized successfully
+2025-07-23 14:41:59 - TradingSystem - INFO - 🤖 AUTO-TRADING CONFIGURATION:
+2025-07-23 14:41:59 - TradingSystem - INFO - ==================================================
+2025-07-23 14:41:59 - TradingSystem - INFO - 📊 Trading Parameters:
+2025-07-23 14:41:59 - TradingSystem - INFO -    Leverage: max
+2025-07-23 14:41:59 - TradingSystem - INFO -    Risk Amount per Trade: 5.0% of account balance
+2025-07-23 14:41:59 - TradingSystem - INFO -    Max Concurrent Positions: 5
+2025-07-23 14:41:59 - TradingSystem - INFO -    Max Executions per Scan: 2
+2025-07-23 14:41:59 - TradingSystem - INFO -    Auto-Close Profit Target: 50.0%
+2025-07-23 14:41:59 - TradingSystem - INFO - ⏰ Scheduling Parameters:
+2025-07-23 14:41:59 - TradingSystem - INFO -    Daily Start Time: 01:00
+2025-07-23 14:41:59 - TradingSystem - INFO -    Scan Interval: 0.2 hours (900 seconds)
+2025-07-23 14:41:59 - TradingSystem - INFO - 📈 Analysis Configuration:
+2025-07-23 14:41:59 - TradingSystem - INFO -    Primary Timeframe: 30m
+2025-07-23 14:41:59 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h, 6h
+2025-07-23 14:41:59 - TradingSystem - INFO -    MTF Confirmation Required: True
+2025-07-23 14:41:59 - TradingSystem - INFO -    Min Volume 24h: $5,000,000.0
+2025-07-23 14:41:59 - TradingSystem - INFO - ⚠️ Risk Management:
+2025-07-23 14:41:59 - TradingSystem - INFO -    Risk per Trade: 5.0% of account balance
+2025-07-23 14:41:59 - TradingSystem - INFO -    Max Total Risk Exposure: 25.0% of account balance
+2025-07-23 14:41:59 - TradingSystem - INFO -    Max Leveraged Exposure: 25.0% × Max Leverage
+2025-07-23 14:41:59 - TradingSystem - INFO -    Portfolio Risk Limit: 2.0%
+2025-07-23 14:41:59 - TradingSystem - INFO - 🔧 Trading Mode: PRODUCTION
+2025-07-23 14:41:59 - TradingSystem - INFO - 📱 Telegram Configuration:
+2025-07-23 14:41:59 - TradingSystem - INFO -    Bot Token: Configured
+2025-07-23 14:41:59 - TradingSystem - INFO -    User ID: 6708641837
+2025-07-23 14:41:59 - TradingSystem - INFO - ==================================================
+2025-07-23 14:41:59 - core.exchange - INFO - 🌍 Using API endpoint: https://api.bybitglobal.com
+2025-07-23 14:42:11 - core.exchange - INFO - ✅ Connected to Bybit PRODUCTION via Global API
+2025-07-23 14:42:11 - core.exchange - INFO - 🌍 API Endpoint: https://api.bybitglobal.com
+2025-07-23 14:42:11 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-23 14:42:13 - core.exchange - INFO - ✅ Global API connection test successful
+2025-07-23 14:42:13 - core.exchange - INFO - 🌍 Connected via: https://api.bybitglobal.com
+2025-07-23 14:42:13 - bybit.autotrader - INFO - 🚀 Started auto-trading session: autotrader_20250723_144213
+2025-07-23 14:42:13 - bybit.autotrader - INFO - ⚙️ Configuration:
+2025-07-23 14:42:13 - bybit.autotrader - INFO -    Max concurrent positions: 5
+2025-07-23 14:42:13 - bybit.autotrader - INFO -    Max executions per scan: 2
+2025-07-23 14:42:13 - bybit.autotrader - INFO -    Risk amount per trade: 5.0%
+2025-07-23 14:42:13 - bybit.autotrader - INFO -    Leverage: max
+2025-07-23 14:42:13 - bybit.autotrader - INFO -    Auto-close profit target: 50.0%
+2025-07-23 14:42:13 - bybit.autotrader - INFO -    Scan interval: 0.2 hours
+2025-07-23 14:42:13 - bybit.autotrader - INFO - 📊 Started position monitoring
+2025-07-23 14:42:13 - bybit.autotrader - INFO - 🤖 Auto-trading loop started
+2025-07-23 14:42:13 - bybit.autotrader - INFO - ⏰ Next scan scheduled for: 2025-07-23 14:45:00
+2025-07-23 14:42:13 - bybit.autotrader - INFO - ⏳ Waiting 2.8 minutes...
+2025-07-23 14:45:00 - bybit.autotrader - INFO - ⏰ Scan time reached: 2025-07-23 14:45:00
+2025-07-23 14:45:00 - bybit.autotrader - INFO - 📊 Running signal analysis...
+2025-07-23 14:45:00 - TradingSystem - INFO - 🚀 STARTING OPTIMIZED ANALYSIS WITH 30m→1h/4h/6h MTF CONFIRMATION
+2025-07-23 14:45:00 - TradingSystem - INFO -    📊 Charts generated ONLY for top-ranked signals (after analysis complete)
+2025-07-23 14:45:00 - TradingSystem - INFO - ==========================================================================================
+2025-07-23 14:45:01 - TradingSystem - INFO - 📊 Analyzing 217 symbols with MTF confirmation...
+2025-07-23 14:45:01 - TradingSystem - INFO -    Primary Timeframe: 30m
+2025-07-23 14:45:01 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h, 6h
+2025-07-23 14:45:01 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
+2025-07-23 14:45:01 - TradingSystem - INFO -    Database: MySQL @ localhost
+2025-07-23 14:45:01 - TradingSystem - INFO -    Chart Strategy: Top 5 signals only
+2025-07-23 14:45:01 - TradingSystem - INFO - 📈 PHASE 1: Signal Generation (No Charts)
+2025-07-23 14:45:04 - signals.generator - INFO - ✅ Signal validated: XRP/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:06 - signals.generator - INFO - ✅ Signal validated: ADA/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:09 - signals.generator - INFO - ✅ Signal validated: LTC/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:09 - signals.generator - INFO - ✅ Signal validated: 1000BONK/USDT:USDT BUY - 95% confidence, 3.2:1 R/R
+2025-07-23 14:45:11 - signals.generator - INFO - ✅ Signal validated: ONDO/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:11 - signals.generator - INFO - ✅ Signal validated: LINK/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:13 - signals.generator - INFO - ✅ Signal validated: AVAX/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:13 - signals.generator - INFO - ✅ Signal validated: WLD/USDT:USDT BUY - 95% confidence, 2.9:1 R/R
+2025-07-23 14:45:15 - signals.generator - INFO - ✅ Signal validated: POPCAT/USDT:USDT BUY - 95% confidence, 2.7:1 R/R
+2025-07-23 14:45:15 - signals.generator - INFO - ✅ Signal validated: AAVE/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:16 - signals.generator - INFO - ✅ Signal validated: ARB/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:16 - signals.generator - INFO - ✅ Signal validated: TRUMP/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:17 - signals.generator - INFO - ✅ Signal validated: TON/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:19 - signals.generator - INFO - ✅ Signal validated: OP/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:20 - signals.generator - INFO - ✅ Signal validated: XLM/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:22 - signals.generator - INFO - ✅ Signal validated: VIRTUAL/USDT:USDT BUY - 95% confidence, 2.7:1 R/R
+2025-07-23 14:45:22 - signals.generator - INFO - ✅ Signal validated: HBAR/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:22 - signals.generator - INFO - ✅ Signal validated: TIA/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:25 - signals.generator - INFO - ✅ Signal validated: ENS/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:31 - signals.generator - INFO - ✅ Signal validated: LDO/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:32 - signals.generator - INFO - ✅ Signal validated: TAO/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:35 - signals.generator - INFO - ✅ Signal validated: TRX/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:35 - signals.generator - INFO - ✅ Signal validated: JTO/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:40 - signals.generator - INFO - ✅ Signal validated: PENDLE/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:41 - signals.generator - INFO - ✅ Signal validated: RENDER/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:42 - signals.generator - INFO - ✅ Signal validated: EIGEN/USDT:USDT BUY - 95% confidence, 2.7:1 R/R
+2025-07-23 14:45:43 - signals.generator - INFO - ✅ Signal validated: KAS/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:48 - signals.generator - INFO - ✅ Signal validated: FIL/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:45:54 - signals.generator - INFO - ✅ Signal validated: MEW/USDT:USDT BUY - 95% confidence, 2.7:1 R/R
+2025-07-23 14:45:59 - signals.generator - INFO - ✅ Signal validated: JASMY/USDT:USDT BUY - 95% confidence, 2.7:1 R/R
+2025-07-23 14:46:00 - signals.generator - INFO - ✅ Signal validated: POL/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:00 - signals.generator - INFO - ✅ Signal validated: GRASS/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:01 - signals.generator - INFO - ✅ Signal validated: GMT/USDT:USDT BUY - 95% confidence, 2.7:1 R/R
+2025-07-23 14:46:01 - signals.generator - INFO - ✅ Signal validated: SAND/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:06 - signals.generator - INFO - ✅ Signal validated: RUNE/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:09 - signals.generator - INFO - ✅ Signal validated: SOLAYER/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:14 - signals.generator - INFO - ✅ Signal validated: PYTH/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:14 - signals.generator - INFO - ✅ Signal validated: MELANIA/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:20 - signals.generator - INFO - ✅ Signal validated: FIDA/USDT:USDT BUY - 95% confidence, 3.0:1 R/R
+2025-07-23 14:46:20 - signals.generator - INFO - ✅ Signal validated: MANA/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:21 - signals.generator - INFO - ✅ Signal validated: KAIA/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:22 - signals.generator - INFO - ✅ Signal validated: AR/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:22 - signals.generator - INFO - ✅ Signal validated: GRT/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:25 - signals.generator - INFO - ✅ Signal validated: RAYDIUM/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:25 - signals.generator - INFO - ✅ Signal validated: SWARMS/USDT:USDT BUY - 95% confidence, 3.3:1 R/R
+2025-07-23 14:46:26 - signals.generator - INFO - ✅ Signal validated: AXS/USDT:USDT BUY - 95% confidence, 2.7:1 R/R
+2025-07-23 14:46:27 - signals.generator - INFO - ✅ Signal validated: DEEP/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:33 - signals.generator - INFO - ✅ Signal validated: PLUME/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:41 - signals.generator - INFO - ✅ Signal validated: QNT/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:42 - signals.generator - INFO - ✅ Signal validated: BEAM/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:44 - signals.generator - INFO - ✅ Signal validated: WAL/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:45 - signals.generator - INFO - ✅ Signal validated: ZETA/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:46 - signals.generator - INFO - ✅ Signal validated: WAVES/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:46 - signals.generator - INFO - ✅ Signal validated: DOG/USDT:USDT BUY - 95% confidence, 3.0:1 R/R
+2025-07-23 14:46:47 - signals.generator - INFO - ✅ Signal validated: CKB/USDT:USDT BUY - 95% confidence, 2.5:1 R/R
+2025-07-23 14:46:50 - TradingSystem - INFO - 📊 PHASE 2: Signal Ranking (55 signals in 110.6s)
+2025-07-23 14:46:50 - TradingSystem - INFO - 🏆 Top 5 Signals After Ranking:
+2025-07-23 14:46:50 - TradingSystem - INFO -    1. XRP/USDT:USDT BUY - 95% conf - MTF: NONE
+2025-07-23 14:46:50 - TradingSystem - INFO -    2. ADA/USDT:USDT BUY - 95% conf - MTF: NONE
+2025-07-23 14:46:50 - TradingSystem - INFO -    3. LTC/USDT:USDT BUY - 95% conf - MTF: NONE
+2025-07-23 14:46:50 - TradingSystem - INFO -    4. 1000BONK/USDT:USDT BUY - 95% conf - MTF: NONE
+2025-07-23 14:46:50 - TradingSystem - INFO -    5. ONDO/USDT:USDT BUY - 95% conf - MTF: NONE
+2025-07-23 14:46:50 - TradingSystem - INFO - 📊 PHASE 3: Chart Generation (Top 5 signals only)
+2025-07-23 14:46:50 - TradingSystem - INFO - 📊 Generating charts for TOP 5 signals only...
+2025-07-23 14:48:53 - TradingSystem - INFO - ✅ Chart generation complete: 5/5 charts created
+2025-07-23 14:48:53 - TradingSystem - INFO - ⚡ 30m→1h/4h/6h OPTIMIZED MTF ANALYSIS COMPLETED!
+2025-07-23 14:48:53 - TradingSystem - INFO -    Total Execution Time: 233.8s
+2025-07-23 14:48:53 - TradingSystem - INFO -    Signal Generation: 110.6s (55 signals)
+2025-07-23 14:48:53 - TradingSystem - INFO -    Chart Generation: 123.1s (5 charts)
+2025-07-23 14:48:53 - TradingSystem - INFO -    Chart Efficiency: 5/55 = 9.1% charted
+2025-07-23 14:48:53 - TradingSystem - INFO -    MTF Confirmations: Strong: 0, Partial: 0, None: 55
+2025-07-23 14:48:53 - bybit.autotrader - INFO - 📈 Generated 55 signals
+2025-07-23 14:48:53 - bybit.autotrader - INFO - 💾 Saving results to MySQL database...
+2025-07-23 14:48:57 - bybit.autotrader - INFO - 🎯 Executing 2 trades (available slots: 2)
+2025-07-23 14:48:57 - bybit.autotrader - INFO - 📝 Executing trade 1/2: 1000BONK/USDT:USDT
+2025-07-23 14:48:57 - bybit.autotrader - INFO - 🚀 Placing BUY order for 1000BONK/USDT:USDT
+2025-07-23 14:48:58 - bybit.autotrader - INFO - 💰 Risk calculation:
+2025-07-23 14:48:58 - bybit.autotrader - INFO -    Account Balance: 14.63054475 USDT
+2025-07-23 14:48:58 - bybit.autotrader - INFO -    Risk Percentage: 5.0%
+2025-07-23 14:48:58 - bybit.autotrader - INFO -    Risk Amount: 0.7315272375 USDT
+2025-07-23 14:48:58 - bybit.autotrader - INFO -    Position Size: 1116.1879176966036 units
+2025-07-23 14:48:58 - bybit.autotrader - INFO -    Required Margin: 0.7315272375 USDT
+2025-07-23 14:48:58 - bybit.autotrader - INFO - ✅ Entry order placed: 98e98722-57a9-4a14-9a5a-f1379f6ba92f
+2025-07-23 14:48:58 - bybit.autotrader - INFO - ✅ Trade executed: 1000BONK/USDT:USDT (95.0% confidence, MTF: NONE)
+2025-07-23 14:48:59 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8088506547:AAHZZxiY_wlh48IN4ldPNRJtM9qi7qxfLdM/sendMessage "HTTP/1.1 200 OK"
+2025-07-23 14:48:59 - bybit.autotrader - INFO - 📝 Executing trade 2/2: POPCAT/USDT:USDT
+2025-07-23 14:48:59 - bybit.autotrader - INFO - 🚀 Placing BUY order for POPCAT/USDT:USDT
+2025-07-23 14:49:00 - bybit.autotrader - INFO - 💰 Risk calculation:
+2025-07-23 14:49:00 - bybit.autotrader - INFO -    Account Balance: 13.87037276 USDT
+2025-07-23 14:49:00 - bybit.autotrader - INFO -    Risk Percentage: 5.0%
+2025-07-23 14:49:00 - bybit.autotrader - INFO -    Risk Amount: 0.693518638 USDT
+2025-07-23 14:49:00 - bybit.autotrader - INFO -    Position Size: 82.44396552543986 units
+2025-07-23 14:49:00 - bybit.autotrader - INFO -    Required Margin: 0.693518638 USDT
+2025-07-23 14:49:01 - bybit.autotrader - INFO - ✅ Entry order placed: b06287b7-c768-40b9-8879-6cbf452b0631
+2025-07-23 14:49:01 - bybit.autotrader - INFO - ✅ Trade executed: POPCAT/USDT:USDT (95.0% confidence, MTF: NONE)
+2025-07-23 14:49:02 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8088506547:AAHZZxiY_wlh48IN4ldPNRJtM9qi7qxfLdM/sendMessage "HTTP/1.1 200 OK"
+2025-07-23 14:49:02 - bybit.autotrader - INFO - 📊 Scan complete - Signals: 55, Executed: 2
+2025-07-23 14:49:02 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8088506547:AAHZZxiY_wlh48IN4ldPNRJtM9qi7qxfLdM/sendMessage "HTTP/1.1 200 OK"
+2025-07-23 14:49:02 - bybit.autotrader - INFO - ⏰ Next scan scheduled for: 2025-07-23 15:00:00
+2025-07-23 14:49:02 - bybit.autotrader - INFO - ⏳ Waiting 11.0 minutes...
+2025-07-23 14:52:48 - bybit.autotrader - INFO - 🛑 Received interrupt signal
+2025-07-23 14:52:53 - bybit.autotrader - INFO - 🛑 Stopped position monitoring
+2025-07-23 14:52:53 - bybit.autotrader - INFO - 🛑 Auto-trading stopped

@@ -1,7 +1,7 @@
 """
-Enhanced ExchangeManager with Global Bybit API support
-UPDATED: Uses api.bybitglobal.com instead of api.bybit.com for regional access
-FIXED: Better credential handling and validation with global endpoint
+Enhanced ExchangeManager with API secret decryption support
+FIXED: Better credential handling and validation
+UPDATED: Connection pool optimization to prevent pool exhaustion
 """
 
 import ccxt
@@ -14,7 +14,7 @@ from utils.encryption import SecretManager
 
 
 class ExchangeManager:
-    """Handles Bybit exchange connection with Global API endpoint and encrypted API secrets"""
+    """Handles Bybit exchange connection and data fetching with encrypted API secrets"""
     
     def __init__(self, config: EnhancedSystemConfig):
         self.config = config
@@ -23,27 +23,14 @@ class ExchangeManager:
         self.exchange = self.setup_exchange()
         
     def setup_exchange(self):
-        """Setup Bybit exchange connection with Global API endpoint and decrypted API secrets"""
+        """Setup Bybit exchange connection with decrypted API secrets and optimized connection pool"""
         try:
             exchange_config = {
                 'enableRateLimit': True,
                 'rateLimit': int(1000 / self.config.max_requests_per_second),  # Dynamic rate limiting
                 'timeout': self.config.api_timeout,
                 'sandbox': self.config.sandbox_mode,
-                
-                # UPDATED: Use Global Bybit API endpoints
-                'urls': {
-                    'api': {
-                        'public': 'https://api.bybitglobal.com',
-                        'private': 'https://api.bybitglobal.com',
-                    },
-                    'test': {
-                        'public': 'https://api-demo.bybit.com',
-                        'private': 'https://api-demo.bybit.com',
-                    }
-                },
-                
-                # Connection pool optimization
+                # FIXED: Connection pool optimization
                 'options': {
                     'defaultType': 'linear',  # Use linear (USDT) contracts by default
                     'createMarketBuyOrderRequiresPrice': False,
@@ -52,8 +39,6 @@ class ExchangeManager:
                     'retryDelay': 1000,
                     # Session optimization
                     'keepAlive': True,
-                    # ADDED: Force Global API usage
-                    'hostname': 'api.bybitglobal.com'
                 }
             }
             
@@ -68,16 +53,11 @@ class ExchangeManager:
                 encrypted_api = self.config.demo_api_key
                 encrypted_secret = self.config.demo_api_secret
                 self.logger.debug("Using demo API credentials for sandbox mode")
-                
-                # For demo environment, use demo API URLs
-                exchange_config['urls']['api']['public'] = 'https://api-demo.bybit.com'
-                exchange_config['urls']['api']['private'] = 'https://api-demo.bybit.com'
-                exchange_config['options']['hostname'] = 'api-demo.bybit.com'
             else:
-                # Use production credentials with Global API
+                # Use production credentials
                 encrypted_api = self.config.api_key
                 encrypted_secret = self.config.api_secret
-                self.logger.debug("Using production API credentials with Global API")
+                self.logger.debug("Using production API credentials")
             
             # Validate credentials exist
             if not encrypted_api or not encrypted_secret:
@@ -109,13 +89,9 @@ class ExchangeManager:
                 'secret': decrypted_secret
             })
             
-            # Initialize exchange with Global API
-            self.logger.debug("Initializing Bybit exchange with Global API endpoint...")
+            # Initialize exchange
+            self.logger.debug("Initializing Bybit exchange with optimized connection pool...")
             exchange = ccxt.bybit(exchange_config)
-            
-            # Verify the URLs are set correctly
-            api_endpoint = exchange.urls['api']['public']
-            self.logger.info(f"🌍 Using API endpoint: {api_endpoint}")
             
             # Configure connection pool settings if available
             try:
@@ -146,7 +122,7 @@ class ExchangeManager:
             max_retries = 3
             for attempt in range(max_retries):
                 try:
-                    self.logger.debug(f"Loading markets from Global API (attempt {attempt + 1}/{max_retries})...")
+                    self.logger.debug(f"Loading markets (attempt {attempt + 1}/{max_retries})...")
                     exchange.load_markets()
                     break
                 except Exception as e:
@@ -156,35 +132,27 @@ class ExchangeManager:
                     time.sleep(2 ** attempt)  # Exponential backoff
             
             mode = "DEMO" if self.config.sandbox_mode else "PRODUCTION"
-            endpoint = "Demo API" if self.config.sandbox_mode else "Global API"
-            self.logger.info(f"✅ Connected to Bybit {mode} via {endpoint}")
-            self.logger.info(f"🌍 API Endpoint: {exchange.urls['api']['public']}")
+            self.logger.info(f"✅ Connected to Bybit {mode} with decrypted credentials")
             self.logger.debug(f"   Rate limit: {exchange_config['rateLimit']}ms")
             self.logger.debug(f"   Timeout: {self.config.api_timeout}ms")
             
             return exchange
             
         except ccxt.AuthenticationError as e:
-            self.logger.error(f"❌ Authentication error with Global API: {e}")
+            self.logger.error(f"❌ Authentication error: {e}")
             self.logger.error("   Possible causes:")
             self.logger.error("   - Invalid API key")
             self.logger.error("   - Invalid API secret")
             self.logger.error("   - API credentials not enabled for trading")
             self.logger.error("   - Wrong sandbox mode setting")
-            self.logger.error("   - API key not compatible with Global endpoint")
             return None
         except ccxt.PermissionDenied as e:
-            self.logger.error(f"❌ Permission denied on Global API: {e}")
+            self.logger.error(f"❌ Permission denied: {e}")
             self.logger.error("   Check your API key permissions on Bybit")
-            self.logger.error("   Ensure your API key is enabled for the Global endpoint")
             return None
         except ccxt.NetworkError as e:
-            self.logger.error(f"❌ Network error connecting to {'Demo API' if self.config.sandbox_mode else 'Global API'}: {e}")
+            self.logger.error(f"❌ Network error: {e}")
             self.logger.error("   Check your internet connection")
-            if self.config.sandbox_mode:
-                self.logger.error("   Verify api-demo.bybit.com is accessible from your location")
-            else:
-                self.logger.error("   Verify api.bybitglobal.com is accessible from your location")
             return None
         except Exception as e:
             self.logger.error(f"❌ Exchange setup failed: {e}")
@@ -196,49 +164,37 @@ class ExchangeManager:
             return None
     
     def test_connection(self) -> bool:
-        """Test exchange connection with Global API and API credentials"""
+        """Test exchange connection and API credentials"""
         try:
             if not self.exchange:
                 self.logger.error("❌ Exchange not initialized")
                 return False
             
-            self.logger.debug("Testing Global API connection...")
-            
-            # Log the endpoint being used
-            api_endpoint = self.exchange.urls['api']['public']
-            self.logger.debug(f"Testing connection to: {api_endpoint}")
+            self.logger.debug("Testing API connection...")
             
             # Test API connection by fetching balance
             balance = self.exchange.fetch_balance()
             
-            self.logger.info("✅ Global API connection test successful")
-            self.logger.info(f"🌍 Connected via: {api_endpoint}")
+            self.logger.info("✅ API connection test successful")
             self.logger.debug(f"   Account currencies: {list(balance.keys())[:5]}...")
             
             return True
             
         except ccxt.AuthenticationError as e:
-            self.logger.error(f"❌ Authentication failed with Global API: {e}")
+            self.logger.error(f"❌ Authentication failed: {e}")
             return False
         except ccxt.PermissionDenied as e:
-            self.logger.error(f"❌ Permission denied on Global API: {e}")
+            self.logger.error(f"❌ Permission denied: {e}")
             return False
         except ccxt.NetworkError as e:
-            self.logger.error(f"❌ Network error with {'Demo API' if self.config.sandbox_mode else 'Global API'}: {e}")
-            self.logger.error("   This could indicate:")
-            if self.config.sandbox_mode:
-                self.logger.error("   - api-demo.bybit.com is not accessible from your location")
-            else:
-                self.logger.error("   - api.bybitglobal.com is not accessible from your location")
-            self.logger.error("   - Firewall blocking the connection")
-            self.logger.error("   - Internet connectivity issues")
+            self.logger.error(f"❌ Network error: {e}")
             return False
         except Exception as e:
-            self.logger.error(f"❌ Global API connection test failed: {e}")
+            self.logger.error(f"❌ API connection test failed: {e}")
             return False
     
     def validate_credentials(self) -> Dict[str, bool]:
-        """Validate and return credential status with Global API support"""
+        """Validate and return credential status"""
         try:
             status = {
                 'api_key_present': bool(self.config.api_key),
@@ -246,8 +202,7 @@ class ExchangeManager:
                 'demo_api_key_present': bool(self.config.demo_api_key),
                 'demo_api_secret_present': bool(self.config.demo_api_secret),
                 'credentials_decryptable': False,
-                'exchange_connection': False,
-                'global_api_accessible': False
+                'exchange_connection': False
             }
             
             # Test decryption
@@ -260,26 +215,6 @@ class ExchangeManager:
                 decrypted = self.secret_manager.decrypt_secret(encrypted_secret)
                 status['credentials_decryptable'] = bool(decrypted)
             
-            # Test Global API accessibility
-            try:
-                import requests
-                if self.config.sandbox_mode:
-                    test_url = 'https://api-demo.bybit.com/v2/public/time'
-                    api_name = 'Demo API'
-                else:
-                    test_url = 'https://api.bybitglobal.com/v2/public/time'
-                    api_name = 'Global API'
-                
-                response = requests.get(test_url, timeout=10)
-                status['global_api_accessible'] = response.status_code == 200
-                if status['global_api_accessible']:
-                    self.logger.debug(f"✅ {api_name} endpoint is accessible")
-                else:
-                    self.logger.warning(f"⚠️ {api_name} returned status: {response.status_code}")
-            except Exception as e:
-                self.logger.warning(f"⚠️ {api_name} accessibility test failed: {e}")
-                status['global_api_accessible'] = False
-            
             # Test exchange connection
             status['exchange_connection'] = self.test_connection()
             
@@ -289,25 +224,8 @@ class ExchangeManager:
             self.logger.error(f"Error validating credentials: {e}")
             return {}
     
-    def get_api_info(self) -> Dict[str, str]:
-        """Get current API endpoint information"""
-        try:
-            if not self.exchange:
-                return {'error': 'Exchange not initialized'}
-            
-            return {
-                'public_api': self.exchange.urls['api']['public'],
-                'private_api': self.exchange.urls['api']['private'],
-                'demo_public': self.exchange.urls.get('test', {}).get('public', 'N/A'),
-                'demo_private': self.exchange.urls.get('test', {}).get('private', 'N/A'),
-                'sandbox_mode': self.config.sandbox_mode,
-                'hostname': self.exchange.options.get('hostname', 'Not set')
-            }
-        except Exception as e:
-            return {'error': str(e)}
-    
     def fetch_ohlcv_data(self, symbol: str, timeframe: str = None, limit: int = None) -> pd.DataFrame:
-        """Fetch OHLCV data with Global API error handling and connection reuse"""
+        """Fetch OHLCV data with error handling and connection reuse"""
         if timeframe is None:
             timeframe = self.config.timeframe
             
@@ -335,22 +253,19 @@ class ExchangeManager:
             return df
             
         except ccxt.NetworkError as e:
-            self.logger.warning(f"Global API network error fetching {symbol} data: {e}")
+            self.logger.warning(f"Network error fetching {symbol} data: {e}")
             time.sleep(1)  # Brief pause before retry
             return pd.DataFrame()
         except ccxt.RateLimitExceeded as e:
-            self.logger.warning(f"Global API rate limit exceeded for {symbol}: {e}")
+            self.logger.warning(f"Rate limit exceeded for {symbol}: {e}")
             time.sleep(2)  # Longer pause for rate limit
             return pd.DataFrame()
-        except ccxt.ExchangeError as e:
-            self.logger.warning(f"Global API exchange error for {symbol}: {e}")
-            return pd.DataFrame()
         except Exception as e:
-            self.logger.error(f"Failed to fetch {symbol} data from Global API: {e}")
+            self.logger.error(f"Failed to fetch {symbol} data: {e}")
             return pd.DataFrame()
     
     def get_top_symbols(self) -> List[Dict]:
-        """Get top trading symbols by volume with Global API connection optimization"""
+        """Get top trading symbols by volume with connection optimization"""
         try:
             if not self.exchange:
                 self.logger.error("Exchange not available for symbol fetching")
@@ -359,7 +274,6 @@ class ExchangeManager:
             # Add delay to prevent connection pool exhaustion
             time.sleep(0.2)
             
-            self.logger.debug("Fetching tickers from Global API...")
             tickers = self.exchange.fetch_tickers()
             
             # Filter for USDT perpetual contracts
@@ -375,24 +289,21 @@ class ExchangeManager:
             
             # Sort by volume and limit
             usdt_symbols.sort(key=lambda x: x['volume_24h'], reverse=True)
-            result = usdt_symbols[:self.config.max_symbols_scan]
-            
-            self.logger.debug(f"Found {len(result)} symbols meeting volume criteria from Global API")
-            return result
+            return usdt_symbols[:self.config.max_symbols_scan]
             
         except ccxt.NetworkError as e:
-            self.logger.warning(f"Global API network error getting symbols: {e}")
+            self.logger.warning(f"Network error getting symbols: {e}")
             return []
         except ccxt.RateLimitExceeded as e:
-            self.logger.warning(f"Global API rate limit exceeded getting symbols: {e}")
+            self.logger.warning(f"Rate limit exceeded getting symbols: {e}")
             time.sleep(2)
             return []
         except Exception as e:
-            self.logger.error(f"Failed to get symbols from Global API: {e}")
+            self.logger.error(f"Failed to get symbols: {e}")
             return []
     
     def get_account_info(self) -> Dict:
-        """Get account information with Global API connection reuse"""
+        """Get account information with connection reuse"""
         try:
             if not self.exchange:
                 return {}
@@ -400,26 +311,24 @@ class ExchangeManager:
             # Add delay to prevent connection pool exhaustion
             time.sleep(0.1)
             
-            self.logger.debug("Fetching account info from Global API...")
             balance = self.exchange.fetch_balance()
             
             return {
                 'total_equity': balance.get('USDT', {}).get('total', 0),
                 'free_balance': balance.get('USDT', {}).get('free', 0),
                 'used_balance': balance.get('USDT', {}).get('used', 0),
-                'currencies': list(balance.keys()),
-                'api_endpoint': self.exchange.urls['api']['public']
+                'currencies': list(balance.keys())
             }
             
         except ccxt.NetworkError as e:
-            self.logger.warning(f"Global API network error getting account info: {e}")
+            self.logger.warning(f"Network error getting account info: {e}")
             return {}
         except ccxt.RateLimitExceeded as e:
-            self.logger.warning(f"Global API rate limit exceeded getting account info: {e}")
+            self.logger.warning(f"Rate limit exceeded getting account info: {e}")
             time.sleep(1)
             return {}
         except Exception as e:
-            self.logger.error(f"Failed to get account info from Global API: {e}")
+            self.logger.error(f"Failed to get account info: {e}")
             return {}
     
     def cleanup_connections(self):
@@ -431,13 +340,13 @@ class ExchangeManager:
                     # Check if it's a requests session object
                     if hasattr(self.exchange.session, 'close'):
                         self.exchange.session.close()
-                        self.logger.debug("✅ Global API session closed")
+                        self.logger.debug("✅ Exchange session closed")
                     else:
-                        self.logger.debug("ℹ️ Global API session doesn't support close method")
+                        self.logger.debug("ℹ️ Exchange session doesn't support close method")
                 else:
-                    self.logger.debug("ℹ️ No Global API session to cleanup")
+                    self.logger.debug("ℹ️ No exchange session to cleanup")
         except Exception as e:
-            self.logger.debug(f"Global API connection cleanup note: {e}")
+            self.logger.debug(f"Connection cleanup note: {e}")
     
     def __del__(self):
         """Cleanup when object is destroyed"""
@@ -445,68 +354,3 @@ class ExchangeManager:
             self.cleanup_connections()
         except:
             pass
-    
-    @staticmethod
-    def test_global_api_accessibility() -> Dict[str, bool]:
-        """Static method to test Global API accessibility without credentials"""
-        try:
-            import requests
-            
-            endpoints = {
-                'global_api': 'https://api.bybitglobal.com/v2/public/time',
-                'standard_api': 'https://api.bybit.com/v2/public/time',
-                'demo_api': 'https://api-demo.bybit.com/v2/public/time',
-                'testnet': 'https://api-testnet.bybit.com/v2/public/time'
-            }
-            
-            results = {}
-            
-            for name, url in endpoints.items():
-                try:
-                    response = requests.get(url, timeout=5)
-                    results[name] = response.status_code == 200
-                    print(f"{'✅' if results[name] else '❌'} {name}: {url} - Status: {response.status_code}")
-                except Exception as e:
-                    results[name] = False
-                    print(f"❌ {name}: {url} - Error: {e}")
-            
-            return results
-            
-        except Exception as e:
-            print(f"❌ API accessibility test failed: {e}")
-            return {}
-
-
-# Convenience function for testing API accessibility
-def test_bybit_api_endpoints():
-    """Test which Bybit API endpoints are accessible from your location"""
-    print("🌍 Testing Bybit API Endpoint Accessibility...")
-    print("=" * 50)
-    
-    results = ExchangeManager.test_global_api_accessibility()
-    
-    print("\n📊 Results Summary:")
-    if results.get('global_api', False):
-        print("✅ Global API (api.bybitglobal.com) - RECOMMENDED for your location")
-    else:
-        print("❌ Global API (api.bybitglobal.com) - Not accessible")
-    
-    if results.get('standard_api', False):
-        print("✅ Standard API (api.bybit.com) - Available")
-    else:
-        print("❌ Standard API (api.bybit.com) - Not accessible (expected if you need VPN)")
-    
-    print("\n💡 Recommendation:")
-    if results.get('global_api', False):
-        print("   Use the Global API configuration - no VPN required!")
-    elif results.get('standard_api', False):
-        print("   Use standard API or VPN to access api.bybit.com")
-    else:
-        print("   Check your internet connection - no Bybit endpoints accessible")
-    
-    return results
-
-
-if __name__ == "__main__":
-    # Test API accessibility when run directly
-    test_bybit_api_endpoints()

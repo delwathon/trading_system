@@ -1,6 +1,7 @@
 trading_system/
 ├── main.py                           # Main entry point for auto-trading
 ├── setup_bootstrap.py                # Bootstrap setup & validation script
+├── test_global_api.py                # Bybit Base Url test
 ├── enhanced_config.yaml              # Database configuration file
 ├── requirements.txt                  # Python dependencies
 │

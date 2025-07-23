@@ -1,0 +1,21 @@
+2025-07-23 14:19:57 - core.exchange - INFO - 🌍 Using API endpoint: https://api.bybitglobal.com
+2025-07-23 14:20:07 - core.exchange - INFO - ✅ Connected to Bybit PRODUCTION via Global API
+2025-07-23 14:20:07 - core.exchange - INFO - 🌍 API Endpoint: https://api.bybitglobal.com
+2025-07-23 14:20:07 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-23 14:20:09 - core.exchange - INFO - ✅ Global API connection test successful
+2025-07-23 14:20:09 - core.exchange - INFO - 🌍 Connected via: https://api.bybitglobal.com
+2025-07-23 14:20:09 - bybit.autotrader - INFO - 🚀 Started auto-trading session: autotrader_20250723_142009
+2025-07-23 14:20:09 - bybit.autotrader - INFO - ⚙️ Configuration:
+2025-07-23 14:20:09 - bybit.autotrader - INFO -    Max concurrent positions: 5
+2025-07-23 14:20:09 - bybit.autotrader - INFO -    Max executions per scan: 2
+2025-07-23 14:20:09 - bybit.autotrader - INFO -    Risk amount per trade: 5.0%
+2025-07-23 14:20:09 - bybit.autotrader - INFO -    Leverage: max
+2025-07-23 14:20:09 - bybit.autotrader - INFO -    Auto-close profit target: 50.0%
+2025-07-23 14:20:09 - bybit.autotrader - INFO -    Scan interval: 0.2 hours
+2025-07-23 14:20:09 - bybit.autotrader - INFO - 📊 Started position monitoring
+2025-07-23 14:20:09 - bybit.autotrader - INFO - 🤖 Auto-trading loop started
+2025-07-23 14:20:09 - bybit.autotrader - INFO - ⏰ Next scan scheduled for: 2025-07-23 14:30:00
+2025-07-23 14:20:09 - bybit.autotrader - INFO - ⏳ Waiting 9.8 minutes...
+2025-07-23 14:22:10 - bybit.autotrader - INFO - 🛑 Received interrupt signal
+2025-07-23 14:22:15 - bybit.autotrader - INFO - 🛑 Stopped position monitoring
+2025-07-23 14:22:15 - bybit.autotrader - INFO - 🛑 Auto-trading stopped

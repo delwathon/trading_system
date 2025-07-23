@@ -1,0 +1,103 @@
+2025-07-23 11:56:39 - TradingSystem - INFO - Loading database configuration from enhanced_config.yaml
+2025-07-23 11:56:39 - TradingSystem - INFO - Database config loaded:
+2025-07-23 11:56:39 - TradingSystem - INFO -    Host: localhost:3306
+2025-07-23 11:56:39 - TradingSystem - INFO -    Database: bybit_trading_system
+2025-07-23 11:56:39 - TradingSystem - INFO -    Username: root
+2025-07-23 11:56:39 - TradingSystem - INFO -    Password: ***
+2025-07-23 11:56:39 - TradingSystem - INFO - Loading system configuration from MySQL database...
+2025-07-23 11:56:39 - config.config - INFO - Loading configuration 'default' from MySQL database
+2025-07-23 11:56:39 - notifier.telegram - INFO - ✅ Telegram bot initialized successfully
+2025-07-23 11:56:39 - TradingSystem - INFO - 🤖 AUTO-TRADING CONFIGURATION:
+2025-07-23 11:56:39 - TradingSystem - INFO - ==================================================
+2025-07-23 11:56:39 - TradingSystem - INFO - 📊 Trading Parameters:
+2025-07-23 11:56:39 - TradingSystem - INFO -    Leverage: max
+2025-07-23 11:56:39 - TradingSystem - INFO -    Risk Amount per Trade: 5.0% of account balance
+2025-07-23 11:56:39 - TradingSystem - INFO -    Max Concurrent Positions: 5
+2025-07-23 11:56:39 - TradingSystem - INFO -    Max Executions per Scan: 2
+2025-07-23 11:56:39 - TradingSystem - INFO -    Auto-Close Profit Target: 10.0%
+2025-07-23 11:56:39 - TradingSystem - INFO - ⏰ Scheduling Parameters:
+2025-07-23 11:56:39 - TradingSystem - INFO -    Daily Start Time: 01:00
+2025-07-23 11:56:39 - TradingSystem - INFO -    Scan Interval: 0.5 hours (1800 seconds)
+2025-07-23 11:56:39 - TradingSystem - INFO - 📈 Analysis Configuration:
+2025-07-23 11:56:39 - TradingSystem - INFO -    Primary Timeframe: 30m
+2025-07-23 11:56:39 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h, 6h
+2025-07-23 11:56:39 - TradingSystem - INFO -    MTF Confirmation Required: True
+2025-07-23 11:56:39 - TradingSystem - INFO -    Min Volume 24h: $5,000,000.0
+2025-07-23 11:56:39 - TradingSystem - INFO - ⚠️ Risk Management:
+2025-07-23 11:56:39 - TradingSystem - INFO -    Risk per Trade: 5.0% of account balance
+2025-07-23 11:56:39 - TradingSystem - INFO -    Max Total Risk Exposure: 25.0% of account balance
+2025-07-23 11:56:39 - TradingSystem - INFO -    Max Leveraged Exposure: 25.0% × Max Leverage
+2025-07-23 11:56:39 - TradingSystem - INFO -    Portfolio Risk Limit: 2.0%
+2025-07-23 11:56:39 - TradingSystem - INFO - 🔧 Trading Mode: PRODUCTION
+2025-07-23 11:56:39 - TradingSystem - INFO - 📱 Telegram Configuration:
+2025-07-23 11:56:39 - TradingSystem - INFO -    Bot Token: Configured
+2025-07-23 11:56:39 - TradingSystem - INFO -    User ID: 6708641837
+2025-07-23 11:56:39 - TradingSystem - INFO - ==================================================
+2025-07-23 11:56:39 - core.exchange - INFO - 🌍 Using API endpoint: https://api.bybitglobal.com
+2025-07-23 11:56:50 - core.exchange - INFO - ✅ Connected to Bybit PRODUCTION via Global API
+2025-07-23 11:56:50 - core.exchange - INFO - 🌍 API Endpoint: https://api.bybitglobal.com
+2025-07-23 11:56:50 - TradingSystem - INFO - 🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!
+2025-07-23 11:56:52 - core.exchange - INFO - ✅ Global API connection test successful
+2025-07-23 11:56:52 - core.exchange - INFO - 🌍 Connected via: https://api.bybitglobal.com
+2025-07-23 11:56:52 - bybit.autotrader - INFO - 🚀 Started auto-trading session: autotrader_20250723_115652
+2025-07-23 11:56:52 - bybit.autotrader - INFO - ⚙️ Configuration:
+2025-07-23 11:56:52 - bybit.autotrader - INFO -    Max concurrent positions: 5
+2025-07-23 11:56:52 - bybit.autotrader - INFO -    Max executions per scan: 2
+2025-07-23 11:56:52 - bybit.autotrader - INFO -    Risk amount per trade: 5.0%
+2025-07-23 11:56:52 - bybit.autotrader - INFO -    Leverage: max
+2025-07-23 11:56:52 - bybit.autotrader - INFO -    Auto-close profit target: 10.0%
+2025-07-23 11:56:52 - bybit.autotrader - INFO -    Scan interval: 0.5 hours
+2025-07-23 11:56:52 - bybit.autotrader - INFO - 📊 Started position monitoring
+2025-07-23 11:56:52 - bybit.autotrader - INFO - 🤖 Auto-trading loop started
+2025-07-23 11:56:52 - bybit.autotrader - INFO - ⏰ Next scan scheduled for: 2025-07-23 12:00:00
+2025-07-23 11:56:52 - bybit.autotrader - INFO - ⏳ Waiting 3.1 minutes...
+2025-07-23 12:00:00 - bybit.autotrader - INFO - ⏰ Scan time reached: 2025-07-23 12:00:00
+2025-07-23 12:00:00 - bybit.autotrader - INFO - 📊 Running signal analysis...
+2025-07-23 12:00:00 - TradingSystem - INFO - 🚀 STARTING OPTIMIZED ANALYSIS WITH 30m→1h/4h/6h MTF CONFIRMATION
+2025-07-23 12:00:00 - TradingSystem - INFO -    📊 Charts generated ONLY for top-ranked signals (after analysis complete)
+2025-07-23 12:00:00 - TradingSystem - INFO - ==========================================================================================
+2025-07-23 12:00:00 - TradingSystem - INFO - 📊 Analyzing 205 symbols with MTF confirmation...
+2025-07-23 12:00:00 - TradingSystem - INFO -    Primary Timeframe: 30m
+2025-07-23 12:00:00 - TradingSystem - INFO -    Confirmation Timeframes: 1h, 4h, 6h
+2025-07-23 12:00:00 - TradingSystem - INFO -    MTF Weight Multiplier: 1.5x
+2025-07-23 12:00:00 - TradingSystem - INFO -    Database: MySQL @ localhost
+2025-07-23 12:00:00 - TradingSystem - INFO -    Chart Strategy: Top 5 signals only
+2025-07-23 12:00:00 - TradingSystem - INFO - 📈 PHASE 1: Signal Generation (No Charts)
+2025-07-23 12:00:56 - analysis.multi_timeframe - WARNING -    Insufficient 4h data for C/USDT:USDT
+2025-07-23 12:00:57 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for C/USDT:USDT
+2025-07-23 12:02:09 - analysis.multi_timeframe - WARNING -    Insufficient 4h data for ERA/USDT:USDT
+2025-07-23 12:02:10 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for ERA/USDT:USDT
+2025-07-23 12:02:20 - analysis.multi_timeframe - WARNING -    Insufficient 4h data for TA/USDT:USDT
+2025-07-23 12:02:21 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for TA/USDT:USDT
+2025-07-23 12:04:13 - analysis.multi_timeframe - WARNING -    Insufficient 4h data for TAC/USDT:USDT
+2025-07-23 12:04:14 - analysis.multi_timeframe - WARNING -    Insufficient 6h data for TAC/USDT:USDT
+2025-07-23 12:04:20 - TradingSystem - INFO - 📊 PHASE 2: Signal Ranking (194 signals in 260.3s)
+2025-07-23 12:04:20 - TradingSystem - INFO - 🏆 Top 5 Signals After Ranking:
+2025-07-23 12:04:20 - TradingSystem - INFO -    1. LAUNCHCOIN/USDT:USDT SELL - 95% conf - MTF: STRONG
+2025-07-23 12:04:20 - TradingSystem - INFO -    2. M/USDT:USDT BUY - 95% conf - MTF: STRONG
+2025-07-23 12:04:20 - TradingSystem - INFO -    3. H/USDT:USDT BUY - 95% conf - MTF: STRONG
+2025-07-23 12:04:20 - TradingSystem - INFO -    4. CAKE/USDT:USDT BUY - 95% conf - MTF: STRONG
+2025-07-23 12:04:20 - TradingSystem - INFO -    5. BAKE/USDT:USDT BUY - 95% conf - MTF: STRONG
+2025-07-23 12:04:20 - TradingSystem - INFO - 📊 PHASE 3: Chart Generation (Top 5 signals only)
+2025-07-23 12:04:20 - TradingSystem - INFO - 📊 Generating charts for TOP 5 signals only...
+2025-07-23 12:05:50 - TradingSystem - INFO - ✅ Chart generation complete: 5/5 charts created
+2025-07-23 12:05:50 - TradingSystem - INFO - ⚡ 30m→1h/4h/6h OPTIMIZED MTF ANALYSIS COMPLETED!
+2025-07-23 12:05:50 - TradingSystem - INFO -    Total Execution Time: 350.6s
+2025-07-23 12:05:50 - TradingSystem - INFO -    Signal Generation: 260.3s (194 signals)
+2025-07-23 12:05:50 - TradingSystem - INFO -    Chart Generation: 90.2s (5 charts)
+2025-07-23 12:05:50 - TradingSystem - INFO -    Chart Efficiency: 5/194 = 2.6% charted
+2025-07-23 12:05:50 - TradingSystem - INFO -    MTF Confirmations: Strong: 6, Partial: 22, None: 166
+2025-07-23 12:05:50 - bybit.autotrader - INFO - 📈 Generated 194 signals
+2025-07-23 12:05:50 - bybit.autotrader - INFO - 💾 Saving results to MySQL database...
+2025-07-23 12:05:50 - bybit.autotrader - ERROR - Error in scan and execute: slice(None, 5, None)
+2025-07-23 12:05:50 - bybit.autotrader - INFO - 📊 Scan complete - Signals: 0, Executed: 0
+2025-07-23 12:05:51 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8088506547:AAHZZxiY_wlh48IN4ldPNRJtM9qi7qxfLdM/sendMessage "HTTP/1.1 200 OK"
+2025-07-23 12:05:51 - bybit.autotrader - INFO - ⏰ Next scan scheduled for: 2025-07-23 12:30:00
+2025-07-23 12:05:51 - bybit.autotrader - INFO - ⏳ Waiting 24.1 minutes...
+2025-07-23 12:08:58 - bybit.autotrader - INFO - 🎯 Auto-close triggered for XLM/USDT:USDT: 12.30% profit (target: 10.0%)
+2025-07-23 12:08:59 - bybit.autotrader - INFO - ✅ Closed position XLM/USDT:USDT - Profit target reached
+2025-07-23 12:09:59 - urllib3.connectionpool - WARNING - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='api.bybitglobal.com', port=443): Read timed out. (read timeout=30.0)")': /v5/position/list?settleCoin=USDT&limit=200&category=linear
+2025-07-23 12:10:02 - bybit.autotrader - ERROR - Error getting current positions: bybit {"retCode":10002,"retMsg":"invalid request, please check your server timestamp or recv_window param. req_timestamp[1753268969281],server_timestamp[1753269002571],recv_window[5000]","result":{},"retExtInfo":{},"time":1753269002571}
+2025-07-23 12:10:14 - bybit.autotrader - INFO - 🛑 Received interrupt signal
+2025-07-23 12:10:19 - bybit.autotrader - INFO - 🛑 Stopped position monitoring
+2025-07-23 12:10:19 - bybit.autotrader - INFO - 🛑 Auto-trading stopped

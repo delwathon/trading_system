@@ -603,7 +603,7 @@ class CompleteEnhancedBybitSystem:
             print(header)
             print("-" * 210)
             
-            for opp in opportunities[:5]:  # Top 15
+            for opp in opportunities[:5]:  # Top 5
                 try:
                     side_emoji = "🟢" if opp['side'] == 'BUY' else "🔴"
                     volume_str = f"${opp['volume_24h']/1e6:.0f}M"

@@ -1,0 +1,2 @@
+2025-07-23 10:26:04 - core.exchange - INFO - 🌍 Using API endpoint: https://api-demo.bybit.com
+2025-07-23 10:26:14 - urllib3.connectionpool - WARNING - Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f26665b0830>: Failed to resolve 'api-demo.bybit.com' ([Errno -3] Temporary failure in name resolution)")': /v5/asset/coin/query-info
