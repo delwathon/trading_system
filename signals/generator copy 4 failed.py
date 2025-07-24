@@ -23,215 +23,234 @@ class SignalGenerator:
         self.logger = logging.getLogger(__name__)
         
     def generate_enhanced_signal(self, df: pd.DataFrame, symbol_data: Dict, 
-                                volume_entry: Dict, confluence_zones: List[Dict]) -> Optional[Dict]:
-            """FIXED: Generate proper trading signals based on correct technical analysis"""
-            try:
-                latest = df.iloc[-1]
-                current_price = symbol_data['current_price']
-                symbol = symbol_data['symbol']
+                            volume_entry: Dict, confluence_zones: List[Dict]) -> Optional[Dict]:
+        """Enhanced signal generation with balanced validation"""
+        try:
+            latest = df.iloc[-1]
+            current_price = symbol_data['current_price']
+            symbol = symbol_data['symbol']
+            
+            # Get all indicator values with safety checks
+            rsi = latest.get('rsi', 50)
+            macd = latest.get('macd', 0)
+            macd_signal = latest.get('macd_signal', 0)
+            ema_12 = latest.get('ema_12', current_price)
+            ema_26 = latest.get('ema_26', current_price)
+            sma_20 = latest.get('sma_20', current_price)
+            sma_50 = latest.get('sma_50', current_price)
+            sma_200 = latest.get('sma_200', current_price)
+            volume_ratio = latest.get('volume_ratio', 1)
+            bb_position = latest.get('bb_position', 0.5)
+            bb_upper = latest.get('bb_upper', current_price * 1.02)
+            bb_lower = latest.get('bb_lower', current_price * 0.98)
+            atr = latest.get('atr', current_price * 0.02)
+            
+            # Stochastic RSI values
+            stoch_rsi_k = latest.get('stoch_rsi_k', 50)
+            stoch_rsi_d = latest.get('stoch_rsi_d', 50)
+            
+            # Ichimoku signals
+            ichimoku_bullish = latest.get('ichimoku_bullish', False)
+            ichimoku_bearish = latest.get('ichimoku_bearish', False)
+            
+            # Market structure analysis
+            market_structure = self.analyze_market_structure(df, current_price)
+            
+            signal = None
+            
+            # ===== BALANCED BUY SIGNAL CONDITIONS =====
+            # Generate BUY signals in oversold conditions with reasonable trend support
+            
+            # Primary technical conditions (more flexible)
+            buy_technical_conditions = [
+                rsi < 40,                                    # Oversold but not extreme (was 30)
+                macd > macd_signal or rsi < 35,             # MACD bullish OR oversold
+                current_price > sma_200 * 0.90,            # Above long-term support (was 0.95)
+                volume_ratio > 1.2,                         # Good volume requirement (was 1.5)
+                bb_position < 0.4,                          # Near lower BB (was 0.3)
+                atr / current_price < 0.06                  # Reasonable volatility (was 0.05)
+            ]
+            
+            # Trend alignment check (more flexible)
+            buy_trend_conditions = [
+                sma_20 > sma_50 * 0.95,                     # Medium-term trend not severely broken (was 0.98)
+                current_price > sma_50 * 0.92,             # Above medium-term support (was 0.95)
+                # Allow counter-trend if oversold
+                rsi < 35 or (ema_12 > ema_26 * 0.96)      # Trend or oversold (was 0.98)
+            ]
+            
+            # Stochastic RSI conditions (more flexible)
+            # buy_stoch_conditions = [
+            #     stoch_rsi_k < 35,                           # Oversold but not extreme (was 25)
+            #     stoch_rsi_k > stoch_rsi_d or stoch_rsi_k < 20,  # Bullish cross OR extreme
+            #     stoch_rsi_k > 3                             # Not at absolute bottom (was 5)
+            # ]
+            buy_stoch_conditions = [
+                stoch_rsi_k < 35,                           # Oversold
+                stoch_rsi_k > stoch_rsi_d,                  # FIXED: Only bullish crossover for BUY
+                stoch_rsi_k > 3                             # Not at absolute bottom
+            ]
+            
+            # Market structure conditions (more flexible)
+            buy_structure_conditions = [
+                market_structure['near_support'] or market_structure['support_distance'] < 0.12,  # Near support or reasonable distance
+                not market_structure['strong_downtrend'],   # Not in strong downtrend
+                market_structure['bounce_potential'] or rsi < 35  # Potential for bounce OR oversold
+            ]
+            
+            # Count conditions
+            buy_tech_score = sum(buy_technical_conditions)
+            buy_trend_score = sum(buy_trend_conditions)
+            buy_stoch_score = sum(buy_stoch_conditions)
+            buy_structure_score = sum(buy_structure_conditions)
+            
+            # RELAXED REQUIREMENTS: Allow more signals
+            if (buy_tech_score >= 4 and buy_trend_score >= 1 and 
+                buy_stoch_score >= 1 and buy_structure_score >= 1):
                 
-                # Get all indicator values with safety checks
-                rsi = latest.get('rsi', 50)
-                macd = latest.get('macd', 0)
-                macd_signal = latest.get('macd_signal', 0)
-                ema_12 = latest.get('ema_12', current_price)
-                ema_26 = latest.get('ema_26', current_price)
-                sma_20 = latest.get('sma_20', current_price)
-                sma_50 = latest.get('sma_50', current_price)
-                sma_200 = latest.get('sma_200', current_price)
-                volume_ratio = latest.get('volume_ratio', 1)
-                bb_position = latest.get('bb_position', 0.5)
-                bb_upper = latest.get('bb_upper', current_price * 1.02)
-                bb_lower = latest.get('bb_lower', current_price * 0.98)
-                atr = latest.get('atr', current_price * 0.02)
+                signal = self.create_buy_signal(
+                    symbol_data, current_price, latest, volume_entry, 
+                    confluence_zones, buy_tech_score, buy_trend_score, 
+                    buy_stoch_score, buy_structure_score
+                )
+            
+            # ===== BALANCED SELL SIGNAL CONDITIONS =====  
+            # Generate SELL signals in overbought conditions with reasonable reversal
+            if not signal:  # Only if no BUY signal
                 
-                # Stochastic RSI values
-                stoch_rsi_k = latest.get('stoch_rsi_k', 50)
-                stoch_rsi_d = latest.get('stoch_rsi_d', 50)
-                
-                # Ichimoku signals
-                ichimoku_bullish = latest.get('ichimoku_bullish', False)
-                ichimoku_bearish = latest.get('ichimoku_bearish', False)
-                
-                # Market structure analysis
-                market_structure = self.analyze_market_structure(df, current_price)
-                
-                signal = None
-                
-                # ===== FIXED: PROPER BUY SIGNAL CONDITIONS =====
-                # BUY when price is OVERSOLD and near SUPPORT levels
-                
-                # Primary BUY conditions (FIXED)
-                buy_technical_conditions = [
-                    rsi < 30,                                    # FIXED: Truly oversold (was > 40)
-                    macd > macd_signal,                         # FIXED: Bullish momentum
-                    current_price < sma_20,                     # FIXED: Below recent average (potential bounce)
-                    current_price > sma_200 * 0.95,            # FIXED: Above long-term support
-                    volume_ratio > 1.2,                         # Strong volume on decline
-                    bb_position < 0.3,                          # FIXED: Near lower BB (oversold)
+                # Primary technical conditions (more flexible)
+                sell_technical_conditions = [
+                    rsi > 65,                               # Overbought but not extreme (was 75)
+                    macd < macd_signal or rsi > 70,        # MACD bearish OR overbought (more flexible)
+                    current_price < sma_200 * 1.10,        # Below long-term resistance (was 1.05)
+                    volume_ratio > 1.5,                     # Strong volume (was 2.0)
+                    bb_position > 0.6,                     # Near upper BB (was 0.7)
+                    atr / current_price < 0.07              # Reasonable volatility (was 0.06)
                 ]
                 
-                # BUY trend conditions (FIXED)
-                buy_trend_conditions = [
-                    ema_12 > ema_26 * 0.98,                     # FIXED: Trend not completely broken
-                    current_price > sma_50 * 0.95,             # FIXED: Above medium-term support
-                    sma_20 > sma_50 * 0.98,                     # FIXED: Medium-term trend intact
-                    current_price > bb_lower * 1.02,           # FIXED: Above lower Bollinger Band
+                # Trend reversal conditions (more flexible)
+                sell_trend_conditions = [
+                    sma_20 < sma_50 * 1.05,                # Medium-term trend turning (was 1.02)
+                    current_price < sma_50 * 1.08,         # Below medium-term resistance (was 1.05)
+                    ema_12 < ema_26 or rsi > 75,           # Clear reversal OR extreme (was 80)
+                    current_price < bb_upper * 0.96        # Rejected from upper BB (was 0.98)
                 ]
                 
-                # BUY Stochastic RSI conditions (FIXED)
-                buy_stoch_conditions = [
-                    stoch_rsi_k < 25,                           # FIXED: Truly oversold (was > 70)
-                    stoch_rsi_k > stoch_rsi_d,                  # FIXED: Bullish crossover (was <)
-                    stoch_rsi_k > 5,                            # FIXED: Not at absolute bottom
-                    stoch_rsi_d < 30,                           # FIXED: Signal line also oversold
+                # Stochastic RSI conditions (more flexible)
+                # sell_stoch_conditions = [
+                #     stoch_rsi_k > 70,                       # Overbought but not extreme (was 80)
+                #     stoch_rsi_k < stoch_rsi_d or stoch_rsi_k > 85,  # Bearish crossover OR extreme
+                #     stoch_rsi_d > 65,                       # Signal line also overbought (was 75)
+                #     stoch_rsi_k < 97                        # Not at absolute top (was 95)
+                # ]
+                sell_stoch_conditions = [
+                    stoch_rsi_k > 70,                       # Overbought
+                    stoch_rsi_k < stoch_rsi_d,             # FIXED: Only bearish crossover for SELL
+                    stoch_rsi_d > 65,                       # Signal line also overbought
+                    stoch_rsi_k < 97                        # Not at absolute top
                 ]
                 
-                # Market structure for BUY (FIXED)
-                buy_structure_conditions = [
-                    market_structure.get('near_support', False),        # Near support level
-                    not market_structure.get('strong_downtrend', True), # Not in strong downtrend
-                    market_structure.get('bounce_potential', False),    # Bounce potential
-                    current_price < latest.get('vwap', current_price),  # Below VWAP (discount)
+                # Market structure conditions (more flexible)
+                sell_structure_conditions = [
+                    market_structure['near_resistance'] or market_structure['resistance_distance'] < 0.08,  # Near resistance or reasonable distance
+                    market_structure['reversal_signals'] or rsi > 70,  # Clear reversal pattern OR overbought
+                    not market_structure['strong_uptrend'] or rsi > 75,  # Not fighting strong uptrend OR extreme
+                    market_structure['distribution_signs'] or bb_position > 0.7  # Distribution signs OR near upper BB
                 ]
                 
                 # Count conditions
-                buy_tech_score = sum(buy_technical_conditions)
-                buy_trend_score = sum(buy_trend_conditions)
-                buy_stoch_score = sum(buy_stoch_conditions)
-                buy_structure_score = sum(buy_structure_conditions)
+                sell_tech_score = sum(sell_technical_conditions)
+                sell_trend_score = sum(sell_trend_conditions) 
+                sell_stoch_score = sum(sell_stoch_conditions)
+                sell_structure_score = sum(sell_structure_conditions)
                 
-                # STRICT BUY requirements (FIXED)
-                if (buy_tech_score >= 4 and buy_trend_score >= 2 and 
-                    buy_stoch_score >= 2 and buy_structure_score >= 1):
+                # RELAXED REQUIREMENTS: Allow more signals
+                if (sell_tech_score >= 4 and sell_trend_score >= 2 and 
+                    sell_stoch_score >= 2 and sell_structure_score >= 2):
                     
-                    signal = self.create_buy_signal(
-                        symbol_data, current_price, latest, volume_entry, 
-                        confluence_zones, buy_tech_score, buy_trend_score, 
-                        buy_stoch_score, buy_structure_score
-                    )
-                
-                # ===== FIXED: PROPER SELL SIGNAL CONDITIONS =====  
-                # SELL when price is OVERBOUGHT and near RESISTANCE levels
-                if not signal:  # Only if no BUY signal
-                    
-                    # Primary SELL conditions (FIXED)
-                    sell_technical_conditions = [
-                        rsi > 75,                                   # FIXED: Truly overbought (was < 65)
-                        macd < macd_signal,                         # FIXED: Bearish momentum
-                        current_price > sma_20,                     # FIXED: Above recent average (overextended)
-                        current_price < sma_200 * 1.10,            # FIXED: Below long-term resistance
-                        volume_ratio > 1.5,                         # Strong volume on rise
-                        bb_position > 0.7,                          # FIXED: Near upper BB (overbought)
-                    ]
-                    
-                    # SELL trend conditions (FIXED)
-                    sell_trend_conditions = [
-                        ema_12 < ema_26 * 1.02,                    # FIXED: Trend turning bearish
-                        current_price < sma_50 * 1.08,             # FIXED: Below medium-term resistance  
-                        sma_20 < sma_50 * 1.05,                    # FIXED: Medium-term trend turning
-                        current_price < bb_upper * 0.98,           # FIXED: Rejected from upper BB
-                    ]
-                    
-                    # SELL Stochastic RSI conditions (FIXED)
-                    sell_stoch_conditions = [
-                        stoch_rsi_k > 80,                           # FIXED: Truly overbought (was < 70)
-                        stoch_rsi_k < stoch_rsi_d,                  # FIXED: Bearish crossover
-                        stoch_rsi_k < 95,                           # FIXED: Not at absolute top
-                        stoch_rsi_d > 75,                           # FIXED: Signal line also overbought
-                    ]
-                    
-                    # Market structure for SELL (FIXED)
-                    sell_structure_conditions = [
-                        market_structure.get('near_resistance', False),     # Near resistance level
-                        market_structure.get('reversal_signals', False),    # Reversal signals
-                        not market_structure.get('strong_uptrend', True),   # Not in strong uptrend
-                        current_price > latest.get('vwap', current_price),  # Above VWAP (premium)
-                    ]
-                    
-                    # Count conditions
-                    sell_tech_score = sum(sell_technical_conditions)
-                    sell_trend_score = sum(sell_trend_conditions)
-                    sell_stoch_score = sum(sell_stoch_conditions)
-                    sell_structure_score = sum(sell_structure_conditions)
-                    
-                    # STRICT SELL requirements (FIXED)
-                    if (sell_tech_score >= 4 and sell_trend_score >= 2 and 
-                        sell_stoch_score >= 2 and sell_structure_score >= 1):
-                        
+                    # SAFETY CHECK: Don't sell in very strong uptrends
+                    if not self.is_very_strong_uptrend(df):
                         signal = self.create_sell_signal(
-                            symbol_data, current_price, latest, volume_entry, 
-                            confluence_zones, sell_tech_score, sell_trend_score, 
+                            symbol_data, current_price, latest, volume_entry,
+                            confluence_zones, sell_tech_score, sell_trend_score,
                             sell_stoch_score, sell_structure_score
                         )
-                
-                return signal
-                
-            except Exception as e:
-                self.logger.error(f"Signal generation error for {symbol_data.get('symbol', 'unknown')}: {e}")
-                return None
-        
-    def analyze_market_structure(self, df: pd.DataFrame, current_price: float) -> Dict:
-        """FIXED: Analyze market structure for proper signal context"""
-        try:
-            # Calculate recent price action
-            recent_high = df['high'].tail(20).max()
-            recent_low = df['low'].tail(20).min()
-            price_range = recent_high - recent_low
+                    else:
+                        self.logger.debug(f"SELL signal filtered: {symbol} in very strong uptrend")
             
-            # Check proximity to support/resistance
-            near_support = current_price < (recent_low + price_range * 0.3)
-            near_resistance = current_price > (recent_high - price_range * 0.3)
+            # Final validation layer (more lenient)
+            if signal:
+                signal = self.validate_signal_quality(signal, df, market_structure)
+            
+            return signal
+            
+        except Exception as e:
+            self.logger.error(f"Signal generation error: {e}")
+            return None
+    
+    def analyze_market_structure(self, df: pd.DataFrame, current_price: float) -> Dict:
+        """Comprehensive market structure analysis"""
+        try:
+            if len(df) < 50:
+                return self.get_default_market_structure()
+            
+            # Get recent data
+            recent_20 = df.tail(20)
+            recent_50 = df.tail(50)
+            
+            # Identify swing points
+            highs = recent_20['high'].rolling(window=5, center=True).max()
+            lows = recent_20['low'].rolling(window=5, center=True).min()
+            
+            swing_highs = recent_20[recent_20['high'] == highs]['high'].dropna()
+            swing_lows = recent_20[recent_20['low'] == lows]['low'].dropna()
+            
+            # Support and resistance levels
+            if len(swing_lows) > 0:
+                nearest_support = swing_lows[swing_lows < current_price].max() if len(swing_lows[swing_lows < current_price]) > 0 else recent_50['low'].min()
+            else:
+                nearest_support = recent_50['low'].min()
+                
+            if len(swing_highs) > 0:
+                nearest_resistance = swing_highs[swing_highs > current_price].min() if len(swing_highs[swing_highs > current_price]) > 0 else recent_50['high'].max()
+            else:
+                nearest_resistance = recent_50['high'].max()
+            
+            # Calculate distances
+            support_distance = abs(current_price - nearest_support) / current_price
+            resistance_distance = abs(nearest_resistance - current_price) / current_price
             
             # Trend analysis
-            sma_20 = df['close'].rolling(20).mean().iloc[-1]
-            sma_50 = df['close'].rolling(50).mean().iloc[-1]
+            sma_20 = df['sma_20'].iloc[-1] if 'sma_20' in df.columns else current_price
+            sma_50 = df['sma_50'].iloc[-1] if 'sma_50' in df.columns else current_price
             
-            strong_uptrend = (sma_20 > sma_50 * 1.05) and (current_price > sma_20 * 1.02)
-            strong_downtrend = (sma_20 < sma_50 * 0.95) and (current_price < sma_20 * 0.98)
+            # Recent price momentum
+            price_change_20 = (current_price - recent_20['close'].iloc[0]) / recent_20['close'].iloc[0]
             
-            # Reversal signals
-            recent_candles = df.tail(5)
-            reversal_signals = False
-            
-            # Check for doji, hammer, shooting star patterns
-            for _, candle in recent_candles.iterrows():
-                body_size = abs(candle['close'] - candle['open'])
-                candle_range = candle['high'] - candle['low']
-                
-                if body_size < candle_range * 0.3:  # Small body (doji-like)
-                    reversal_signals = True
-                    break
-            
-            # Volume analysis for distribution/accumulation
-            volume_ma = df['volume'].rolling(20).mean().iloc[-1]
-            recent_volume = df['volume'].tail(5).mean()
-            high_volume = recent_volume > volume_ma * 1.5
+            # Volume analysis
+            avg_volume = recent_20['volume'].mean() if 'volume' in recent_20.columns else 1
+            current_volume = recent_20['volume'].iloc[-1] if 'volume' in recent_20.columns else 1
+            volume_surge = current_volume > avg_volume * 1.5
             
             return {
-                'near_support': near_support,
-                'near_resistance': near_resistance,
-                'strong_uptrend': strong_uptrend,
-                'strong_downtrend': strong_downtrend,
-                'reversal_signals': reversal_signals,
-                'bounce_potential': near_support and not strong_downtrend,
-                'distribution_signs': near_resistance and high_volume,
-                'price_range_position': (current_price - recent_low) / price_range if price_range > 0 else 0.5
+                'nearest_support': nearest_support,
+                'nearest_resistance': nearest_resistance,
+                'support_distance': support_distance,
+                'resistance_distance': resistance_distance,
+                'near_support': support_distance < 0.05,  # Within 5%
+                'near_resistance': resistance_distance < 0.05,  # Within 5%
+                'strong_uptrend': sma_20 > sma_50 * 1.03 and price_change_20 > 0.05,  # Strong trend
+                'strong_downtrend': sma_20 < sma_50 * 0.97 and price_change_20 < -0.05,  # Strong trend
+                'bounce_potential': support_distance < 0.08 and price_change_20 < 0,  # Near support and declining
+                'reversal_signals': resistance_distance < 0.08 and price_change_20 > 0.03,  # Near resistance and rising
+                'distribution_signs': volume_surge and resistance_distance < 0.1,  # High volume near resistance
+                'consolidation': abs(price_change_20) < 0.03  # Sideways movement
             }
             
         except Exception as e:
             self.logger.error(f"Market structure analysis error: {e}")
-            return {
-                'near_support': False,
-                'near_resistance': False,
-                'strong_uptrend': False,
-                'strong_downtrend': False,
-                'reversal_signals': False,
-                'bounce_potential': False,
-                'distribution_signs': False,
-                'price_range_position': 0.5
-            }
-       
+            return self.get_default_market_structure()
+    
     def get_default_market_structure(self) -> Dict:
         """Default market structure when insufficient data"""
         return {
@@ -280,70 +299,73 @@ class SignalGenerator:
             return False
     
     def create_buy_signal(self, symbol_data: Dict, current_price: float, latest: pd.Series,
-                         volume_entry: Dict, confluence_zones: List[Dict],
+                         volume_entry: Dict, confluence_zones: List[Dict], 
                          tech_score: int, trend_score: int, stoch_score: int, structure_score: int) -> Dict:
-        """FIXED: Create proper BUY signal at support levels"""
+        """Create BUY signal with balanced logic"""
         try:
-            # FIXED: Entry price logic for BUY (buy near support)
+            # Entry price logic
             entry_candidates = [current_price]
             
-            # Use support levels from confluence zones  
-            support_zones = [zone for zone in confluence_zones
-                           if zone['zone_type'] == 'support' and 
-                           zone['price'] < current_price * 1.02 and  # Within 2% below current price
-                           zone['price'] > current_price * 0.95]     # Not too far below
-            
-            if support_zones:
-                entry_candidates.append(support_zones[0]['price'])
-            
-            # Use volume-based entry if it's a support level
-            if (volume_entry.get('confidence', 0) > 0.6 and 
-                volume_entry.get('entry_price', current_price) < current_price):
+            # Use volume profile entry if reasonable confidence
+            if volume_entry.get('confidence', 0) > 0.6:  # Lowered from 0.7
                 entry_candidates.append(volume_entry['entry_price'])
             
-            # Use lower Bollinger Band as support
-            bb_lower = latest.get('bb_lower', current_price * 0.98)
-            if bb_lower < current_price and bb_lower > current_price * 0.95:
-                entry_candidates.append(bb_lower)
+            # Use support levels from confluence zones
+            support_zones = [zone for zone in confluence_zones 
+                           if zone['zone_type'] == 'support' and zone['price'] < current_price * 1.02]  # More flexible
+            if support_zones:
+                # Use closest support level
+                closest_support = max(support_zones, key=lambda x: x['price'])
+                entry_candidates.append(closest_support['price'])
             
-            # FIXED: Choose optimal entry (slightly below current for better fill)
-            optimal_entry = min(entry_candidates)  # FIXED: Take the lowest (best) price for BUY
+            optimal_entry = np.mean(entry_candidates)
             distance_pct = abs(optimal_entry - current_price) / current_price
             
-            # FIXED: Order type logic for BUY
-            if distance_pct > 0.01 or latest.get('stoch_rsi_k', 50) < 25:  # Use limit if far or oversold
-                order_type = 'limit'
-            else:
-                order_type = 'market'
+            # Order type: use limit if entry is significantly different
+            # order_type = 'limit' if distance_pct > 0.005 else 'market'  # Increased from 0.003
+            # if order_type == 'market':
+            #     optimal_entry = current_price
+            
+            # Smart order type based on distance ranges
+            if distance_pct <= 0.001:  # Very close (0.1%)
+                order_type = 'market'  # Immediate execution
+            elif 0.001 < distance_pct <= 0.005:  # Close range (0.1-0.5%)
+                order_type = 'market'  # Still use market for better fills
+            else:  # Further away (>0.5%)
+                order_type = 'limit'   # Use limit for better price
+
+            if order_type == 'market':
                 optimal_entry = current_price
             
-            # FIXED: Stop loss and take profit for BUY
+            # Stop loss: use market structure (more reasonable)
             atr = latest.get('atr', current_price * 0.02)
-            stop_loss = optimal_entry - (2.0 * atr)      # FIXED: Stop below entry
-            take_profit_1 = optimal_entry + (3.0 * atr)  # FIXED: TP above entry
-            take_profit_2 = optimal_entry + (6.0 * atr)  # FIXED: TP2 higher above entry
+            structure_stop = current_price * 0.94  # 6% structural stop (was 4%)
+            atr_stop = optimal_entry - (2.5 * atr)  # 2.5 ATR stop (was 2.0)
+            stop_loss = max(structure_stop, atr_stop)  # Use wider stop
             
-            # FIXED: Risk-reward calculation for BUY
-            risk_amount = optimal_entry - stop_loss      # FIXED: Risk = entry - stop
-            reward_amount = take_profit_2 - optimal_entry # FIXED: Reward = tp - entry
-            risk_reward_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
+            # Take profits: balanced but achievable
+            tp1 = optimal_entry + (2.5 * atr)  # 2.5:1 R/R minimum (was 3)
+            tp2 = optimal_entry + (4.5 * atr)  # 4.5:1 R/R stretch target (was 5)
             
-            # FIXED: Confidence calculation for BUY
-            base_confidence = 50
+            # Calculate confidence based on condition scores (more generous)
+            base_confidence = 45  # Lowered from 50
+            base_confidence += tech_score * 6  # Up to 36 points (was 5)
+            base_confidence += trend_score * 6  # Up to 18 points (was 5)
+            base_confidence += stoch_score * 6  # Up to 18 points (was 5)
+            base_confidence += structure_score * 6  # Up to 18 points (was 5)
             
-            # Score-based confidence (FIXED)
-            base_confidence += tech_score * 4      # Up to 24 points
-            base_confidence += trend_score * 4     # Up to 16 points  
-            base_confidence += stoch_score * 4     # Up to 16 points
-            base_confidence += structure_score * 3 # Up to 12 points
-            
-            # Bonus for good support levels
-            if len(support_zones) > 0:
-                base_confidence += 8
+            # Bonus for confluence (more generous)
+            if len(support_zones) > 1:
+                base_confidence += 8  # Was 10
             if volume_entry.get('confidence', 0) > 0.7:
-                base_confidence += 6
+                base_confidence += 6  # Was 5
             
-            confidence = min(90, base_confidence)  # Cap at 90%
+            confidence = min(92, base_confidence)  # Lowered cap from 95
+            
+            # Risk-reward calculation
+            risk_amount = optimal_entry - stop_loss
+            reward_amount = tp2 - optimal_entry
+            risk_reward_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
             
             return {
                 'symbol': symbol_data['symbol'],
@@ -352,11 +374,11 @@ class SignalGenerator:
                 'entry_price': optimal_entry,
                 'current_price': current_price,
                 'stop_loss': stop_loss,
-                'take_profit_1': take_profit_1,
-                'take_profit_2': take_profit_2,
+                'take_profit_1': tp1,
+                'take_profit_2': tp2,
                 'risk_reward_ratio': risk_reward_ratio,
                 'confidence': confidence,
-                'signal_type': 'fixed_technical_buy',
+                'signal_type': 'balanced_technical',
                 'volume_24h': symbol_data['volume_24h'],
                 'price_change_24h': symbol_data['price_change_24h'],
                 'entry_methods': {
@@ -364,8 +386,8 @@ class SignalGenerator:
                     'trend_score': trend_score,
                     'stoch_score': stoch_score,
                     'structure_score': structure_score,
-                    'support_zones_count': len(support_zones),
-                    'volume_confidence': volume_entry.get('confidence', 0)
+                    'volume_profile': volume_entry,
+                    'confluence_zones': len(support_zones)
                 }
             }
             
@@ -376,68 +398,71 @@ class SignalGenerator:
     def create_sell_signal(self, symbol_data: Dict, current_price: float, latest: pd.Series,
                           volume_entry: Dict, confluence_zones: List[Dict],
                           tech_score: int, trend_score: int, stoch_score: int, structure_score: int) -> Dict:
-        """FIXED: Create proper SELL signal at resistance levels"""
+        """Create SELL signal with balanced logic"""
         try:
-            # FIXED: Entry price logic for SELL (sell near resistance)
+            # Entry price logic for shorts
             entry_candidates = [current_price]
             
             # Use resistance levels from confluence zones  
             resistance_zones = [zone for zone in confluence_zones
-                              if zone['zone_type'] == 'resistance' and 
-                              zone['price'] > current_price * 0.98 and  # Within 2% above current price
-                              zone['price'] < current_price * 1.05]     # Not too far above
-            
+                               if zone['zone_type'] == 'resistance' and zone['price'] > current_price * 0.98]  # More flexible
             if resistance_zones:
-                entry_candidates.append(resistance_zones[0]['price'])
+                closest_resistance = min(resistance_zones, key=lambda x: x['price'])
+                entry_candidates.append(closest_resistance['price'])
             
-            # Use volume-based entry if it's a resistance level
-            if (volume_entry.get('confidence', 0) > 0.6 and 
-                volume_entry.get('entry_price', current_price) > current_price):
-                entry_candidates.append(volume_entry['entry_price'])
-            
-            # Use upper Bollinger Band as resistance
+            # Use Bollinger Band upper as resistance
             bb_upper = latest.get('bb_upper', current_price * 1.02)
-            if bb_upper > current_price and bb_upper < current_price * 1.05:
+            if bb_upper > current_price:
                 entry_candidates.append(bb_upper)
             
-            # FIXED: Choose optimal entry (slightly above current for better fill)
-            optimal_entry = max(entry_candidates)  # FIXED: Take the highest (best) price for SELL
+            optimal_entry = np.mean(entry_candidates)
             distance_pct = abs(optimal_entry - current_price) / current_price
             
-            # FIXED: Order type logic for SELL
-            if distance_pct > 0.01 or latest.get('stoch_rsi_k', 50) > 80:  # Use limit if far or overbought
-                order_type = 'limit'
-            else:
-                order_type = 'market'
+            # Order type: prefer limit for shorts to get better entry
+            # order_type = 'limit' if distance_pct > 0.003 else 'market'  # Increased from 0.002
+            # if order_type == 'market':
+            #     optimal_entry = current_price
+
+            # Smart order type based on distance ranges  
+            if distance_pct <= 0.001:  # Very close (0.1%)
+                order_type = 'market'  # Immediate execution
+            elif 0.001 < distance_pct <= 0.005:  # Close range (0.1-0.5%)
+                order_type = 'market'  # Still use market for better fills
+            else:  # Further away (>0.5%)
+                order_type = 'limit'   # Use limit for better price
+
+            if order_type == 'market':
                 optimal_entry = current_price
             
-            # FIXED: Stop loss and take profit for SELL
+            # Stop loss: reasonable for shorts (not too tight)
             atr = latest.get('atr', current_price * 0.02)
-            stop_loss = optimal_entry + (2.0 * atr)      # FIXED: Stop above entry
-            take_profit_1 = optimal_entry - (3.0 * atr)  # FIXED: TP below entry
-            take_profit_2 = optimal_entry - (6.0 * atr)  # FIXED: TP2 lower below entry
+            structure_stop = current_price * 1.06  # 6% structural stop (was 4%)
+            atr_stop = optimal_entry + (2.0 * atr)  # 2.0 ATR stop (was 1.5)
+            stop_loss = min(structure_stop, atr_stop)  # Use reasonable stop
             
-            # FIXED: Risk-reward calculation for SELL
-            risk_amount = stop_loss - optimal_entry      # FIXED: Risk = stop - entry
-            reward_amount = optimal_entry - take_profit_2 # FIXED: Reward = entry - tp
+            # Take profits: reasonable profits for shorts
+            tp1 = optimal_entry - (2.5 * atr)  # 2.5:1 R/R minimum (was 3)
+            tp2 = optimal_entry - (4.5 * atr)  # 4.5:1 R/R target (was 5)
+            
+            # Calculate confidence (more generous scoring)
+            base_confidence = 40  # Lowered from 45
+            base_confidence += tech_score * 5  # Up to 30 points (was 4)
+            base_confidence += trend_score * 5  # Up to 20 points (was 4)
+            base_confidence += stoch_score * 5  # Up to 20 points (was 4)
+            base_confidence += structure_score * 5  # Up to 20 points (was 4)
+            
+            # Bonus for strong reversal signals (more generous)
+            if len(resistance_zones) > 1:
+                base_confidence += 6  # Was 8
+            if latest.get('rsi', 50) > 75:  # Extreme overbought (was 80)
+                base_confidence += 8  # Was 10
+            
+            confidence = min(88, base_confidence)  # Cap lower for shorts (was 90)
+            
+            # Risk-reward calculation
+            risk_amount = stop_loss - optimal_entry
+            reward_amount = optimal_entry - tp2
             risk_reward_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
-            
-            # FIXED: Confidence calculation for SELL
-            base_confidence = 50
-            
-            # Score-based confidence (FIXED)
-            base_confidence += tech_score * 4      # Up to 24 points
-            base_confidence += trend_score * 4     # Up to 16 points  
-            base_confidence += stoch_score * 4     # Up to 16 points
-            base_confidence += structure_score * 3 # Up to 12 points
-            
-            # Bonus for good resistance levels
-            if len(resistance_zones) > 0:
-                base_confidence += 8
-            if volume_entry.get('confidence', 0) > 0.7:
-                base_confidence += 6
-            
-            confidence = min(90, base_confidence)  # Cap at 90%
             
             return {
                 'symbol': symbol_data['symbol'],
@@ -446,11 +471,11 @@ class SignalGenerator:
                 'entry_price': optimal_entry,
                 'current_price': current_price,
                 'stop_loss': stop_loss,
-                'take_profit_1': take_profit_1,
-                'take_profit_2': take_profit_2,
+                'take_profit_1': tp1,
+                'take_profit_2': tp2,
                 'risk_reward_ratio': risk_reward_ratio,
                 'confidence': confidence,
-                'signal_type': 'fixed_technical_sell',
+                'signal_type': 'balanced_reversal',
                 'volume_24h': symbol_data['volume_24h'],
                 'price_change_24h': symbol_data['price_change_24h'],
                 'entry_methods': {
@@ -458,15 +483,15 @@ class SignalGenerator:
                     'trend_score': trend_score,
                     'stoch_score': stoch_score,
                     'structure_score': structure_score,
-                    'resistance_zones_count': len(resistance_zones),
-                    'volume_confidence': volume_entry.get('confidence', 0)
+                    'resistance_zones': len(resistance_zones),
+                    'reversal_strength': tech_score + trend_score
                 }
             }
             
         except Exception as e:
             self.logger.error(f"SELL signal creation error: {e}")
             return None
-         
+    
     def validate_signal_quality(self, signal: Dict, df: pd.DataFrame, market_structure: Dict) -> Optional[Dict]:
         """Signal quality validation with more lenient thresholds"""
         try:
@@ -1239,21 +1264,3 @@ class SignalGenerator:
                 
         except Exception:
             return "Review signals carefully before trading."
-        
-    def get_signal_explanation(self, signal: Dict) -> str:
-        """Get human-readable explanation of why signal was generated"""
-        if not signal:
-            return "No signal generated"
-        
-        side = signal['side'].upper()
-        symbol = signal['symbol']
-        confidence = signal['confidence']
-        
-        explanation = f"{side} signal for {symbol} ({confidence:.1f}% confidence)\n"
-        
-        if side == 'BUY':
-            explanation += "Reasons: Oversold conditions, price near support, bounce potential"
-        else:
-            explanation += "Reasons: Overbought conditions, price near resistance, reversal potential"
-        
-        return explanation
