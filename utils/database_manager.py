@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, and_
 
+from utils.logging import get_logger
 from database.models import (
     DatabaseManager, ScanSession, TradingSignal, TradingOpportunity,
     MarketSummary, PerformanceMetric, SystemLog, TradingPosition, AutoTradingSession
@@ -53,7 +54,7 @@ class EnhancedDatabaseManager:
     
     def __init__(self, database_manager: DatabaseManager):
         self.db_manager = database_manager
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
     
     # ===== AUTO-TRADING SESSION MANAGEMENT =====
     
@@ -624,19 +625,45 @@ class EnhancedDatabaseManager:
             primary_tf = scan_info.get('primary_timeframe', '30m')
             confirmation_tfs = ', '.join(scan_info.get('confirmation_timeframes', ['1h', '4h', '6h']))
             
-            # Save signals
-            signals = results.get('signals', [])
-            if signals and self.save_signals(signals, scan_session_id):
-                saved_data['signals'] = len(signals)
-            
-            # Save opportunities
-            opportunities = results.get('top_opportunities', [])
-            if opportunities and self.save_opportunities(opportunities, scan_session_id):
-                saved_data['opportunities'] = len(opportunities)
+            # FIXED: Only save TOP OPPORTUNITIES (not all signals)
+            # Get the top opportunities that are actually displayed on console
+            top_opportunities = results.get('top_opportunities', [])
+        
+            if top_opportunities:
+                # Save top opportunities as signals (these are the ones displayed)
+                if self.save_signals(top_opportunities, scan_session_id):
+                    saved_data['signals'] = len(top_opportunities)
+                
+                # Save the same top opportunities in opportunities table
+                if self.save_opportunities(top_opportunities, scan_session_id):
+                    saved_data['opportunities'] = len(top_opportunities)
+                
+                self.logger.info(f"✅ DATABASE STORAGE: Only TOP {len(top_opportunities)} opportunities saved")
+                self.logger.info(f"   (These match exactly what's displayed in console)")
+            else:
+                self.logger.info("ℹ️  No top opportunities to save to database")
+                saved_data['signals'] = 0
+                saved_data['opportunities'] = 0
             
             # Save market summary
             if self.save_market_summary(results, scan_session_id):
                 saved_data['market_summary'] = True
+            
+            # Save performance metrics if available
+            performance_metrics = results.get('performance_metrics', [])
+            if performance_metrics and self.save_performance_metrics(performance_metrics, scan_session_id):
+                saved_data['performance_metrics'] = len(performance_metrics)
+            
+            self.logger.debug(f"📄 MySQL Database Save Complete (Scan ID: {scan_id}):")
+            self.logger.debug(f"   Primary Timeframe: {primary_tf}")
+            self.logger.debug(f"   Confirmation Timeframes: {confirmation_tfs}")
+            self.logger.debug(f"   TOP Opportunities Saved: {saved_data.get('signals', 0)}")
+            self.logger.debug(f"   Market Summary: {'✅' if saved_data.get('market_summary') else '❌'}")
+            self.logger.debug(f"   Performance Metrics: {saved_data.get('performance_metrics', 0)}")
+            if auto_trading_session_id:
+                self.logger.debug(f"   Auto-Trading Session: {auto_trading_session_id}")
+            
+            return saved_data
             
             # Save performance metrics if available
             performance_metrics = results.get('performance_metrics', [])

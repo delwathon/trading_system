@@ -820,17 +820,21 @@ class AutoTrader:
                 self.logger.warning("No signals generated in this scan")
                 return 0, 0
             
-            signals_count = len(results['signals'])
-            self.logger.info(f"📈 Generated {signals_count} signals")
+            total_signals = len(results.get('signals', []))
+            top_opportunities_count = len(results['top_opportunities'])
             
-            # Save results to database
-            self.logger.info("💾 Saving results to MySQL database...")
+            self.logger.info(f"📈 Generated {total_signals} total signals")
+            self.logger.info(f"🏆 Selected {top_opportunities_count} top opportunities for database storage")
+
+            # Save results to database (only top opportunities will be saved)
+            self.logger.info("💾 Saving TOP opportunities to MySQL database...")
             save_result = self.enhanced_db_manager.save_all_results(results)
             if save_result.get('error'):
                 self.logger.error(f"Failed to save results: {save_result['error']}")
             else:
-                self.logger.debug(f"✅ Results saved - Scan ID: {save_result.get('scan_id', 'Unknown')}")
-            
+                saved_count = save_result.get('signals', 0)
+                self.logger.info(f"✅ Saved {saved_count} top opportunities to database (Scan ID: {save_result.get('scan_id', 'Unknown')})")
+                        
             # Display the comprehensive results table
             print("\n" + "=" * 100)
             print("📊 SCAN RESULTS - TOP TRADING OPPORTUNITIES")
@@ -849,7 +853,7 @@ class AutoTrader:
                 print("⚠️  ALL SIGNALS FILTERED OUT:")
                 print("   Either symbols already have positions/orders")
                 print("   or no valid signals generated")
-                return signals_count, 0
+                return total_signals, 0
             
             # Check position availability
             can_trade, available_slots = self.position_manager.can_open_new_positions(
@@ -863,14 +867,14 @@ class AutoTrader:
                 )
                 print(f"⚠️  POSITION LIMIT REACHED: {self.config.max_concurrent_positions} concurrent positions")
                 print(f"   No new trades will be executed until positions are closed")
-                return signals_count, 0
+                return total_signals, 0
             
             # Select opportunities for execution
             execution_count = min(available_slots, self.config.max_execution_per_trade, len(filtered_opportunities))
             selected_opportunities = filtered_opportunities[:execution_count]
             
             print(f"🎯 EXECUTING {execution_count} TRADES:")
-            print(f"   Original Signals: {signals_count}")
+            print(f"   Original Signals: {total_signals}")
             print(f"   After Symbol Filter: {len(filtered_opportunities)}")
             print(f"   Available Position Slots: {available_slots}")
             print(f"   Selected for Execution: {execution_count}")
@@ -928,13 +932,13 @@ class AutoTrader:
             
             # Final execution summary
             print(f"\n🏁 EXECUTION SUMMARY:")
-            print(f"   Signals Generated: {signals_count}")
+            print(f"   Signals Generated: {total_signals}")
             print(f"   Signals After Filtering: {len(filtered_opportunities)}")
             print(f"   Trades Attempted: {execution_count}")
             print(f"   Trades Executed: {executed_count}")
             print(f"   Success Rate: {(executed_count/execution_count*100) if execution_count > 0 else 0:.1f}%")
             
-            return signals_count, executed_count
+            return total_signals, executed_count
             
         except Exception as e:
             self.logger.error(f"Error in scan and execute: {e}")
@@ -966,19 +970,19 @@ class AutoTrader:
                     asyncio.set_event_loop(loop)
                     
                     try:
-                        signals_count, executed_count = loop.run_until_complete(
+                        total_signals, executed_count = loop.run_until_complete(
                             self.run_scan_and_execute()
                         )
                     finally:
                         loop.close()
                     
                     self.logger.info(
-                        f"📊 Scan complete - Signals: {signals_count}, "
+                        f"📊 Scan complete - Signals: {total_signals}, "
                         f"Executed: {executed_count}"
                     )
                     
                     # Update session statistics
-                    self.update_session_stats(signals_count, executed_count)
+                    self.update_session_stats(total_signals, executed_count)
                     
                 except KeyboardInterrupt:
                     self.logger.info("🛑 Received interrupt signal")
@@ -1066,15 +1070,15 @@ class AutoTrader:
         except Exception as e:
             self.logger.error(f"Failed to send trade notification: {e}")
     
-    async def send_scan_notification(self, signals_count: int, executed_count: int):
+    async def send_scan_notification(self, total_signals: int, executed_count: int):
         """Send scan completion notification"""
         try:
             next_scan = self.schedule_manager.calculate_next_scan_time()
             
             message = f"📊 **SCAN COMPLETE**\n\n"
-            message += f"🔍 Signals Found: {signals_count}\n"
+            message += f"🔍 Signals Found: {total_signals}\n"
             message += f"⚡ Trades Executed: {executed_count}\n"
-            message += f"📈 Success Rate: {(executed_count/signals_count*100) if signals_count > 0 else 0:.1f}%\n\n"
+            message += f"📈 Success Rate: {(executed_count/total_signals*100) if total_signals > 0 else 0:.1f}%\n\n"
             message += f"⏰ Next Scan: {next_scan.strftime('%H:%M')}\n"
             message += f"🕒 {datetime.now().strftime('%H:%M:%S')}"
             
@@ -1083,7 +1087,7 @@ class AutoTrader:
         except Exception as e:
             self.logger.error(f"Failed to send scan notification: {e}")
     
-    def update_session_stats(self, signals_count: int, executed_count: int):
+    def update_session_stats(self, total_signals: int, executed_count: int):
         """Update session statistics in database"""
         try:
             if not self.trading_session_id:
@@ -1108,7 +1112,7 @@ class AutoTrader:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
-                loop.run_until_complete(self.send_scan_notification(signals_count, executed_count))
+                loop.run_until_complete(self.send_scan_notification(total_signals, executed_count))
             finally:
                 loop.close()
             

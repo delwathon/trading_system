@@ -10,10 +10,18 @@ import sys
 import os
 import asyncio
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Add the project root to Python path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
+
+# Load environment variables FIRST
+load_dotenv()
+
+# Initialize logging ONCE at the very beginning
+from utils.logging import setup_logging, get_logger
+logger = setup_logging()  # This will be the ONLY log file created
 
 from config.config import EnhancedSystemConfig, DatabaseConfig
 from bybit.autotrader import AutoTrader, LeverageManager
@@ -24,7 +32,7 @@ from notifier.telegram import TelegramBootstrapManager, run_bootstrap_mode, chec
 
 def validate_auto_trading_config(config: EnhancedSystemConfig, skip_api_check: bool = False) -> bool:
     """Validate auto-trading configuration"""
-    logger = setup_logging()
+    logger = get_logger()
     
     # Validate leverage
     if not config.leverage or config.leverage not in LeverageManager.ACCEPTABLE_LEVERAGE:
@@ -80,7 +88,7 @@ def validate_auto_trading_config(config: EnhancedSystemConfig, skip_api_check: b
 
 def display_auto_trading_config(config: EnhancedSystemConfig):
     """Display auto-trading configuration"""
-    logger = setup_logging()
+    logger = get_logger()
     
     logger.info("🤖 AUTO-TRADING CONFIGURATION:")
     logger.info("=" * 50)

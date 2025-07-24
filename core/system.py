@@ -7,7 +7,6 @@ Primary timeframe: 30m, Confirmation timeframes: 1h, 4h, 6h
 import pandas as pd
 import numpy as np
 import time
-import logging
 import threading
 from datetime import datetime
 from typing import Dict, List, Optional, Any
@@ -23,7 +22,7 @@ from analysis.multi_timeframe import MultiTimeframeAnalyzer
 from signals.generator import SignalGenerator
 from visualization.charts import InteractiveChartGenerator
 from utils.database_manager import EnhancedDatabaseManager
-from utils.logging import setup_logging
+from utils.logging import get_logger 
 from database.models import DatabaseManager
 
 
@@ -32,7 +31,7 @@ class CompleteEnhancedBybitSystem:
     
     def __init__(self, config: EnhancedSystemConfig):
         self.config = config
-        self.logger = setup_logging()
+        self.logger = get_logger(__name__)
         
         # Initialize database manager
         self.db_manager = DatabaseManager(config.db_config.get_database_url())
@@ -357,33 +356,44 @@ class CompleteEnhancedBybitSystem:
         analysis_time = time.time() - start_time
         self.logger.info(f"📊 PHASE 2: Signal Ranking ({len(all_signals)} signals in {analysis_time:.1f}s)")
         
-        # Sort signals by MTF priority first, then confidence
-        def get_sort_key(signal):
-            mtf_status = signal.get('mtf_status', 'NONE')
-            confidence = signal.get('confidence', 0)
-            priority_boost = signal.get('priority_boost', 0)
-            
-            # MTF status priority: STRONG=3, PARTIAL=2, NONE=1, DISABLED=0
-            mtf_priority = {
-                'STRONG': 3,
-                'PARTIAL': 2, 
-                'NONE': 1,
-                'DISABLED': 0
-            }.get(mtf_status, 0)
-            
-            return (mtf_priority, confidence, priority_boost)
+        # Get top opportunities (this determines what gets displayed AND saved)
+        top_opportunities = self.signal_generator.rank_opportunities_with_mtf(all_signals)
         
-        # Sort in descending order (highest priority first)
-        all_signals.sort(key=get_sort_key, reverse=True)
-        
-        # Log top signals after ranking
-        self.logger.info("🏆 Top 5 Signals After Ranking:")
-        for i, signal in enumerate(all_signals[:5]):
+        # Log the results
+        for i, signal in enumerate(top_opportunities[:5]):  # Log top 5
+            symbol = signal['symbol']
+            side = signal['side']
+            confidence = signal['confidence']
             mtf_status = signal.get('mtf_status', 'UNKNOWN')
-            confidence = signal.get('confidence', 0)
-            symbol = signal.get('symbol', 'UNKNOWN')
-            side = signal.get('side', 'UNKNOWN')
-            self.logger.info(f"   {i+1}. {symbol} {side.upper()} - {confidence}% conf - MTF: {mtf_status}")
+            self.logger.debug(f"   #{i+1}: {symbol} {side.upper()} - {confidence}% conf - MTF: {mtf_status}")
+        
+        # # Sort signals by MTF priority first, then confidence
+        # def get_sort_key(signal):
+        #     mtf_status = signal.get('mtf_status', 'NONE')
+        #     confidence = signal.get('confidence', 0)
+        #     priority_boost = signal.get('priority_boost', 0)
+            
+        #     # MTF status priority: STRONG=3, PARTIAL=2, NONE=1, DISABLED=0
+        #     mtf_priority = {
+        #         'STRONG': 3,
+        #         'PARTIAL': 2, 
+        #         'NONE': 1,
+        #         'DISABLED': 0
+        #     }.get(mtf_status, 0)
+            
+        #     return (mtf_priority, confidence, priority_boost)
+        
+        # # Sort in descending order (highest priority first)
+        # all_signals.sort(key=get_sort_key, reverse=True)
+        
+        # # Log top signals after ranking
+        # self.logger.info("🏆 Top 5 Signals After Ranking:")
+        # for i, signal in enumerate(all_signals[:5]):
+        #     mtf_status = signal.get('mtf_status', 'UNKNOWN')
+        #     confidence = signal.get('confidence', 0)
+        #     symbol = signal.get('symbol', 'UNKNOWN')
+        #     side = signal.get('side', 'UNKNOWN')
+        #     self.logger.info(f"   {i+1}. {symbol} {side.upper()} - {confidence}% conf - MTF: {mtf_status}")
         
         # ===== PHASE 3: OPTIMIZED CHART GENERATION =====
         # Generate charts ONLY for top N signals
@@ -403,7 +413,8 @@ class CompleteEnhancedBybitSystem:
             'timestamp': datetime.now(),
             'execution_time_seconds': execution_time,
             'symbols_analyzed': len(symbols),
-            'signals_generated': len(all_signals),
+            'signals_generated': len(all_signals),  # Total signals generated
+            'top_opportunities_count': len(top_opportunities),  # What gets saved/displayed
             'success_rate': len(all_signals) / len(symbols) * 100 if symbols else 0,
             'charts_generated': charts_generated,
             'parallel_processing': True,
@@ -419,7 +430,7 @@ class CompleteEnhancedBybitSystem:
             'scan_info': scan_info,
             'signals': all_signals,  # Now properly sorted
             'analysis_results': analysis_results,
-            'top_opportunities': self.signal_generator.rank_opportunities_with_mtf(all_signals),
+            'top_opportunities': top_opportunities,  # ONLY these get saved to database
             'market_summary': self.create_market_summary_with_mtf(symbols, all_signals),
             'system_performance': {
                 'signals_per_minute': len(all_signals) / (execution_time / 60) if execution_time > 0 else 0,
@@ -429,17 +440,13 @@ class CompleteEnhancedBybitSystem:
                 'order_type_distribution': self.get_order_type_distribution(all_signals),
                 'mtf_distribution': self.get_mtf_status_distribution(all_signals),
                 'speedup_factor': self.calculate_speedup_factor(execution_time, len(symbols)),
-                'chart_efficiency': f"{charts_generated}/{len(all_signals)} signals charted"
+                'chart_efficiency': f"{charts_generated}/{len(top_opportunities)} signals charted"
             }
         }
         
         self.logger.info(f"⚡ {timeframe_display} OPTIMIZED MTF ANALYSIS COMPLETED!")
-        self.logger.info(f"   Total Execution Time: {execution_time:.1f}s")
-        self.logger.info(f"   Signal Generation: {analysis_time:.1f}s ({len(all_signals)} signals)")
-        self.logger.info(f"   Chart Generation: {execution_time - analysis_time:.1f}s ({charts_generated} charts)")
-        self.logger.info(f"   Chart Efficiency: {charts_generated}/{len(all_signals)} = {charts_generated/max(1,len(all_signals))*100:.1f}% charted")
-        self.logger.info(f"   MTF Confirmations: {self.count_mtf_confirmations(all_signals)}")
-
+        self.logger.info(f"📊 TOTAL: {len(all_signals)} signals → TOP: {len(top_opportunities)} saved to database")
+        
         return results
 
     def create_market_summary_with_mtf(self, symbols: List[Dict], signals: List[Dict]) -> Dict:

@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from sqlalchemy.orm import Session
 from datetime import datetime
+from utils.logging import get_logger 
 
 
 @dataclass
@@ -83,7 +84,7 @@ class EnhancedSystemConfig:
     def __init__(self, db_config: DatabaseConfig, config_name: str = 'default'):
         self.db_config = db_config
         self.config_name = config_name
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
         
         # Initialize database manager
         from database.models import DatabaseManager
