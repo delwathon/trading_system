@@ -1,6 +1,6 @@
 """
 Complete Enhanced Bybit System Integration with Multi-Timeframe Analysis and MySQL Database.
-Updated to use database storage and process ONLY TOP OPPORTUNITIES from generator.py
+Updated to use database storage instead of CSV export.
 Primary timeframe: 30m, Confirmation timeframes: 1h, 4h, 6h
 """
 
@@ -27,7 +27,7 @@ from database.models import DatabaseManager
 
 
 class CompleteEnhancedBybitSystem:
-    """Complete enhanced Bybit system with multi-timeframe confirmation and TOP OPPORTUNITIES focus"""
+    """Complete enhanced Bybit system with multi-timeframe confirmation and MySQL database storage"""
     
     def __init__(self, config: EnhancedSystemConfig):
         self.config = config
@@ -66,19 +66,18 @@ class CompleteEnhancedBybitSystem:
         self.results_queue = Queue()
         self.processed_count = 0
         
-        self.logger.info("🚀 TOP OPPORTUNITIES SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!")
+        self.logger.info("🚀 COMPLETE ENHANCED SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!")
         self.logger.debug("✅ Enhanced Technical Analysis (FIXED Ichimoku & Stochastic RSI)")
         self.logger.debug("✅ Volume Profile Analysis") 
         self.logger.debug("✅ Fibonacci & Confluence Analysis")
         self.logger.debug("✅ Interactive Chart Generation")
-        self.logger.debug("✅ MySQL Database Storage")
-        self.logger.debug("🎯 TOP OPPORTUNITIES FOCUS: Quality over Quantity")
+        self.logger.debug("✅ MySQL Database Storage (Replaces CSV)")
         if self.config.mtf_confirmation_required:
             self.logger.debug(f"✅ Multi-Timeframe Confirmation: Primary 30m, Confirmation 1h/4h/6h")
         self.logger.debug(f"✅ Database: {self.config.db_config.database} @ {self.config.db_config.host}")
     
     def analyze_symbol_complete_with_mtf(self, symbol_data: Dict) -> Optional[Dict]:
-        """Complete analysis with multi-timeframe confirmation - Generate comprehensive signal"""
+        """Complete analysis with multi-timeframe confirmation - NO CHART GENERATION"""
         try:
             symbol = symbol_data['symbol']
             self.logger.debug(f"📊 Analyzing {symbol} (30m → 1h/4h/6h MTF)...")
@@ -86,7 +85,7 @@ class CompleteEnhancedBybitSystem:
             # Fetch primary timeframe data (configurable)
             df = self.exchange_manager.fetch_ohlcv_data(symbol, self.config.timeframe)
             if df.empty or len(df) < 50:
-                self.logger.warning(f"Insufficient {self.config.timeframe} data for {symbol}")
+                self.logger.debug(f"Insufficient {self.config.timeframe} data for {symbol}")
                 return None
             
             # APPROACH 1: Enhanced Technical Analysis
@@ -156,6 +155,7 @@ class CompleteEnhancedBybitSystem:
                     primary_signal['mtf_status'] = 'DISABLED'
                     primary_signal['priority_boost'] = 0
                 
+                # ===== REMOVED: Chart generation moved to post-ranking phase =====
                 # Chart will be generated later only for top signals
                 primary_signal['chart_file'] = None  # Will be populated later for top signals
                 
@@ -272,12 +272,12 @@ class CompleteEnhancedBybitSystem:
             return None
     
     def run_complete_analysis_parallel_mtf(self) -> Dict:
-        """Parallel analysis with multi-timeframe confirmation and TOP OPPORTUNITIES focus"""
+        """Parallel analysis with multi-timeframe confirmation and optimized chart generation"""
         start_time = time.time()
         
         timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"
-        self.logger.info(f"🚀 STARTING TOP OPPORTUNITIES ANALYSIS WITH {timeframe_display} MTF CONFIRMATION")
-        self.logger.info("   🎯 Focus: Quality signals only, charts for top opportunities")
+        self.logger.info(f"🚀 STARTING OPTIMIZED ANALYSIS WITH {timeframe_display} MTF CONFIRMATION")
+        self.logger.info("   📊 Charts generated ONLY for top-ranked signals (after analysis complete)")
         self.logger.info("=" * 90)
         
         # Get top symbols
@@ -291,7 +291,7 @@ class CompleteEnhancedBybitSystem:
         self.logger.info(f"   Confirmation Timeframes: {', '.join(self.config.confirmation_timeframes)}")
         self.logger.info(f"   MTF Weight Multiplier: {self.config.mtf_weight_multiplier}x")
         self.logger.info(f"   Database: MySQL @ {self.config.db_config.host}")
-        self.logger.info(f"   Chart Strategy: Top opportunities only")
+        self.logger.info(f"   Chart Strategy: Top {self.config.charts_per_batch} signals only")
         
         # Initialize counters
         self.processed_count = 0
@@ -352,114 +352,59 @@ class CompleteEnhancedBybitSystem:
                         'error': str(e)
                     })
 
-        # ===== PHASE 2: TOP OPPORTUNITIES SELECTION =====
+        # ===== PHASE 2: SIGNAL RANKING =====
         analysis_time = time.time() - start_time
-        self.logger.info(f"🎯 PHASE 2: TOP OPPORTUNITIES SELECTION ({len(all_signals)} signals in {analysis_time:.1f}s)")
+        self.logger.info(f"📊 PHASE 2: Signal Ranking ({len(all_signals)} signals in {analysis_time:.1f}s)")
         
-        # FIXED: Call the methods directly since get_top_opportunities might not exist in generator.py
-        # Step 1: Filter by quality to get top opportunities
-        filtered_opportunities = self.filter_signals_for_top_opportunities(all_signals, max_opportunities=8)
+        # Get top opportunities (this determines what gets displayed AND saved)
+        top_opportunities = self.signal_generator.rank_opportunities_with_mtf(all_signals)
         
-        # Step 2: Apply ranking
-        top_opportunities = self.signal_generator.rank_opportunities_with_mtf(filtered_opportunities)
-        
-        # Log the top opportunities
-        self.logger.info(f"🏆 SELECTED {len(top_opportunities)} TOP OPPORTUNITIES:")
-        for i, signal in enumerate(top_opportunities):
+        # Log the results
+        for i, signal in enumerate(top_opportunities[:5]):  # Log top 5
             symbol = signal['symbol']
             side = signal['side']
             confidence = signal['confidence']
-            rr_ratio = signal.get('risk_reward_ratio', 0)
             mtf_status = signal.get('mtf_status', 'UNKNOWN')
-            self.logger.info(f"   #{i+1}: {symbol} {side.upper()} - {confidence:.1f}% conf, {rr_ratio:.1f}:1 R/R - MTF: {mtf_status}")
-    
-    def filter_signals_for_top_opportunities(self, signals: List[Dict], max_opportunities: int = 8) -> List[Dict]:
-        """Filter signals to return only TOP OPPORTUNITIES - IMPLEMENTED IN SYSTEM.PY"""
-        try:
-            if not signals:
-                return []
+            self.logger.debug(f"   #{i+1}: {symbol} {side.upper()} - {confidence}% conf - MTF: {mtf_status}")
+        
+        # # Sort signals by MTF priority first, then confidence
+        # def get_sort_key(signal):
+        #     mtf_status = signal.get('mtf_status', 'NONE')
+        #     confidence = signal.get('confidence', 0)
+        #     priority_boost = signal.get('priority_boost', 0)
             
-            # TIER 1: Premium opportunities (highest priority)
-            tier1_opportunities = []
-            # TIER 2: Quality opportunities  
-            tier2_opportunities = []
-            # TIER 3: Decent opportunities
-            tier3_opportunities = []
+        #     # MTF status priority: STRONG=3, PARTIAL=2, NONE=1, DISABLED=0
+        #     mtf_priority = {
+        #         'STRONG': 3,
+        #         'PARTIAL': 2, 
+        #         'NONE': 1,
+        #         'DISABLED': 0
+        #     }.get(mtf_status, 0)
             
-            for signal in signals:
-                confidence = signal.get('confidence', 0)
-                rr_ratio = signal.get('risk_reward_ratio', 0)
-                volume_24h = signal.get('volume_24h', 0)
-                mtf_status = signal.get('mtf_status', 'NONE')
-                
-                # Calculate quality score
-                quality_score = (
-                    confidence * 0.4 +  # 40% weight on confidence
-                    min(100, rr_ratio * 18) * 0.3 +  # 30% weight on R/R
-                    min(100, volume_24h / 800_000) * 0.2 +  # 20% weight on volume
-                    (100 if signal.get('order_type') == 'market' else 92) * 0.1  # 10% weight on execution
-                )
-                
-                signal['quality_score'] = quality_score
-                
-                # TIER 1: PREMIUM OPPORTUNITIES (Top 10%)
-                if (confidence >= 65 and rr_ratio >= 2.5 and volume_24h >= 2_000_000 and 
-                    mtf_status in ['STRONG', 'PARTIAL']):
-                    tier1_opportunities.append(signal)
-                
-                # TIER 2: QUALITY OPPORTUNITIES (Next 20%)
-                elif (confidence >= 55 and rr_ratio >= 2.0 and volume_24h >= 1_000_000):
-                    tier2_opportunities.append(signal)
-                
-                # TIER 3: DECENT OPPORTUNITIES (Backup options)
-                elif (confidence >= 45 and rr_ratio >= 1.8 and volume_24h >= 500_000):
-                    tier3_opportunities.append(signal)
-            
-            # Sort each tier by quality score
-            tier1_opportunities.sort(key=lambda x: x['quality_score'], reverse=True)
-            tier2_opportunities.sort(key=lambda x: x['quality_score'], reverse=True)
-            tier3_opportunities.sort(key=lambda x: x['quality_score'], reverse=True)
-            
-            # Build final list prioritizing higher tiers
-            top_opportunities = []
-            
-            # Take best from Tier 1 (max 5)
-            top_opportunities.extend(tier1_opportunities[:5])
-            remaining_slots = max_opportunities - len(top_opportunities)
-            
-            # Fill remaining with Tier 2 (max 3 more)
-            if remaining_slots > 0:
-                top_opportunities.extend(tier2_opportunities[:min(3, remaining_slots)])
-                remaining_slots = max_opportunities - len(top_opportunities)
-            
-            # Fill any remaining with Tier 3 (max 2 more)
-            if remaining_slots > 0:
-                top_opportunities.extend(tier3_opportunities[:min(2, remaining_slots)])
-            
-            # Log the filtering results
-            self.logger.info(f"🎯 TOP OPPORTUNITIES FILTER:")
-            self.logger.info(f"   Tier 1 (Premium): {len(tier1_opportunities)} → Taking {len([s for s in top_opportunities if s in tier1_opportunities])}")
-            self.logger.info(f"   Tier 2 (Quality): {len(tier2_opportunities)} → Taking {len([s for s in top_opportunities if s in tier2_opportunities])}")
-            self.logger.info(f"   Tier 3 (Decent): {len(tier3_opportunities)} → Taking {len([s for s in top_opportunities if s in tier3_opportunities])}")
-            self.logger.info(f"   📊 FINAL: {len(top_opportunities)} TOP OPPORTUNITIES selected from {len(signals)} total signals")
-            
-            return top_opportunities
-            
-        except Exception as e:
-            self.logger.error(f"Top opportunities filtering error: {e}")
-            # Fallback: return top signals by confidence
-            signals_sorted = sorted(signals, key=lambda x: x.get('confidence', 0), reverse=True)
-            return signals_sorted[:max_opportunities]
+        #     return (mtf_priority, confidence, priority_boost)
+        
+        # # Sort in descending order (highest priority first)
+        # all_signals.sort(key=get_sort_key, reverse=True)
+        
+        # # Log top signals after ranking
+        # self.logger.info("🏆 Top 5 Signals After Ranking:")
+        # for i, signal in enumerate(all_signals[:5]):
+        #     mtf_status = signal.get('mtf_status', 'UNKNOWN')
+        #     confidence = signal.get('confidence', 0)
+        #     symbol = signal.get('symbol', 'UNKNOWN')
+        #     side = signal.get('side', 'UNKNOWN')
+        #     self.logger.info(f"   {i+1}. {symbol} {side.upper()} - {confidence}% conf - MTF: {mtf_status}")
         
         # ===== PHASE 3: OPTIMIZED CHART GENERATION =====
-        # Generate charts ONLY for top opportunities
+        # Generate charts ONLY for top N signals
         charts_generated = 0
+        top_signals_for_charts = all_signals[:self.config.charts_per_batch]
         
-        if top_opportunities:
-            self.logger.info(f"📊 PHASE 3: Chart Generation (Top {len(top_opportunities)} opportunities only)")
-            charts_generated = self.generate_charts_for_top_signals(top_opportunities)
+        if top_signals_for_charts:
+            self.logger.info(f"📊 PHASE 3: Chart Generation (Top {len(top_signals_for_charts)} signals only)")
+            charts_generated = self.generate_charts_for_top_signals(top_signals_for_charts)
         else:
-            self.logger.info("📊 PHASE 3: No top opportunities found for chart generation")
+            self.logger.info("📊 PHASE 3: No signals found for chart generation")
         
         execution_time = time.time() - start_time
         
@@ -477,15 +422,15 @@ class CompleteEnhancedBybitSystem:
             'mtf_enabled': self.config.mtf_confirmation_required,
             'confirmation_timeframes': self.config.confirmation_timeframes,
             'primary_timeframe': self.config.timeframe,
-            'optimization': 'top_opportunities_focus'
+            'optimization': 'charts_for_top_signals_only'
         }
 
-        # Create comprehensive results - ONLY TOP OPPORTUNITIES are returned as main signals
+        # Create comprehensive results with properly sorted signals
         results = {
             'scan_info': scan_info,
-            'signals': all_signals,  # All signals for reference (not saved to DB)
+            'signals': all_signals,  # Now properly sorted
             'analysis_results': analysis_results,
-            'top_opportunities': top_opportunities,  # FIXED: This should contain the 8 selected opportunities
+            'top_opportunities': top_opportunities,  # ONLY these get saved to database
             'market_summary': self.create_market_summary_with_mtf(symbols, all_signals),
             'system_performance': {
                 'signals_per_minute': len(all_signals) / (execution_time / 60) if execution_time > 0 else 0,
@@ -495,96 +440,14 @@ class CompleteEnhancedBybitSystem:
                 'order_type_distribution': self.get_order_type_distribution(all_signals),
                 'mtf_distribution': self.get_mtf_status_distribution(all_signals),
                 'speedup_factor': self.calculate_speedup_factor(execution_time, len(symbols)),
-                'chart_efficiency': f"{charts_generated}/{len(top_opportunities)} opportunities charted",
-                'top_opportunities_summary': self.generate_top_opportunities_summary(top_opportunities)
+                'chart_efficiency': f"{charts_generated}/{len(top_opportunities)} signals charted"
             }
         }
         
-        # FIXED: Add debug logging to verify top_opportunities is set correctly
-        self.logger.debug(f"🔍 DEBUG: Results structure check:")
-        self.logger.debug(f"   results['top_opportunities'] length: {len(results.get('top_opportunities', []))}")
-        self.logger.debug(f"   results['signals'] length: {len(results.get('signals', []))}")
-        
-        self.logger.info(f"⚡ {timeframe_display} TOP OPPORTUNITIES ANALYSIS COMPLETED!")
-        self.logger.info(f"📊 TOTAL: {len(all_signals)} signals → TOP: {len(top_opportunities)} opportunities")
+        self.logger.info(f"⚡ {timeframe_display} OPTIMIZED MTF ANALYSIS COMPLETED!")
+        self.logger.info(f"📊 TOTAL: {len(all_signals)} signals → TOP: {len(top_opportunities)} saved to database")
         
         return results
-    
-    def generate_top_opportunities_summary(self, opportunities: List[Dict]) -> Dict:
-        """Generate summary specifically for TOP OPPORTUNITIES"""
-        try:
-            if not opportunities:
-                return {
-                    'status': 'no_opportunities',
-                    'message': '📭 No top opportunities found in current market conditions',
-                    'recommendation': 'Wait for better setups or lower position sizes'
-                }
-            
-            total_ops = len(opportunities)
-            
-            # Categorize by confidence levels
-            premium_ops = len([op for op in opportunities if op['confidence'] >= 65])
-            quality_ops = len([op for op in opportunities if 55 <= op['confidence'] < 65])
-            decent_ops = len([op for op in opportunities if 45 <= op['confidence'] < 55])
-            
-            # Categorize by R/R
-            excellent_rr = len([op for op in opportunities if op.get('risk_reward_ratio', 0) >= 2.5])
-            good_rr = len([op for op in opportunities if 2.0 <= op.get('risk_reward_ratio', 0) < 2.5])
-            
-            # Side distribution
-            buy_signals = len([op for op in opportunities if op['side'] == 'buy'])
-            sell_signals = len([op for op in opportunities if op['side'] == 'sell'])
-            
-            # MTF confirmation
-            mtf_confirmed = len([op for op in opportunities if op.get('mtf_status') in ['STRONG', 'PARTIAL']])
-            
-            # Calculate averages
-            avg_confidence = sum(op['confidence'] for op in opportunities) / total_ops
-            avg_rr = sum(op.get('risk_reward_ratio', 0) for op in opportunities) / total_ops
-            
-            # Market recommendation
-            if premium_ops >= 2:
-                market_status = 'excellent'
-                recommendation = f"🚀 EXCELLENT: {premium_ops} premium opportunities available - consider larger position sizes"
-            elif quality_ops >= 2:
-                market_status = 'good'
-                recommendation = f"✅ GOOD: {quality_ops} quality opportunities - standard position sizing recommended"
-            elif total_ops >= 3:
-                market_status = 'fair'
-                recommendation = f"⚠️ FAIR: {total_ops} opportunities available - use smaller position sizes"
-            else:
-                market_status = 'limited'
-                recommendation = f"📉 LIMITED: Only {total_ops} opportunity(ies) - wait for better setups"
-            
-            return {
-                'status': market_status,
-                'total_opportunities': total_ops,
-                'distribution': {
-                    'premium': premium_ops,
-                    'quality': quality_ops, 
-                    'decent': decent_ops,
-                    'buy_signals': buy_signals,
-                    'sell_signals': sell_signals
-                },
-                'quality_metrics': {
-                    'avg_confidence': round(avg_confidence, 1),
-                    'avg_risk_reward': round(avg_rr, 2),
-                    'excellent_rr_count': excellent_rr,
-                    'good_rr_count': good_rr,
-                    'mtf_confirmed': mtf_confirmed,
-                    'mtf_confirmation_rate': round((mtf_confirmed / total_ops) * 100, 1) if total_ops > 0 else 0
-                },
-                'recommendation': recommendation,
-                'message': f'🎯 {total_ops} TOP OPPORTUNITIES selected from market scan'
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Top opportunities summary error: {e}")
-            return {
-                'status': 'error',
-                'message': f'Error generating summary: {str(e)}',
-                'total_opportunities': len(opportunities)
-            }
 
     def create_market_summary_with_mtf(self, symbols: List[Dict], signals: List[Dict]) -> Dict:
         """Create market summary with MTF statistics"""
@@ -723,32 +586,31 @@ class CompleteEnhancedBybitSystem:
             return 1.0
     
     def print_comprehensive_results_with_mtf(self, results: Dict):
-        """Print comprehensive analysis results with MTF information and chart status - TOP OPPORTUNITIES FOCUS"""
+        """Print comprehensive analysis results with MTF information and chart status"""
         if not results:
             print("❌ No results to display")
             return
         
         scan_info = results['scan_info']
         market_summary = results['market_summary']
-        top_opportunities = results['top_opportunities']  # Focus on top opportunities only
+        opportunities = results['top_opportunities']
         
-        # Enhanced Top Opportunities Table
+        # Enhanced Top Opportunities Table with Chart Status
         timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"
         print(f"\n🏆 TOP TRADING OPPORTUNITIES ({timeframe_display} MTF CONFIRMATION):")
-        print(f"🎯 Quality over Quantity - Only the best opportunities displayed")
-        print(f"📊 Charts generated for these {scan_info.get('charts_generated', 0)} opportunities")
+        print(f"📊 Charts generated for TOP {scan_info.get('charts_generated', 0)} signals only (Optimized)")
         
-        if top_opportunities:
+        if opportunities:
             print("=" * 210)
             header = (
                 f"{'Symbol':<25} | {'Side':<7} | {'Type':<6} | "
                 f"{'Conf':<8} | {'MTF':<4} | {'Entry':<12} | {'Stop':<12} | {'TP1':<12} | {'TP2':<12} | "
-                f"{'R/R':<5} | {'Volume':<8} | {'MTF Status':<20} | {'Chart':<15}"
+                f"{'R/R':<5} | {'Volume':<8} | {'MTF Status':<20}"
             )
             print(header)
             print("-" * 210)
             
-            for i, opp in enumerate(top_opportunities):
+            for opp in opportunities[:5]:  # Top 5
                 try:
                     side_emoji = "🟢" if opp['side'] == 'buy' else "🔴"
                     volume_str = f"${opp['volume_24h']/1e6:.0f}M"
@@ -756,11 +618,13 @@ class CompleteEnhancedBybitSystem:
                     # Enhanced chart status
                     chart_file = opp.get('chart_file', '')
                     if chart_file and chart_file.endswith('.png'):
-                        chart_status = "✅ Generated"
+                        chart_status = "✅ HTML + Screenshot"
                     elif chart_file and chart_file.endswith('.html'):
                         chart_status = "📄 HTML Only"  
+                    elif chart_file and 'Chart generated' in chart_file:
+                        chart_status = "⚠️ Generated"
                     elif chart_file == None:
-                        chart_status = "❌ Pending"
+                        chart_status = "❌ Not Generated"
                     else:
                         chart_status = "❌ Failed"
                     
@@ -776,17 +640,16 @@ class CompleteEnhancedBybitSystem:
                         mtf_display = "❌ DISABLED"
                     
                     # MTF confirmation count
-                    mtf_analysis = opp.get('mtf_analysis', {})
-                    confirmed_count = len(mtf_analysis.get('confirmed_timeframes', []))
                     total_confirmation_timeframes = len(self.config.confirmation_timeframes)
-                    mtf_count = f"{confirmed_count}/{total_confirmation_timeframes}"
+                    mtf_count = f"{opp.get('mtf_confirmation_count', 0)}/{total_confirmation_timeframes}"
+                    
+                    # MTF confirmed timeframes
+                    confirmed_tfs = ', '.join(opp.get('mtf_confirmed', []))[:8] + ("..." if len(', '.join(opp.get('mtf_confirmed', []))) > 8 else "")
                     
                     # Show MTF boost in confidence
-                    original_conf = opp.get('original_confidence', opp['confidence'])
-                    mtf_boost = opp['confidence'] - original_conf
                     conf_display = f"{opp['confidence']:.0f}"
-                    if mtf_boost > 0:
-                        conf_display += f" (+{mtf_boost:.0f})"
+                    if opp.get('mtf_boost', 0) > 0:
+                        conf_display += f" (+{opp['mtf_boost']:.0f})"
                     
                     # Get TP1 and TP2 values
                     tp1_value = opp.get('take_profit_1', opp.get('take_profit', 0))
@@ -798,7 +661,7 @@ class CompleteEnhancedBybitSystem:
                         f"${opp['entry_price']:<11.4f} | ${opp['stop_loss']:<11.4f} | "
                         f"${tp1_value:<11.4f} | ${tp2_value:<11.4f} | "
                         f"{opp['risk_reward_ratio']:<5.1f} | "
-                        f"{volume_str:<8} | {mtf_display:<20} | {chart_status:<15}"
+                        f"{volume_str:<8} | {mtf_display:<20}"
                     )
                     print(f"{row}")
                     
@@ -807,105 +670,20 @@ class CompleteEnhancedBybitSystem:
             
             print("-" * 210)
             
-            # Top Opportunities Summary
-            total_signals = scan_info.get('signals_generated', 0)
-            top_count = len(top_opportunities)
+            # Chart Generation Summary
             charts_generated = scan_info.get('charts_generated', 0)
+            total_signals = scan_info.get('signals_generated', 0)
+            chart_efficiency = f"{charts_generated}/{total_signals}" if total_signals > 0 else "0/0"
             
-            print(f"\n🎯 TOP OPPORTUNITIES SUMMARY:")
-            print(f"   Total Signals Generated: {total_signals}")
-            print(f"   Top Opportunities Selected: {top_count}")
-            print(f"   Selection Rate: {(top_count/max(1,total_signals)*100):.1f}%")
-            print(f"   Charts Generated: {charts_generated}/{top_count}")
-            print(f"   Focus: Quality over Quantity - Only the best opportunities")
-            
-            # Show top opportunities breakdown
-            performance = results.get('system_performance', {})
-            top_summary = performance.get('top_opportunities_summary', {})
-            if top_summary:
-                status = top_summary.get('status', 'unknown')
-                recommendation = top_summary.get('recommendation', 'No recommendation')
-                print(f"   Market Status: {status.upper()}")
-                print(f"   Recommendation: {recommendation}")
+            print(f"\n📊 CHART GENERATION SUMMARY:")
+            print(f"   Charts Generated: {charts_generated} (Top signals only)")
+            print(f"   Total Signals: {total_signals}")
+            print(f"   Chart Efficiency: {chart_efficiency} = {charts_generated/max(1,total_signals)*100:.1f}% of signals charted")
+            print(f"   Optimization: Charts generated ONLY after ranking (saves resources)")
             
         else:
-            print("   No top trading opportunities found")
-            print("   All signals were filtered out due to quality requirements")
+            print("   No trading opportunities found")
 
     def save_results_to_database(self, results: Dict) -> Dict[str, Any]:
-        """Save TOP OPPORTUNITIES to MySQL database (replaces CSV export)"""
-        try:
-            self.logger.info("💾 Saving TOP OPPORTUNITIES to MySQL database...")
-            
-            # Only save top opportunities to database - not all signals
-            database_results = {
-                'scan_info': results['scan_info'],
-                'signals': results['top_opportunities'],  # ONLY top opportunities
-                'analysis_results': results['analysis_results'],
-                'market_summary': results['market_summary'],
-                'system_performance': results['system_performance']
-            }
-            
-            save_result = self.enhanced_db_manager.save_all_results(database_results)
-            
-            if save_result.get('error'):
-                self.logger.error(f"Failed to save top opportunities: {save_result['error']}")
-            else:
-                saved_count = save_result.get('signals', 0)
-                scan_id = save_result.get('scan_id', 'Unknown')
-                self.logger.info(f"✅ Saved {saved_count} TOP OPPORTUNITIES to database (Scan ID: {scan_id})")
-                self.logger.info(f"🎯 Database Focus: Quality opportunities only, not all signals")
-            
-            return save_result
-            
-        except Exception as e:
-            self.logger.error(f"Error saving results to database: {e}")
-            return {'error': str(e), 'signals': 0}
-
-    def get_top_opportunities_for_trading(self, results: Dict) -> List[Dict]:
-        """Get top opportunities ready for trading - this is what autotrader should use"""
-        try:
-            top_opportunities = results.get('top_opportunities', [])
-            
-            # Additional validation for trading
-            trading_ready = []
-            
-            for opp in top_opportunities:
-                # Ensure all required fields exist
-                required_fields = ['symbol', 'side', 'entry_price', 'stop_loss', 'take_profit_1', 
-                                 'confidence', 'risk_reward_ratio', 'volume_24h']
-                
-                if all(field in opp for field in required_fields):
-                    # Add trading-specific metadata
-                    opp['trading_ready'] = True
-                    opp['selection_rank'] = len(trading_ready) + 1
-                    opp['quality_tier'] = self.get_quality_tier(opp)
-                    trading_ready.append(opp)
-            
-            self.logger.info(f"🎯 {len(trading_ready)} TOP OPPORTUNITIES ready for trading")
-            return trading_ready
-            
-        except Exception as e:
-            self.logger.error(f"Error preparing opportunities for trading: {e}")
-            return []
-    
-    def get_quality_tier(self, opportunity: Dict) -> str:
-        """Determine quality tier of opportunity"""
-        try:
-            confidence = opportunity.get('confidence', 0)
-            rr_ratio = opportunity.get('risk_reward_ratio', 0)
-            volume_24h = opportunity.get('volume_24h', 0)
-            mtf_status = opportunity.get('mtf_status', 'NONE')
-            
-            if (confidence >= 65 and rr_ratio >= 2.5 and volume_24h >= 2_000_000 and 
-                mtf_status in ['STRONG', 'PARTIAL']):
-                return 'PREMIUM'
-            elif confidence >= 55 and rr_ratio >= 2.0 and volume_24h >= 1_000_000:
-                return 'QUALITY'
-            elif confidence >= 45 and rr_ratio >= 1.8 and volume_24h >= 500_000:
-                return 'DECENT'
-            else:
-                return 'BASIC'
-                
-        except Exception:
-            return 'UNKNOWN'
+        """Save all results to MySQL database (replaces CSV export)"""
+        return self.enhanced_db_manager.save_all_results(results)

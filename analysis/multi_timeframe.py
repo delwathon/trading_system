@@ -43,7 +43,7 @@ class MultiTimeframeAnalyzer:
                     # Fetch data for this timeframe
                     df = self.fetch_timeframe_data(symbol, timeframe)
                     if df.empty or len(df) < 50:
-                        self.logger.warning(f"   Insufficient {timeframe} data for {symbol}")
+                        self.logger.debug(f"   Insufficient {timeframe} data for {symbol}")
                         confirmation_results['neutral_timeframes'].append(timeframe)
                         continue
                     

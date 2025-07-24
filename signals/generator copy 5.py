@@ -1,6 +1,6 @@
 """
 Enhanced Signal Generation for the Bybit Trading System.
-TUNED DOWN: Slightly reduced strictness while maintaining quality
+UPDATED: Reduced strictness while maintaining quality
 - More flexible signal thresholds
 - Balanced market structure analysis
 - Improved ranking logic
@@ -16,7 +16,7 @@ from config.config import EnhancedSystemConfig
 
 
 class SignalGenerator:
-    """Enhanced signal generation and ranking system with tuned approach"""
+    """Enhanced signal generation and ranking system with balanced approach"""
     
     def __init__(self, config: EnhancedSystemConfig):
         self.config = config
@@ -24,7 +24,7 @@ class SignalGenerator:
         
     def generate_enhanced_signal(self, df: pd.DataFrame, symbol_data: Dict, 
                                 volume_entry: Dict, confluence_zones: List[Dict]) -> Optional[Dict]:
-            """TUNED: Generate proper trading signals with slightly relaxed conditions"""
+            """FIXED: Generate proper trading signals based on correct technical analysis"""
             try:
                 latest = df.iloc[-1]
                 current_price = symbol_data['current_price']
@@ -58,41 +58,41 @@ class SignalGenerator:
                 
                 signal = None
                 
-                # ===== TUNED: BUY SIGNAL CONDITIONS =====
-                # BUY when price is oversold and near support levels (relaxed conditions)
+                # ===== FIXED: PROPER BUY SIGNAL CONDITIONS =====
+                # BUY when price is OVERSOLD and near SUPPORT levels
                 
-                # Primary BUY conditions (TUNED: more flexible)
+                # Primary BUY conditions (FIXED)
                 buy_technical_conditions = [
-                    rsi < 35,                                    # TUNED: Slightly less strict (was 30)
-                    macd > macd_signal * 0.95,                  # TUNED: Allow slight MACD lag
-                    current_price < sma_20 * 1.01,             # TUNED: Allow slightly above SMA20
-                    current_price > sma_200 * 0.93,            # TUNED: More flexible support (was 0.95)
-                    volume_ratio > 1.1,                         # TUNED: Reduced volume requirement (was 1.2)
-                    bb_position < 0.35,                         # TUNED: Slightly more flexible (was 0.3)
+                    rsi < 30,                                    # FIXED: Truly oversold (was > 40)
+                    macd > macd_signal,                         # FIXED: Bullish momentum
+                    current_price < sma_20,                     # FIXED: Below recent average (potential bounce)
+                    current_price > sma_200 * 0.95,            # FIXED: Above long-term support
+                    volume_ratio > 1.2,                         # Strong volume on decline
+                    bb_position < 0.3,                          # FIXED: Near lower BB (oversold)
                 ]
                 
-                # BUY trend conditions (TUNED: more flexible)
+                # BUY trend conditions (FIXED)
                 buy_trend_conditions = [
-                    ema_12 > ema_26 * 0.96,                     # TUNED: More flexible trend (was 0.98)
-                    current_price > sma_50 * 0.93,             # TUNED: More flexible support (was 0.95)
-                    sma_20 > sma_50 * 0.96,                     # TUNED: More flexible trend (was 0.98)
-                    current_price > bb_lower * 1.01,           # TUNED: More flexible BB position
+                    ema_12 > ema_26 * 0.98,                     # FIXED: Trend not completely broken
+                    current_price > sma_50 * 0.95,             # FIXED: Above medium-term support
+                    sma_20 > sma_50 * 0.98,                     # FIXED: Medium-term trend intact
+                    current_price > bb_lower * 1.02,           # FIXED: Above lower Bollinger Band
                 ]
                 
-                # BUY Stochastic RSI conditions (TUNED: more flexible)
+                # BUY Stochastic RSI conditions (FIXED)
                 buy_stoch_conditions = [
-                    stoch_rsi_k < 30,                           # TUNED: Less strict (was 25)
-                    stoch_rsi_k > stoch_rsi_d * 0.95,          # TUNED: Allow for close values
-                    stoch_rsi_k > 3,                            # TUNED: Not at absolute bottom (was 5)
-                    stoch_rsi_d < 35,                           # TUNED: More flexible (was 30)
+                    stoch_rsi_k < 25,                           # FIXED: Truly oversold (was > 70)
+                    stoch_rsi_k > stoch_rsi_d,                  # FIXED: Bullish crossover (was <)
+                    stoch_rsi_k > 5,                            # FIXED: Not at absolute bottom
+                    stoch_rsi_d < 30,                           # FIXED: Signal line also oversold
                 ]
                 
-                # Market structure for BUY (TUNED: more flexible)
+                # Market structure for BUY (FIXED)
                 buy_structure_conditions = [
-                    market_structure.get('near_support', False) or market_structure.get('bounce_potential', False),
-                    not market_structure.get('strong_downtrend', False),
-                    market_structure.get('price_range_position', 0.5) < 0.4,  # In lower part of range
-                    current_price <= latest.get('vwap', current_price) * 1.01,  # At or slightly above VWAP
+                    market_structure.get('near_support', False),        # Near support level
+                    not market_structure.get('strong_downtrend', True), # Not in strong downtrend
+                    market_structure.get('bounce_potential', False),    # Bounce potential
+                    current_price < latest.get('vwap', current_price),  # Below VWAP (discount)
                 ]
                 
                 # Count conditions
@@ -101,8 +101,8 @@ class SignalGenerator:
                 buy_stoch_score = sum(buy_stoch_conditions)
                 buy_structure_score = sum(buy_structure_conditions)
                 
-                # TUNED: Relaxed BUY requirements
-                if (buy_tech_score >= 3 and buy_trend_score >= 2 and 
+                # STRICT BUY requirements (FIXED)
+                if (buy_tech_score >= 4 and buy_trend_score >= 2 and 
                     buy_stoch_score >= 2 and buy_structure_score >= 1):
                     
                     signal = self.create_buy_signal(
@@ -111,42 +111,42 @@ class SignalGenerator:
                         buy_stoch_score, buy_structure_score
                     )
                 
-                # ===== TUNED: SELL SIGNAL CONDITIONS =====  
-                # SELL when price is overbought and near resistance levels (relaxed conditions)
+                # ===== FIXED: PROPER SELL SIGNAL CONDITIONS =====  
+                # SELL when price is OVERBOUGHT and near RESISTANCE levels
                 if not signal:  # Only if no BUY signal
                     
-                    # Primary SELL conditions (TUNED: more flexible)
+                    # Primary SELL conditions (FIXED)
                     sell_technical_conditions = [
-                        rsi > 70,                                   # TUNED: Less strict (was 75)
-                        macd < macd_signal * 1.05,                 # TUNED: Allow slight MACD lag
-                        current_price > sma_20 * 0.99,             # TUNED: Allow slightly below SMA20
-                        current_price < sma_200 * 1.12,            # TUNED: More flexible resistance (was 1.10)
-                        volume_ratio > 1.3,                         # TUNED: Reduced volume requirement (was 1.5)
-                        bb_position > 0.65,                         # TUNED: More flexible (was 0.7)
+                        rsi > 75,                                   # FIXED: Truly overbought (was < 65)
+                        macd < macd_signal,                         # FIXED: Bearish momentum
+                        current_price > sma_20,                     # FIXED: Above recent average (overextended)
+                        current_price < sma_200 * 1.10,            # FIXED: Below long-term resistance
+                        volume_ratio > 1.5,                         # Strong volume on rise
+                        bb_position > 0.7,                          # FIXED: Near upper BB (overbought)
                     ]
                     
-                    # SELL trend conditions (TUNED: more flexible)
+                    # SELL trend conditions (FIXED)
                     sell_trend_conditions = [
-                        ema_12 < ema_26 * 1.04,                    # TUNED: More flexible (was 1.02)
-                        current_price < sma_50 * 1.10,             # TUNED: More flexible (was 1.08)
-                        sma_20 < sma_50 * 1.07,                    # TUNED: More flexible (was 1.05)
-                        current_price < bb_upper * 0.99,           # TUNED: More flexible rejection
+                        ema_12 < ema_26 * 1.02,                    # FIXED: Trend turning bearish
+                        current_price < sma_50 * 1.08,             # FIXED: Below medium-term resistance  
+                        sma_20 < sma_50 * 1.05,                    # FIXED: Medium-term trend turning
+                        current_price < bb_upper * 0.98,           # FIXED: Rejected from upper BB
                     ]
                     
-                    # SELL Stochastic RSI conditions (TUNED: more flexible)
+                    # SELL Stochastic RSI conditions (FIXED)
                     sell_stoch_conditions = [
-                        stoch_rsi_k > 75,                           # TUNED: Less strict (was 80)
-                        stoch_rsi_k < stoch_rsi_d * 1.05,          # TUNED: Allow for close values
-                        stoch_rsi_k < 97,                           # TUNED: Not at absolute top (was 95)
-                        stoch_rsi_d > 70,                           # TUNED: More flexible (was 75)
+                        stoch_rsi_k > 80,                           # FIXED: Truly overbought (was < 70)
+                        stoch_rsi_k < stoch_rsi_d,                  # FIXED: Bearish crossover
+                        stoch_rsi_k < 95,                           # FIXED: Not at absolute top
+                        stoch_rsi_d > 75,                           # FIXED: Signal line also overbought
                     ]
                     
-                    # Market structure for SELL (TUNED: more flexible)
+                    # Market structure for SELL (FIXED)
                     sell_structure_conditions = [
-                        market_structure.get('near_resistance', False) or market_structure.get('distribution_signs', False),
-                        market_structure.get('reversal_signals', False) or rsi > 75,  # Allow extreme RSI as reversal signal
-                        not market_structure.get('strong_uptrend', False),
-                        current_price >= latest.get('vwap', current_price) * 0.99,  # At or slightly below VWAP
+                        market_structure.get('near_resistance', False),     # Near resistance level
+                        market_structure.get('reversal_signals', False),    # Reversal signals
+                        not market_structure.get('strong_uptrend', True),   # Not in strong uptrend
+                        current_price > latest.get('vwap', current_price),  # Above VWAP (premium)
                     ]
                     
                     # Count conditions
@@ -155,8 +155,8 @@ class SignalGenerator:
                     sell_stoch_score = sum(sell_stoch_conditions)
                     sell_structure_score = sum(sell_structure_conditions)
                     
-                    # TUNED: Relaxed SELL requirements
-                    if (sell_tech_score >= 3 and sell_trend_score >= 2 and 
+                    # STRICT SELL requirements (FIXED)
+                    if (sell_tech_score >= 4 and sell_trend_score >= 2 and 
                         sell_stoch_score >= 2 and sell_structure_score >= 1):
                         
                         signal = self.create_sell_signal(
@@ -172,26 +172,26 @@ class SignalGenerator:
                 return None
         
     def analyze_market_structure(self, df: pd.DataFrame, current_price: float) -> Dict:
-        """TUNED: Analyze market structure with balanced approach"""
+        """FIXED: Analyze market structure for proper signal context"""
         try:
             # Calculate recent price action
             recent_high = df['high'].tail(20).max()
             recent_low = df['low'].tail(20).min()
             price_range = recent_high - recent_low
             
-            # Check proximity to support/resistance (TUNED: more flexible)
-            near_support = current_price < (recent_low + price_range * 0.35)  # Was 0.3
-            near_resistance = current_price > (recent_high - price_range * 0.35)  # Was 0.3
+            # Check proximity to support/resistance
+            near_support = current_price < (recent_low + price_range * 0.3)
+            near_resistance = current_price > (recent_high - price_range * 0.3)
             
-            # Trend analysis (TUNED: more flexible)
+            # Trend analysis
             sma_20 = df['close'].rolling(20).mean().iloc[-1]
-            sma_50 = df['close'].rolling(50).mean().iloc[-1] if len(df) >= 50 else sma_20
+            sma_50 = df['close'].rolling(50).mean().iloc[-1]
             
-            strong_uptrend = (sma_20 > sma_50 * 1.03) and (current_price > sma_20 * 1.01)  # Was 1.05 and 1.02
-            strong_downtrend = (sma_20 < sma_50 * 0.97) and (current_price < sma_20 * 0.99)  # Was 0.95 and 0.98
+            strong_uptrend = (sma_20 > sma_50 * 1.05) and (current_price > sma_20 * 1.02)
+            strong_downtrend = (sma_20 < sma_50 * 0.95) and (current_price < sma_20 * 0.98)
             
-            # Reversal signals (TUNED: more sensitive)
-            recent_candles = df.tail(3)  # Look at fewer candles
+            # Reversal signals
+            recent_candles = df.tail(5)
             reversal_signals = False
             
             # Check for doji, hammer, shooting star patterns
@@ -199,14 +199,14 @@ class SignalGenerator:
                 body_size = abs(candle['close'] - candle['open'])
                 candle_range = candle['high'] - candle['low']
                 
-                if body_size < candle_range * 0.4:  # More flexible (was 0.3)
+                if body_size < candle_range * 0.3:  # Small body (doji-like)
                     reversal_signals = True
                     break
             
-            # Volume analysis for distribution/accumulation (TUNED: more flexible)
+            # Volume analysis for distribution/accumulation
             volume_ma = df['volume'].rolling(20).mean().iloc[-1]
-            recent_volume = df['volume'].tail(3).mean()  # Shorter period
-            high_volume = recent_volume > volume_ma * 1.3  # Was 1.5
+            recent_volume = df['volume'].tail(5).mean()
+            high_volume = recent_volume > volume_ma * 1.5
             
             return {
                 'near_support': near_support,
@@ -227,7 +227,7 @@ class SignalGenerator:
                 'strong_uptrend': False,
                 'strong_downtrend': False,
                 'reversal_signals': False,
-                'bounce_potential': True,  # Default to allowing signals
+                'bounce_potential': False,
                 'distribution_signs': False,
                 'price_range_position': 0.5
             }
@@ -250,7 +250,7 @@ class SignalGenerator:
         }
     
     def is_very_strong_uptrend(self, df: pd.DataFrame) -> bool:
-        """Check if we're in a very strong uptrend (TUNED: more strict definition)"""
+        """Check if we're in a very strong uptrend (stricter than regular check)"""
         try:
             if len(df) < 20:
                 return False
@@ -264,13 +264,13 @@ class SignalGenerator:
             ema_12 = latest.get('ema_12', 0)
             ema_26 = latest.get('ema_26', 0)
             
-            # Very strong uptrend conditions (TUNED: more strict to allow more shorts)
+            # Very strong uptrend conditions (stricter)
             conditions = [
-                sma_20 > sma_50 * 1.08,  # TUNED: More strict (was 1.05)
-                ema_12 > ema_26 * 1.05,  # TUNED: More strict (was 1.03)
-                latest['close'] > sma_20 * 1.05,  # TUNED: More strict (was 1.02)
-                recent['close'].iloc[-1] > recent['close'].iloc[-10] * 1.08,  # TUNED: More strict (was 1.05)
-                recent['volume'].mean() > df['volume'].tail(50).mean() * 1.3  # TUNED: More strict (was 1.2)
+                sma_20 > sma_50 * 1.05,  # 20 SMA well above 50 SMA (was 1.02)
+                ema_12 > ema_26 * 1.03,  # EMAs aligned bullishly (was 1.01)
+                latest['close'] > sma_20 * 1.02,  # Price well above 20 SMA
+                recent['close'].iloc[-1] > recent['close'].iloc[-10] * 1.05,  # 5%+ gain over 10 periods (was 1.03)
+                recent['volume'].mean() > df['volume'].tail(50).mean() * 1.2  # Above average volume
             ]
             
             return sum(conditions) >= 4  # Need 4/5 conditions
@@ -282,68 +282,68 @@ class SignalGenerator:
     def create_buy_signal(self, symbol_data: Dict, current_price: float, latest: pd.Series,
                          volume_entry: Dict, confluence_zones: List[Dict],
                          tech_score: int, trend_score: int, stoch_score: int, structure_score: int) -> Dict:
-        """TUNED: Create BUY signal with flexible entry logic"""
+        """FIXED: Create proper BUY signal at support levels"""
         try:
-            # Entry price logic for BUY
+            # FIXED: Entry price logic for BUY (buy near support)
             entry_candidates = [current_price]
             
             # Use support levels from confluence zones  
             support_zones = [zone for zone in confluence_zones
                            if zone['zone_type'] == 'support' and 
-                           zone['price'] < current_price * 1.03 and  # TUNED: More flexible (was 1.02)
-                           zone['price'] > current_price * 0.93]     # TUNED: More flexible (was 0.95)
+                           zone['price'] < current_price * 1.02 and  # Within 2% below current price
+                           zone['price'] > current_price * 0.95]     # Not too far below
             
             if support_zones:
                 entry_candidates.append(support_zones[0]['price'])
             
             # Use volume-based entry if it's a support level
-            if (volume_entry.get('confidence', 0) > 0.5 and  # TUNED: Lower confidence req (was 0.6)
+            if (volume_entry.get('confidence', 0) > 0.6 and 
                 volume_entry.get('entry_price', current_price) < current_price):
                 entry_candidates.append(volume_entry['entry_price'])
             
             # Use lower Bollinger Band as support
             bb_lower = latest.get('bb_lower', current_price * 0.98)
-            if bb_lower < current_price and bb_lower > current_price * 0.93:  # TUNED: More flexible
+            if bb_lower < current_price and bb_lower > current_price * 0.95:
                 entry_candidates.append(bb_lower)
             
-            # Choose optimal entry
-            optimal_entry = min(entry_candidates)
+            # FIXED: Choose optimal entry (slightly below current for better fill)
+            optimal_entry = min(entry_candidates)  # FIXED: Take the lowest (best) price for BUY
             distance_pct = abs(optimal_entry - current_price) / current_price
             
-            # Order type logic for BUY (TUNED: more market orders)
-            if distance_pct > 0.008 or latest.get('stoch_rsi_k', 50) < 30:  # TUNED: Lower threshold (was 0.01)
+            # FIXED: Order type logic for BUY
+            if distance_pct > 0.01 or latest.get('stoch_rsi_k', 50) < 25:  # Use limit if far or oversold
                 order_type = 'limit'
             else:
                 order_type = 'market'
                 optimal_entry = current_price
             
-            # Stop loss and take profit for BUY
+            # FIXED: Stop loss and take profit for BUY
             atr = latest.get('atr', current_price * 0.02)
-            stop_loss = optimal_entry - (1.8 * atr)      # TUNED: Tighter stop (was 2.0)
-            take_profit_1 = optimal_entry + (2.8 * atr)  # TUNED: Closer TP1 (was 3.0)
-            take_profit_2 = optimal_entry + (5.5 * atr)  # TUNED: Closer TP2 (was 6.0)
+            stop_loss = optimal_entry - (2.0 * atr)      # FIXED: Stop below entry
+            take_profit_1 = optimal_entry + (3.0 * atr)  # FIXED: TP above entry
+            take_profit_2 = optimal_entry + (6.0 * atr)  # FIXED: TP2 higher above entry
             
-            # Risk-reward calculation for BUY
-            risk_amount = optimal_entry - stop_loss
-            reward_amount = take_profit_2 - optimal_entry
+            # FIXED: Risk-reward calculation for BUY
+            risk_amount = optimal_entry - stop_loss      # FIXED: Risk = entry - stop
+            reward_amount = take_profit_2 - optimal_entry # FIXED: Reward = tp - entry
             risk_reward_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
             
-            # Confidence calculation for BUY (TUNED: higher base confidence)
-            base_confidence = 55  # TUNED: Higher base (was 50)
+            # FIXED: Confidence calculation for BUY
+            base_confidence = 50
             
-            # Score-based confidence
-            base_confidence += tech_score * 3.5    # TUNED: Slightly lower weight (was 4)
-            base_confidence += trend_score * 3.5   # TUNED: Slightly lower weight (was 4)
-            base_confidence += stoch_score * 3.5   # TUNED: Slightly lower weight (was 4)
-            base_confidence += structure_score * 3 # Same weight
+            # Score-based confidence (FIXED)
+            base_confidence += tech_score * 4      # Up to 24 points
+            base_confidence += trend_score * 4     # Up to 16 points  
+            base_confidence += stoch_score * 4     # Up to 16 points
+            base_confidence += structure_score * 3 # Up to 12 points
             
             # Bonus for good support levels
             if len(support_zones) > 0:
-                base_confidence += 6  # TUNED: Lower bonus (was 8)
-            if volume_entry.get('confidence', 0) > 0.6:
-                base_confidence += 4  # TUNED: Lower bonus (was 6)
+                base_confidence += 8
+            if volume_entry.get('confidence', 0) > 0.7:
+                base_confidence += 6
             
-            confidence = min(88, base_confidence)  # TUNED: Lower cap (was 90)
+            confidence = min(90, base_confidence)  # Cap at 90%
             
             return {
                 'symbol': symbol_data['symbol'],
@@ -356,7 +356,7 @@ class SignalGenerator:
                 'take_profit_2': take_profit_2,
                 'risk_reward_ratio': risk_reward_ratio,
                 'confidence': confidence,
-                'signal_type': 'tuned_technical_buy',
+                'signal_type': 'fixed_technical_buy',
                 'volume_24h': symbol_data['volume_24h'],
                 'price_change_24h': symbol_data['price_change_24h'],
                 'entry_methods': {
@@ -376,68 +376,68 @@ class SignalGenerator:
     def create_sell_signal(self, symbol_data: Dict, current_price: float, latest: pd.Series,
                           volume_entry: Dict, confluence_zones: List[Dict],
                           tech_score: int, trend_score: int, stoch_score: int, structure_score: int) -> Dict:
-        """TUNED: Create SELL signal with flexible entry logic"""
+        """FIXED: Create proper SELL signal at resistance levels"""
         try:
-            # Entry price logic for SELL
+            # FIXED: Entry price logic for SELL (sell near resistance)
             entry_candidates = [current_price]
             
             # Use resistance levels from confluence zones  
             resistance_zones = [zone for zone in confluence_zones
                               if zone['zone_type'] == 'resistance' and 
-                              zone['price'] > current_price * 0.97 and  # TUNED: More flexible (was 0.98)
-                              zone['price'] < current_price * 1.07]     # TUNED: More flexible (was 1.05)
+                              zone['price'] > current_price * 0.98 and  # Within 2% above current price
+                              zone['price'] < current_price * 1.05]     # Not too far above
             
             if resistance_zones:
                 entry_candidates.append(resistance_zones[0]['price'])
             
             # Use volume-based entry if it's a resistance level
-            if (volume_entry.get('confidence', 0) > 0.5 and  # TUNED: Lower confidence req (was 0.6)
+            if (volume_entry.get('confidence', 0) > 0.6 and 
                 volume_entry.get('entry_price', current_price) > current_price):
                 entry_candidates.append(volume_entry['entry_price'])
             
             # Use upper Bollinger Band as resistance
             bb_upper = latest.get('bb_upper', current_price * 1.02)
-            if bb_upper > current_price and bb_upper < current_price * 1.07:  # TUNED: More flexible
+            if bb_upper > current_price and bb_upper < current_price * 1.05:
                 entry_candidates.append(bb_upper)
             
-            # Choose optimal entry
-            optimal_entry = max(entry_candidates)
+            # FIXED: Choose optimal entry (slightly above current for better fill)
+            optimal_entry = max(entry_candidates)  # FIXED: Take the highest (best) price for SELL
             distance_pct = abs(optimal_entry - current_price) / current_price
             
-            # Order type logic for SELL (TUNED: more market orders)
-            if distance_pct > 0.008 or latest.get('stoch_rsi_k', 50) > 75:  # TUNED: Lower threshold (was 0.01)
+            # FIXED: Order type logic for SELL
+            if distance_pct > 0.01 or latest.get('stoch_rsi_k', 50) > 80:  # Use limit if far or overbought
                 order_type = 'limit'
             else:
                 order_type = 'market'
                 optimal_entry = current_price
             
-            # Stop loss and take profit for SELL
+            # FIXED: Stop loss and take profit for SELL
             atr = latest.get('atr', current_price * 0.02)
-            stop_loss = optimal_entry + (1.8 * atr)      # TUNED: Tighter stop (was 2.0)
-            take_profit_1 = optimal_entry - (2.8 * atr)  # TUNED: Closer TP1 (was 3.0)
-            take_profit_2 = optimal_entry - (5.5 * atr)  # TUNED: Closer TP2 (was 6.0)
+            stop_loss = optimal_entry + (2.0 * atr)      # FIXED: Stop above entry
+            take_profit_1 = optimal_entry - (3.0 * atr)  # FIXED: TP below entry
+            take_profit_2 = optimal_entry - (6.0 * atr)  # FIXED: TP2 lower below entry
             
-            # Risk-reward calculation for SELL
-            risk_amount = stop_loss - optimal_entry
-            reward_amount = optimal_entry - take_profit_2
+            # FIXED: Risk-reward calculation for SELL
+            risk_amount = stop_loss - optimal_entry      # FIXED: Risk = stop - entry
+            reward_amount = optimal_entry - take_profit_2 # FIXED: Reward = entry - tp
             risk_reward_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
             
-            # Confidence calculation for SELL (TUNED: higher base confidence)
-            base_confidence = 52  # TUNED: Higher base (was 50)
+            # FIXED: Confidence calculation for SELL
+            base_confidence = 50
             
-            # Score-based confidence
-            base_confidence += tech_score * 3.5    # TUNED: Slightly lower weight (was 4)
-            base_confidence += trend_score * 3.5   # TUNED: Slightly lower weight (was 4)
-            base_confidence += stoch_score * 3.5   # TUNED: Slightly lower weight (was 4)
-            base_confidence += structure_score * 3 # Same weight
+            # Score-based confidence (FIXED)
+            base_confidence += tech_score * 4      # Up to 24 points
+            base_confidence += trend_score * 4     # Up to 16 points  
+            base_confidence += stoch_score * 4     # Up to 16 points
+            base_confidence += structure_score * 3 # Up to 12 points
             
             # Bonus for good resistance levels
             if len(resistance_zones) > 0:
-                base_confidence += 6  # TUNED: Lower bonus (was 8)
-            if volume_entry.get('confidence', 0) > 0.6:
-                base_confidence += 4  # TUNED: Lower bonus (was 6)
+                base_confidence += 8
+            if volume_entry.get('confidence', 0) > 0.7:
+                base_confidence += 6
             
-            confidence = min(88, base_confidence)  # TUNED: Lower cap (was 90)
+            confidence = min(90, base_confidence)  # Cap at 90%
             
             return {
                 'symbol': symbol_data['symbol'],
@@ -450,7 +450,7 @@ class SignalGenerator:
                 'take_profit_2': take_profit_2,
                 'risk_reward_ratio': risk_reward_ratio,
                 'confidence': confidence,
-                'signal_type': 'tuned_technical_sell',
+                'signal_type': 'fixed_technical_sell',
                 'volume_24h': symbol_data['volume_24h'],
                 'price_change_24h': symbol_data['price_change_24h'],
                 'entry_methods': {
@@ -468,7 +468,7 @@ class SignalGenerator:
             return None
          
     def validate_signal_quality(self, signal: Dict, df: pd.DataFrame, market_structure: Dict) -> Optional[Dict]:
-        """Signal quality validation with tuned thresholds"""
+        """Signal quality validation with more lenient thresholds"""
         try:
             if not signal:
                 return None
@@ -477,49 +477,47 @@ class SignalGenerator:
             side = signal['side']
             confidence = signal['confidence']
             risk_reward = signal['risk_reward_ratio']
-            latest = df.iloc[-1]
-            current_price = signal['current_price']
             
-            # Minimum confidence thresholds (TUNED: more accessible)
-            min_confidence = 45 if side == 'buy' else 47  # TUNED: Lower thresholds (was 50/55)
+            # Minimum confidence thresholds (lowered)
+            min_confidence = 50 if side == 'buy' else 55  # Lowered from 65/70
             if confidence < min_confidence:
                 self.logger.debug(f"Signal filtered: {symbol} confidence {confidence}% below minimum {min_confidence}%")
                 return None
             
-            # Minimum risk-reward ratio (TUNED: more accessible)
-            min_rr = 1.8 if side == 'buy' else 1.9  # TUNED: Lower thresholds (was 2.0/2.2)
+            # Minimum risk-reward ratio (lowered)
+            min_rr = 2.0 if side == 'buy' else 2.2  # Lowered from 2.5/3.0
             if risk_reward < min_rr:
                 self.logger.debug(f"Signal filtered: {symbol} R/R {risk_reward:.1f} below minimum {min_rr}")
                 return None
             
-            # Market structure validation (TUNED: more lenient)
+            # Market structure validation (more lenient)
             if side == 'sell':
                 # Don't short unless reasonably near resistance
-                if not market_structure['near_resistance'] and market_structure.get('resistance_distance', 0.15) > 0.15:  # TUNED: More lenient
+                if not market_structure['near_resistance'] and market_structure['resistance_distance'] > 0.10:  # Increased from 0.05
                     self.logger.debug(f"SELL signal filtered: {symbol} not near resistance")
                     return None
                 
                 # Don't short in very strong uptrends only
-                if self.is_very_strong_uptrend(df):
+                if self.is_very_strong_uptrend(df):  # Changed from strong_uptrend
                     self.logger.debug(f"SELL signal filtered: {symbol} in very strong uptrend")
                     return None
             
             elif side == 'buy':
-                # Don't buy if too far from support (TUNED: more lenient)
-                if market_structure.get('support_distance', 0.15) > 0.15:  # TUNED: More lenient
+                # Don't buy if too far from support
+                if market_structure['support_distance'] > 0.12:  # Increased from 0.08
                     self.logger.debug(f"BUY signal filtered: {symbol} too far from support")
                     return None
             
-            # Volume validation (TUNED: more lenient)
+            # Volume validation (more lenient)
             volume_ratio = df.iloc[-1].get('volume_ratio', 1)
-            min_volume = 0.8 if side == 'buy' else 1.1  # TUNED: Lower requirements (was 1.0/1.3)
+            min_volume = 1.0 if side == 'buy' else 1.3  # Lowered from 1.2/2.0
             if volume_ratio < min_volume:
                 self.logger.debug(f"Signal filtered: {symbol} volume {volume_ratio:.1f} below minimum {min_volume}")
                 return None
             
-            # Volatility check (TUNED: more lenient)
-            atr_pct = signal.get('atr_percentage', latest.get('atr', current_price * 0.02) / current_price)
-            if atr_pct > 0.15:  # TUNED: Higher tolerance (was 0.12)
+            # Volatility check (more lenient)
+            atr_pct = signal.get('atr_percentage', 0.02)
+            if atr_pct > 0.12:  # Increased from 0.08 (12% daily ATR)
                 self.logger.debug(f"Signal filtered: {symbol} too volatile (ATR: {atr_pct*100:.1f}%)")
                 return None
             
@@ -541,7 +539,7 @@ class SignalGenerator:
                 original_confidence = signal.get('original_confidence', confidence)
                 mtf_boost = confidence - original_confidence
                 
-                # ===== TUNED SCORING SYSTEM =====
+                # ===== BALANCED SCORING SYSTEM =====
                 
                 # 1. SIGNAL CONFIDENCE (35% weight)
                 confidence_score = confidence / 100
@@ -549,24 +547,24 @@ class SignalGenerator:
                 # 2. RISK-REWARD RATIO (25% weight)  
                 analysis = signal.get('analysis', {})
                 risk_assessment = analysis.get('risk_assessment', {})
-                rr_ratio = risk_assessment.get('risk_reward_ratio', signal.get('risk_reward_ratio', 1))
-                rr_score = min(1.0, rr_ratio / 3.0)  # TUNED: Lower target (was 3.5)
+                rr_ratio = risk_assessment.get('risk_reward_ratio', 1)
+                rr_score = min(1.0, rr_ratio / 3.5)  # Target 3.5:1 R/R (lowered from 4.0)
                 
                 # 3. MARKET STRUCTURE ALIGNMENT (20% weight)
                 entry_methods = signal.get('entry_methods', {})
                 structure_score = 0
                 if 'structure_score' in entry_methods:
-                    structure_score = min(1.0, entry_methods['structure_score'] / 2.5)  # TUNED: Lower requirement
+                    structure_score = min(1.0, entry_methods['structure_score'] / 3.0)  # Lowered from 4.0
                 elif 'confluence_zones' in entry_methods:
-                    structure_score = min(1.0, entry_methods['confluence_zones'] / 1.5)  # TUNED: Lower requirement
+                    structure_score = min(1.0, entry_methods['confluence_zones'] / 2.0)  # Lowered from 3.0
                 
                 # 4. VOLUME QUALITY (10% weight)
-                volume_score = min(1.0, signal['volume_24h'] / 20_000_000)  # TUNED: Lower requirement (was 30M)
+                volume_score = min(1.0, signal['volume_24h'] / 30_000_000)  # Lowered from 50M
                 
                 # 5. MTF CONFIRMATION (15% weight)
                 mtf_analysis = signal.get('mtf_analysis', {})
                 confirmed_count = len(mtf_analysis.get('confirmed_timeframes', []))
-                total_timeframes = len(getattr(self.config, 'confirmation_timeframes', [])) or 3
+                total_timeframes = len(self.config.confirmation_timeframes) if hasattr(self.config, 'confirmation_timeframes') else 3
                 
                 if total_timeframes > 0:
                     mtf_score = confirmed_count / total_timeframes
@@ -576,10 +574,10 @@ class SignalGenerator:
                 
                 # 6. DISTANCE PENALTY (3% weight)
                 distance = abs(signal['entry_price'] - signal['current_price']) / signal['current_price']
-                distance_score = max(0, 1 - distance * 6)  # TUNED: Less penalty (was 8)
+                distance_score = max(0, 1 - distance * 8)  # Less penalty (was 10)
                 
                 # 7. ORDER TYPE (2% weight)
-                order_type_score = 1.0 if signal['order_type'] == 'market' else 0.97  # TUNED: Less penalty
+                order_type_score = 1.0 if signal['order_type'] == 'market' else 0.95  # Less penalty
                 
                 # ===== CALCULATE TOTAL SCORE =====
                 total_score = (
@@ -592,25 +590,23 @@ class SignalGenerator:
                     order_type_score * 0.02        # 2% - Order type
                 )
                 
-                # ===== TUNED PRIORITY SYSTEM =====
+                # ===== BALANCED PRIORITY SYSTEM =====
                 mtf_status = signal.get('mtf_status', 'NONE')
                 
-                # Base priority on confidence and R/R (TUNED: more accessible)
-                if confidence >= 70 and rr_ratio >= 3.0:
+                # Base priority on confidence and R/R (more accessible)
+                if confidence >= 75 and rr_ratio >= 3.5:
                     base_priority = 1000  # Exceptional signals
-                elif confidence >= 60 and rr_ratio >= 2.5:  # TUNED: Lower requirements
+                elif confidence >= 65 and rr_ratio >= 2.8:
                     base_priority = 500   # High quality signals
-                elif confidence >= 50 and rr_ratio >= 2.0:  # TUNED: Lower requirements
-                    base_priority = 250   # Good signals (increased)
-                elif confidence >= 45 and rr_ratio >= 1.8:  # TUNED: Added tier
-                    base_priority = 100   # Decent signals
+                elif confidence >= 55 and rr_ratio >= 2.2:
+                    base_priority = 200   # Good signals (increased from 100)
                 else:
-                    base_priority = 50    # Marginal signals
+                    base_priority = 50    # Marginal signals (increased from 10)
                 
                 # MTF modifier (balanced)
                 mtf_modifier = {
-                    'STRONG': 1.4,   # 40% boost
-                    'PARTIAL': 1.15,  # 15% boost
+                    'STRONG': 1.4,   # 40% boost (was 50%)
+                    'PARTIAL': 1.15,  # 15% boost (was 20%)
                     'NONE': 1.0,     # No change
                     'DISABLED': 1.0  # No change
                 }.get(mtf_status, 1.0)
@@ -648,49 +644,49 @@ class SignalGenerator:
             return signals
 
     def assess_risk(self, signal: Dict, df: pd.DataFrame, market_data: Dict) -> Dict:
-        """Enhanced risk assessment with tuned approach"""
+        """Enhanced risk assessment with balanced approach"""
         try:
             latest = df.iloc[-1]
             current_price = signal['current_price']
             
-            # Volatility risk (TUNED: more lenient)
+            # Volatility risk (more lenient)
             atr = latest.get('atr', current_price * 0.02)
             volatility = atr / current_price
             
-            # Distance risk (TUNED: more lenient)
+            # Distance risk (more lenient)
             distance = abs(signal['entry_price'] - current_price) / current_price
-            distance_risk = min(1.0, distance * 6)  # TUNED: Reduced from 8
+            distance_risk = min(1.0, distance * 8)  # Reduced from 10
             
-            # Condition-based risk (TUNED: more lenient thresholds)
+            # Condition-based risk (more balanced)
             rsi = latest.get('rsi', 50)
             bb_position = latest.get('bb_position', 0.5)
             volume_ratio = latest.get('volume_ratio', 1)
             
-            # Risk factors (TUNED: more lenient thresholds)
-            extreme_rsi = rsi < 10 or rsi > 90  # TUNED: More extreme (was 15/85)
-            extreme_bb = bb_position < 0.02 or bb_position > 0.98  # TUNED: More extreme
-            low_volume = volume_ratio < 0.6  # TUNED: Lower threshold (was 0.7)
+            # Risk factors (more lenient thresholds)
+            extreme_rsi = rsi < 15 or rsi > 85  # More extreme (was 20/80)
+            extreme_bb = bb_position < 0.05 or bb_position > 0.95  # More extreme
+            low_volume = volume_ratio < 0.7  # Lowered from 0.8
             
             condition_risk = 0
             if extreme_rsi:
-                condition_risk += 0.10  # TUNED: Reduced from 0.15
+                condition_risk += 0.15  # Reduced from 0.2
             if extreme_bb:
-                condition_risk += 0.08  # TUNED: Reduced from 0.10
+                condition_risk += 0.10  # Reduced from 0.15
             if low_volume:
-                condition_risk += 0.06  # TUNED: Reduced from 0.08
+                condition_risk += 0.08  # Reduced from 0.1
             
-            # Side-specific risk (TUNED: reduced penalty for shorts)
-            side_risk = 0.03 if signal['side'] == 'sell' else 0.01  # TUNED: Reduced
+            # Side-specific risk (more balanced)
+            side_risk = 0.05 if signal['side'] == 'sell' else 0.02  # Reduced penalty for shorts
             
             # MTF risk reduction
             mtf_analysis = signal.get('mtf_analysis', {})
             confirmed_count = len(mtf_analysis.get('confirmed_timeframes', []))
-            total_timeframes = len(getattr(self.config, 'confirmation_timeframes', [])) or 3
-            mtf_risk_reduction = (confirmed_count / total_timeframes) * 0.25 if total_timeframes > 0 else 0  # TUNED: Increased
+            total_timeframes = len(self.config.confirmation_timeframes) if hasattr(self.config, 'confirmation_timeframes') else 3
+            mtf_risk_reduction = (confirmed_count / total_timeframes) * 0.20 if total_timeframes > 0 else 0  # Increased from 0.15
             
             # Calculate total risk score
-            base_risk = (volatility * 2.0 + distance_risk * 2.0 + condition_risk + side_risk)  # TUNED: Reduced multipliers
-            total_risk = max(0.05, min(1.0, base_risk - mtf_risk_reduction))  # TUNED: Lower minimum
+            base_risk = (volatility * 2.5 + distance_risk * 2.5 + condition_risk + side_risk)  # Reduced multipliers
+            total_risk = max(0.1, min(1.0, base_risk - mtf_risk_reduction))
             
             # Enhanced risk-reward calculation
             if signal['stop_loss'] != 0:
@@ -705,14 +701,14 @@ class SignalGenerator:
             else:
                 risk_reward_ratio = 0
             
-            # Risk level classification (TUNED: more lenient)
-            if total_risk > 0.90:  # TUNED: Increased from 0.85
+            # Risk level classification (more lenient)
+            if total_risk > 0.85:  # Increased from 0.8
                 risk_level = 'Very High'
-            elif total_risk > 0.70:  # TUNED: Increased from 0.65
+            elif total_risk > 0.65:  # Increased from 0.6
                 risk_level = 'High'
-            elif total_risk > 0.50:  # TUNED: Increased from 0.45
+            elif total_risk > 0.45:  # Increased from 0.4
                 risk_level = 'Medium'
-            elif total_risk > 0.30:  # TUNED: Increased from 0.25
+            elif total_risk > 0.25:  # Increased from 0.2
                 risk_level = 'Low'
             else:
                 risk_level = 'Very Low'
@@ -736,7 +732,7 @@ class SignalGenerator:
             
         except Exception as e:
             self.logger.error(f"Risk assessment error: {e}")
-            return {'total_risk_score': 0.3, 'risk_level': 'Medium'}  # TUNED: Lower default risk
+            return {'total_risk_score': 0.4, 'risk_level': 'Medium'}
 
     def assess_signal_risk(self, signal: Dict, df: pd.DataFrame) -> Dict:
         """Alias for assess_risk method for backward compatibility"""
@@ -745,9 +741,9 @@ class SignalGenerator:
     def analyze_symbol_comprehensive(self, df: pd.DataFrame, symbol_data: Dict, 
                                    volume_profile: Dict, fibonacci_data: Dict, 
                                    confluence_zones: List[Dict]) -> Optional[Dict]:
-        """Comprehensive symbol analysis with tuned approach"""
+        """Comprehensive symbol analysis with balanced approach"""
         try:
-            if df.empty or len(df) < 15:  # TUNED: Lower minimum data requirement (was 20)
+            if df.empty or len(df) < 20:
                 self.logger.warning(f"Insufficient data for {symbol_data['symbol']}")
                 return None
             
@@ -903,28 +899,28 @@ class SignalGenerator:
     def analyze_volume_patterns(self, df: pd.DataFrame) -> Dict:
         """Analyze volume patterns and buying/selling pressure"""
         try:
-            if 'volume' not in df.columns or len(df) < 15:  # TUNED: Lower requirement
+            if 'volume' not in df.columns or len(df) < 20:
                 return {'pattern': 'insufficient_data', 'strength': 0}
             
-            recent_15 = df.tail(15)  # TUNED: Shorter period
+            recent_20 = df.tail(20)
             
             # Volume trend
-            volume_ma_5 = recent_15['volume'].rolling(5).mean().iloc[-1]
-            volume_ma_15 = df['volume'].rolling(15).mean().iloc[-1]  # TUNED: Shorter period
+            volume_ma_5 = recent_20['volume'].rolling(5).mean().iloc[-1]
+            volume_ma_20 = df['volume'].rolling(20).mean().iloc[-1]
             
             # Buying vs selling pressure
-            up_volume = recent_15[recent_15['close'] > recent_15['open']]['volume'].sum()
-            down_volume = recent_15[recent_15['close'] < recent_15['open']]['volume'].sum()
+            up_volume = recent_20[recent_20['close'] > recent_20['open']]['volume'].sum()
+            down_volume = recent_20[recent_20['close'] < recent_20['open']]['volume'].sum()
             total_volume = up_volume + down_volume
             
             buying_pressure = up_volume / total_volume if total_volume > 0 else 0.5
             
-            # Volume pattern classification (TUNED: more lenient)
-            if volume_ma_5 > volume_ma_15 * 1.25:  # TUNED: Lower threshold
+            # Volume pattern classification
+            if volume_ma_5 > volume_ma_20 * 1.3:
                 pattern = 'surge'
-            elif volume_ma_5 > volume_ma_15 * 1.08:  # TUNED: Lower threshold
+            elif volume_ma_5 > volume_ma_20 * 1.1:
                 pattern = 'increasing'
-            elif volume_ma_5 < volume_ma_15 * 0.75:  # TUNED: More lenient
+            elif volume_ma_5 < volume_ma_20 * 0.7:
                 pattern = 'declining'
             else:
                 pattern = 'stable'
@@ -932,8 +928,8 @@ class SignalGenerator:
             return {
                 'pattern': pattern,
                 'buying_pressure': buying_pressure,
-                'volume_ma_ratio': volume_ma_5 / volume_ma_15 if volume_ma_15 > 0 else 1,
-                'strength': min(1.0, volume_ma_5 / volume_ma_15) if volume_ma_15 > 0 else 0.5
+                'volume_ma_ratio': volume_ma_5 / volume_ma_20 if volume_ma_20 > 0 else 1,
+                'strength': min(1.0, volume_ma_5 / volume_ma_20) if volume_ma_20 > 0 else 0.5
             }
             
         except Exception as e:
@@ -943,15 +939,15 @@ class SignalGenerator:
     def calculate_trend_strength(self, df: pd.DataFrame) -> Dict:
         """Calculate trend strength using multiple indicators"""
         try:
-            if len(df) < 30:  # TUNED: Lower requirement (was 50)
+            if len(df) < 50:
                 return {'strength': 0.5, 'direction': 'neutral', 'consistency': 'low'}
             
             latest = df.iloc[-1]
-            recent_30 = df.tail(30)  # TUNED: Shorter period
+            recent_50 = df.tail(50)
             
             # Price trend
-            price_change_15 = (latest['close'] - recent_30.iloc[-15]['close']) / recent_30.iloc[-15]['close']  # TUNED: Shorter period
-            price_change_30 = (latest['close'] - recent_30.iloc[0]['close']) / recent_30.iloc[0]['close']
+            price_change_20 = (latest['close'] - recent_50.iloc[-20]['close']) / recent_50.iloc[-20]['close']
+            price_change_50 = (latest['close'] - recent_50.iloc[0]['close']) / recent_50.iloc[0]['close']
             
             # Moving average alignment
             sma_20 = latest.get('sma_20', latest['close'])
@@ -975,32 +971,32 @@ class SignalGenerator:
                 ma_alignment_score -= 1
             
             # Trend consistency
-            bullish_candles = len(recent_30[recent_30['close'] > recent_30['open']])
-            consistency = bullish_candles / len(recent_30)
+            bullish_candles = len(recent_50[recent_50['close'] > recent_50['open']])
+            consistency = bullish_candles / len(recent_50)
             
             # Overall trend strength
-            strength = (abs(price_change_15) + abs(ma_alignment_score) / 4 + consistency) / 3
+            strength = (abs(price_change_20) + abs(ma_alignment_score) / 4 + consistency) / 3
             strength = min(1.0, strength)
             
-            # Direction determination (TUNED: more lenient thresholds)
-            if price_change_15 > 0.015 and ma_alignment_score > 0:  # TUNED: Lower threshold
+            # Direction determination
+            if price_change_20 > 0.02 and ma_alignment_score > 0:
                 direction = 'strong_bullish'
-            elif price_change_15 > 0 and ma_alignment_score >= 0:
+            elif price_change_20 > 0 and ma_alignment_score >= 0:
                 direction = 'bullish'
-            elif price_change_15 < -0.015 and ma_alignment_score < 0:  # TUNED: Lower threshold
+            elif price_change_20 < -0.02 and ma_alignment_score < 0:
                 direction = 'strong_bearish'
-            elif price_change_15 < 0 and ma_alignment_score <= 0:
+            elif price_change_20 < 0 and ma_alignment_score <= 0:
                 direction = 'bearish'
             else:
                 direction = 'neutral'
             
-            consistency_level = 'high' if consistency > 0.65 else 'medium' if consistency > 0.35 else 'low'  # TUNED: More lenient
+            consistency_level = 'high' if consistency > 0.7 else 'medium' if consistency > 0.4 else 'low'
             
             return {
                 'strength': strength,
                 'direction': direction,
                 'consistency': consistency_level,
-                'price_change_15': price_change_15,
+                'price_change_20': price_change_20,
                 'ma_alignment_score': ma_alignment_score
             }
             
@@ -1011,10 +1007,10 @@ class SignalGenerator:
     def analyze_price_action(self, df: pd.DataFrame) -> Dict:
         """Analyze recent price action patterns"""
         try:
-            if len(df) < 8:  # TUNED: Lower requirement (was 10)
+            if len(df) < 10:
                 return {'pattern': 'insufficient_data', 'strength': 0}
             
-            recent_8 = df.tail(8)  # TUNED: Shorter period
+            recent_10 = df.tail(10)
             latest = df.iloc[-1]
             
             # Candlestick patterns
@@ -1025,27 +1021,27 @@ class SignalGenerator:
             # Pattern identification
             patterns = []
             
-            # Doji-like (TUNED: more lenient)
-            if body_size < 0.002:  # TUNED: More lenient
+            # Doji-like
+            if body_size < 0.001:
                 patterns.append('doji')
             
-            # Hammer/Shooting star (TUNED: more lenient)
-            if lower_shadow > body_size * 1.5 and upper_shadow < body_size:  # TUNED: More lenient
+            # Hammer/Shooting star
+            if lower_shadow > body_size * 2 and upper_shadow < body_size:
                 patterns.append('hammer')
-            elif upper_shadow > body_size * 1.5 and lower_shadow < body_size:  # TUNED: More lenient
+            elif upper_shadow > body_size * 2 and lower_shadow < body_size:
                 patterns.append('shooting_star')
             
             # Support/Resistance test
-            recent_lows = recent_8['low'].min()
-            recent_highs = recent_8['high'].max()
+            recent_lows = recent_10['low'].min()
+            recent_highs = recent_10['high'].max()
             
-            if latest['low'] <= recent_lows * 1.002:  # TUNED: More lenient
+            if latest['low'] <= recent_lows * 1.001:
                 patterns.append('support_test')
-            if latest['high'] >= recent_highs * 0.998:  # TUNED: More lenient
+            if latest['high'] >= recent_highs * 0.999:
                 patterns.append('resistance_test')
             
             # Price momentum
-            closes = recent_8['close'].values
+            closes = recent_10['close'].values
             momentum = (closes[-1] - closes[0]) / closes[0] if closes[0] != 0 else 0
             
             return {
@@ -1053,7 +1049,7 @@ class SignalGenerator:
                 'momentum': momentum,
                 'body_size': body_size,
                 'shadow_ratio': (upper_shadow + lower_shadow) / body_size if body_size > 0 else 0,
-                'strength': min(1.0, abs(momentum) * 8 + body_size * 40)  # TUNED: More lenient scoring
+                'strength': min(1.0, abs(momentum) * 10 + body_size * 50)
             }
             
         except Exception as e:
@@ -1065,46 +1061,46 @@ class SignalGenerator:
         try:
             latest = df.iloc[-1]
             
-            # Liquidity assessment (TUNED: more lenient)
+            # Liquidity assessment
             volume_24h = symbol_data.get('volume_24h', 0)
             price_change_24h = symbol_data.get('price_change_24h', 0)
             
-            # Market cap and volume relationship (TUNED: lower thresholds)
-            if volume_24h > 5_000_000:  # TUNED: Lower threshold
+            # Market cap and volume relationship
+            if volume_24h > 10_000_000:
                 liquidity = 'high'
-            elif volume_24h > 500_000:  # TUNED: Lower threshold
+            elif volume_24h > 1_000_000:
                 liquidity = 'medium'
             else:
                 liquidity = 'low'
             
-            # Volatility assessment (TUNED: more lenient)
+            # Volatility assessment
             atr_pct = latest.get('atr', latest['close'] * 0.02) / latest['close']
-            if atr_pct > 0.08:  # TUNED: Higher threshold
+            if atr_pct > 0.06:
                 volatility_level = 'high'
-            elif atr_pct > 0.04:  # TUNED: Higher threshold
+            elif atr_pct > 0.03:
                 volatility_level = 'medium'
             else:
                 volatility_level = 'low'
             
-            # Market sentiment (TUNED: more lenient thresholds)
-            if price_change_24h > 4:  # TUNED: Lower threshold
+            # Market sentiment
+            if price_change_24h > 5:
                 sentiment = 'very_bullish'
-            elif price_change_24h > 1.5:  # TUNED: Lower threshold
+            elif price_change_24h > 2:
                 sentiment = 'bullish'
-            elif price_change_24h < -4:  # TUNED: Lower threshold
+            elif price_change_24h < -5:
                 sentiment = 'very_bearish'
-            elif price_change_24h < -1.5:  # TUNED: Lower threshold
+            elif price_change_24h < -2:
                 sentiment = 'bearish'
             else:
                 sentiment = 'neutral'
             
             # Trading conditions
             conditions = []
-            if liquidity in ['high', 'medium']:  # TUNED: Accept medium liquidity
+            if liquidity == 'high':
                 conditions.append('good_liquidity')
             if volatility_level in ['medium', 'high']:
                 conditions.append('sufficient_volatility')
-            if abs(price_change_24h) > 0.8:  # TUNED: Lower threshold
+            if abs(price_change_24h) > 1:
                 conditions.append('active_movement')
             
             return {
@@ -1114,168 +1110,50 @@ class SignalGenerator:
                 'price_change_24h': price_change_24h,
                 'volume_24h': volume_24h,
                 'trading_conditions': conditions,
-                'favorable_for_trading': len(conditions) >= 1  # TUNED: Lower requirement
+                'favorable_for_trading': len(conditions) >= 2
             }
             
         except Exception as e:
             self.logger.error(f"Market conditions assessment error: {e}")
             return {'liquidity': 'unknown', 'volatility_level': 'unknown', 'sentiment': 'neutral'}
 
-    def filter_signals_by_quality(self, signals: List[Dict], max_signals: int = 10) -> List[Dict]:
-        """Filter signals to return only TOP OPPORTUNITIES"""
+    def filter_signals_by_quality(self, signals: List[Dict], max_signals: int = 20) -> List[Dict]:
+        """Filter signals by quality metrics with balanced approach"""
         try:
             if not signals:
                 return []
             
-            # TIER 1: Premium signals (highest priority)
-            tier1_signals = []
-            # TIER 2: Quality signals  
-            tier2_signals = []
-            # TIER 3: Decent signals
-            tier3_signals = []
+            # Sort by confidence and risk-reward
+            quality_signals = []
             
             for signal in signals:
                 confidence = signal.get('confidence', 0)
                 rr_ratio = signal.get('risk_reward_ratio', 0)
                 volume_24h = signal.get('volume_24h', 0)
-                mtf_status = signal.get('mtf_status', 'NONE')
                 
-                # Calculate quality score
+                # Quality score calculation (more accessible)
                 quality_score = (
                     confidence * 0.4 +  # 40% weight on confidence
-                    min(100, rr_ratio * 18) * 0.3 +  # 30% weight on R/R
-                    min(100, volume_24h / 800_000) * 0.2 +  # 20% weight on volume
-                    (100 if signal.get('order_type') == 'market' else 92) * 0.1  # 10% weight on execution
+                    min(100, rr_ratio * 20) * 0.3 +  # 30% weight on R/R (capped)
+                    min(100, volume_24h / 1_000_000) * 0.2 +  # 20% weight on volume
+                    (100 if signal.get('order_type') == 'market' else 90) * 0.1  # 10% weight on execution
                 )
                 
                 signal['quality_score'] = quality_score
                 
-                # TIER 1: PREMIUM OPPORTUNITIES (Top 10%)
-                if (confidence >= 65 and rr_ratio >= 2.5 and volume_24h >= 2_000_000 and 
-                    mtf_status in ['STRONG', 'PARTIAL']):
-                    tier1_signals.append(signal)
-                
-                # TIER 2: QUALITY OPPORTUNITIES (Next 20%)
-                elif (confidence >= 55 and rr_ratio >= 2.0 and volume_24h >= 1_000_000):
-                    tier2_signals.append(signal)
-                
-                # TIER 3: DECENT OPPORTUNITIES (Backup options)
-                elif (confidence >= 45 and rr_ratio >= 1.8 and volume_24h >= 500_000):
-                    tier3_signals.append(signal)
+                # Quality filters (more lenient)
+                if (confidence >= 45 and rr_ratio >= 1.8 and volume_24h >= 500_000):
+                    quality_signals.append(signal)
             
-            # Sort each tier by quality score
-            tier1_signals.sort(key=lambda x: x['quality_score'], reverse=True)
-            tier2_signals.sort(key=lambda x: x['quality_score'], reverse=True)
-            tier3_signals.sort(key=lambda x: x['quality_score'], reverse=True)
+            # Sort by quality score
+            quality_signals.sort(key=lambda x: x['quality_score'], reverse=True)
             
-            # Build final list prioritizing higher tiers
-            top_opportunities = []
-            
-            # Take best from Tier 1 (max 5)
-            top_opportunities.extend(tier1_signals[:5])
-            remaining_slots = max_signals - len(top_opportunities)
-            
-            # Fill remaining with Tier 2 (max 3 more)
-            if remaining_slots > 0:
-                top_opportunities.extend(tier2_signals[:min(3, remaining_slots)])
-                remaining_slots = max_signals - len(top_opportunities)
-            
-            # Fill any remaining with Tier 3 (max 2 more)
-            if remaining_slots > 0:
-                top_opportunities.extend(tier3_signals[:min(2, remaining_slots)])
-            
-            # Log the filtering results
-            self.logger.info(f"🎯 TOP OPPORTUNITIES FILTER:")
-            self.logger.info(f"   Tier 1 (Premium): {len(tier1_signals)} → Taking {len([s for s in top_opportunities if s in tier1_signals])}")
-            self.logger.info(f"   Tier 2 (Quality): {len(tier2_signals)} → Taking {len([s for s in top_opportunities if s in tier2_signals])}")
-            self.logger.info(f"   Tier 3 (Decent): {len(tier3_signals)} → Taking {len([s for s in top_opportunities if s in tier3_signals])}")
-            self.logger.info(f"   📊 FINAL: {len(top_opportunities)} TOP OPPORTUNITIES selected from {len(signals)} total signals")
-            
-            return top_opportunities
+            # Return top signals
+            return quality_signals[:max_signals]
             
         except Exception as e:
-            self.logger.error(f"Top opportunities filtering error: {e}")
-            # Fallback: return top signals by confidence
-            signals_sorted = sorted(signals, key=lambda x: x.get('confidence', 0), reverse=True)
-            return signals_sorted[:max_signals]
-
-    def get_top_opportunities(self, all_signals: List[Dict], max_opportunities: int = 8) -> List[Dict]:
-        """Main method to get TOP OPPORTUNITIES ONLY"""
-        try:
-            if not all_signals:
-                self.logger.info("📭 No signals generated - no opportunities available")
-                return []
-            
-            # Step 1: Filter by quality to get top opportunities
-            top_opportunities = self.filter_signals_by_quality(all_signals, max_opportunities)
-            
-            # Step 2: Apply additional quality ranking
-            ranked_opportunities = self.rank_opportunities_with_mtf(top_opportunities)
-            
-            # Step 3: Final validation and filtering
-            final_opportunities = []
-            
-            for opportunity in ranked_opportunities:
-                # Additional validation for top opportunities
-                if self.validate_top_opportunity(opportunity):
-                    final_opportunities.append(opportunity)
-                    
-                # Stop when we have enough top opportunities
-                if len(final_opportunities) >= max_opportunities:
-                    break
-            
-            # Log final results
-            self.logger.info(f"🏆 TOP OPPORTUNITIES FINAL SELECTION:")
-            self.logger.info(f"   📊 Started with: {len(all_signals)} total signals")
-            self.logger.info(f"   🎯 Filtered to: {len(top_opportunities)} quality opportunities")
-            self.logger.info(f"   ✅ Final selection: {len(final_opportunities)} TOP OPPORTUNITIES")
-            
-            return final_opportunities
-            
-        except Exception as e:
-            self.logger.error(f"Top opportunities selection error: {e}")
-            return []
-    
-    def validate_top_opportunity(self, opportunity: Dict) -> bool:
-        """Additional validation for top opportunities"""
-        try:
-            confidence = opportunity.get('confidence', 0)
-            rr_ratio = opportunity.get('risk_reward_ratio', 0)
-            volume_24h = opportunity.get('volume_24h', 0)
-            
-            # Stricter validation for top opportunities
-            min_confidence = 50  # Higher minimum for top opportunities
-            min_rr = 2.0        # Higher R/R for top opportunities
-            min_volume = 800_000 # Minimum liquidity
-            
-            # Quality checks
-            quality_check = (
-                confidence >= min_confidence and
-                rr_ratio >= min_rr and
-                volume_24h >= min_volume
-            )
-            
-            if not quality_check:
-                self.logger.debug(f"❌ Opportunity filtered: {opportunity['symbol']} - "
-                                f"Conf:{confidence}% RR:{rr_ratio:.1f} Vol:{volume_24h:,.0f}")
-                return False
-            
-            # Market structure validation
-            analysis = opportunity.get('analysis', {})
-            market_conditions = analysis.get('market_conditions', {})
-            
-            # Must have favorable trading conditions
-            if not market_conditions.get('favorable_for_trading', False):
-                self.logger.debug(f"❌ Opportunity filtered: {opportunity['symbol']} - unfavorable market conditions")
-                return False
-            
-            self.logger.debug(f"✅ Top opportunity validated: {opportunity['symbol']} - "
-                            f"Conf:{confidence}% RR:{rr_ratio:.1f} Vol:{volume_24h:,.0f}")
-            return True
-            
-        except Exception as e:
-            self.logger.error(f"Top opportunity validation error: {e}")
-            return False
+            self.logger.error(f"Signal filtering error: {e}")
+            return signals[:max_signals]
 
     def generate_trading_summary(self, opportunities: List[Dict]) -> Dict:
         """Generate comprehensive trading summary"""
@@ -1291,15 +1169,15 @@ class SignalGenerator:
             buy_signals = len([op for op in opportunities if op['side'] == 'buy'])
             sell_signals = len([op for op in opportunities if op['side'] == 'sell'])
             
-            # Confidence distribution (TUNED: adjusted thresholds)
-            high_confidence = len([op for op in opportunities if op['confidence'] >= 65])  # TUNED: Lower threshold
-            medium_confidence = len([op for op in opportunities if 45 <= op['confidence'] < 65])  # TUNED: Lower threshold
-            low_confidence = len([op for op in opportunities if op['confidence'] < 45])
+            # Confidence distribution
+            high_confidence = len([op for op in opportunities if op['confidence'] >= 70])
+            medium_confidence = len([op for op in opportunities if 50 <= op['confidence'] < 70])
+            low_confidence = len([op for op in opportunities if op['confidence'] < 50])
             
-            # Risk-reward distribution (TUNED: adjusted thresholds)
-            excellent_rr = len([op for op in opportunities if op.get('risk_reward_ratio', 0) >= 2.5])  # TUNED: Lower threshold
-            good_rr = len([op for op in opportunities if 1.8 <= op.get('risk_reward_ratio', 0) < 2.5])  # TUNED: Lower threshold
-            fair_rr = len([op for op in opportunities if op.get('risk_reward_ratio', 0) < 1.8])
+            # Risk-reward distribution
+            excellent_rr = len([op for op in opportunities if op.get('risk_reward_ratio', 0) >= 3.0])
+            good_rr = len([op for op in opportunities if 2.0 <= op.get('risk_reward_ratio', 0) < 3.0])
+            fair_rr = len([op for op in opportunities if op.get('risk_reward_ratio', 0) < 2.0])
             
             # Market sentiment analysis
             symbols_analyzed = len(set(op['symbol'] for op in opportunities))
@@ -1341,20 +1219,20 @@ class SignalGenerator:
             return {'total_opportunities': len(opportunities), 'error': str(e)}
 
     def get_trading_recommendation(self, opportunities: List[Dict]) -> str:
-        """Generate trading recommendation based on signal quality (TUNED)"""
+        """Generate trading recommendation based on signal quality"""
         try:
             if not opportunities:
                 return "No signals found. Wait for better market conditions."
             
             total_ops = len(opportunities)
             high_quality = len([op for op in opportunities 
-                              if op['confidence'] >= 60 and op.get('risk_reward_ratio', 0) >= 2.2])  # TUNED: Lower thresholds
+                              if op['confidence'] >= 65 and op.get('risk_reward_ratio', 0) >= 2.5])
             
-            if high_quality >= 2:  # TUNED: Lower requirement
+            if high_quality >= 3:
                 return f"Excellent conditions: {high_quality} high-quality signals available."
             elif high_quality >= 1:
                 return f"Good conditions: {high_quality} quality signal(s) found."
-            elif total_ops >= 3:  # TUNED: Lower requirement
+            elif total_ops >= 5:
                 return f"Fair conditions: {total_ops} signals available, use careful position sizing."
             else:
                 return f"Limited opportunities: Only {total_ops} signal(s) found."
@@ -1379,79 +1257,3 @@ class SignalGenerator:
             explanation += "Reasons: Overbought conditions, price near resistance, reversal potential"
         
         return explanation
-
-    def generate_top_opportunities_summary(self, opportunities: List[Dict]) -> Dict:
-        """Generate summary specifically for TOP OPPORTUNITIES"""
-        try:
-            if not opportunities:
-                return {
-                    'status': 'no_opportunities',
-                    'message': '📭 No top opportunities found in current market conditions',
-                    'recommendation': 'Wait for better setups or lower position sizes'
-                }
-            
-            total_ops = len(opportunities)
-            
-            # Categorize by confidence levels
-            premium_ops = len([op for op in opportunities if op['confidence'] >= 65])
-            quality_ops = len([op for op in opportunities if 55 <= op['confidence'] < 65])
-            decent_ops = len([op for op in opportunities if 45 <= op['confidence'] < 55])
-            
-            # Categorize by R/R
-            excellent_rr = len([op for op in opportunities if op.get('risk_reward_ratio', 0) >= 2.5])
-            good_rr = len([op for op in opportunities if 2.0 <= op.get('risk_reward_ratio', 0) < 2.5])
-            
-            # Side distribution
-            buy_signals = len([op for op in opportunities if op['side'] == 'buy'])
-            sell_signals = len([op for op in opportunities if op['side'] == 'sell'])
-            
-            # MTF confirmation
-            mtf_confirmed = len([op for op in opportunities if op.get('mtf_status') in ['STRONG', 'PARTIAL']])
-            
-            # Calculate averages
-            avg_confidence = sum(op['confidence'] for op in opportunities) / total_ops
-            avg_rr = sum(op.get('risk_reward_ratio', 0) for op in opportunities) / total_ops
-            
-            # Market recommendation
-            if premium_ops >= 2:
-                market_status = 'excellent'
-                recommendation = f"🚀 EXCELLENT: {premium_ops} premium opportunities available - consider larger position sizes"
-            elif quality_ops >= 2:
-                market_status = 'good'
-                recommendation = f"✅ GOOD: {quality_ops} quality opportunities - standard position sizing recommended"
-            elif total_ops >= 3:
-                market_status = 'fair'
-                recommendation = f"⚠️ FAIR: {total_ops} opportunities available - use smaller position sizes"
-            else:
-                market_status = 'limited'
-                recommendation = f"📉 LIMITED: Only {total_ops} opportunity(ies) - wait for better setups"
-            
-            return {
-                'status': market_status,
-                'total_opportunities': total_ops,
-                'distribution': {
-                    'premium': premium_ops,
-                    'quality': quality_ops, 
-                    'decent': decent_ops,
-                    'buy_signals': buy_signals,
-                    'sell_signals': sell_signals
-                },
-                'quality_metrics': {
-                    'avg_confidence': round(avg_confidence, 1),
-                    'avg_risk_reward': round(avg_rr, 2),
-                    'excellent_rr_count': excellent_rr,
-                    'good_rr_count': good_rr,
-                    'mtf_confirmed': mtf_confirmed,
-                    'mtf_confirmation_rate': round((mtf_confirmed / total_ops) * 100, 1) if total_ops > 0 else 0
-                },
-                'recommendation': recommendation,
-                'message': f'🎯 {total_ops} TOP OPPORTUNITIES selected from market scan'
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Top opportunities summary error: {e}")
-            return {
-                'status': 'error',
-                'message': f'Error generating summary: {str(e)}',
-                'total_opportunities': len(opportunities)
-            }
