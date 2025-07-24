@@ -1,6 +1,7 @@
 """
 Auto-Trading System for Enhanced Bybit Trading System.
 Handles scheduled scanning, position management, and automated trading with leverage support.
+UPDATED: Added position filtering to prevent duplicate symbol trades.
 """
 
 import asyncio
@@ -8,7 +9,7 @@ import time
 import logging
 import threading
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Set
 from dataclasses import dataclass
 import uuid
 import ccxt
@@ -432,7 +433,7 @@ class LeveragedProfitMonitor:
                         self.logger.error(f"Error monitoring position {position.symbol}: {e}")
                 
                 # Sleep between monitoring cycles
-                time.sleep(30)  # Check every 30 seconds
+                time.sleep(10)  # Check every 30 seconds
                 
         except Exception as e:
             self.logger.error(f"Error in monitoring loop: {e}")
@@ -599,6 +600,70 @@ class PositionManager:
             self.logger.error(f"Error getting positions count: {e}")
             return 0
     
+    def get_symbols_with_positions(self) -> Set[str]:
+        """Get set of symbols that have active positions"""
+        try:
+            positions = self.exchange.fetch_positions()
+            symbols_with_positions = set()
+            
+            for pos in positions:
+                if pos.get('contracts', 0) > 0 or pos.get('size', 0) > 0:
+                    symbols_with_positions.add(pos['symbol'])
+            
+            return symbols_with_positions
+            
+        except Exception as e:
+            self.logger.error(f"Error getting symbols with positions: {e}")
+            return set()
+    
+    def get_symbols_with_orders(self) -> Set[str]:
+        """Get set of symbols that have pending orders"""
+        try:
+            open_orders = self.exchange.fetch_open_orders()
+            symbols_with_orders = set()
+            
+            for order in open_orders:
+                symbols_with_orders.add(order['symbol'])
+            
+            return symbols_with_orders
+            
+        except Exception as e:
+            self.logger.error(f"Error getting symbols with orders: {e}")
+            return set()
+    
+    def filter_signals_by_existing_symbols(self, signals: List[Dict]) -> List[Dict]:
+        """Filter out signals for symbols that already have positions or orders"""
+        try:
+            symbols_with_positions = self.get_symbols_with_positions()
+            symbols_with_orders = self.get_symbols_with_orders()
+            excluded_symbols = symbols_with_positions.union(symbols_with_orders)
+            
+            filtered_signals = []
+            skipped_count = 0
+            
+            for signal in signals:
+                symbol = signal['symbol']
+                if symbol in excluded_symbols:
+                    reason = ""
+                    if symbol in symbols_with_positions:
+                        reason = "existing position"
+                    elif symbol in symbols_with_orders:
+                        reason = "pending orders"
+                    
+                    self.logger.info(f"⏭️ Skipping {symbol} - {reason}")
+                    skipped_count += 1
+                else:
+                    filtered_signals.append(signal)
+            
+            if skipped_count > 0:
+                self.logger.info(f"🔍 Filtered out {skipped_count} symbols with existing exposure")
+                
+            return filtered_signals
+            
+        except Exception as e:
+            self.logger.error(f"Error filtering signals by existing symbols: {e}")
+            return signals
+    
     def can_open_new_positions(self, requested_count: int) -> Tuple[bool, int]:
         """Check if we can open new positions"""
         try:
@@ -758,7 +823,7 @@ class AutoTrader:
             signals_count = len(results['signals'])
             self.logger.info(f"📈 Generated {signals_count} signals")
             
-            # ADDED: Save results to database (replaces CSV export)
+            # Save results to database
             self.logger.info("💾 Saving results to MySQL database...")
             save_result = self.enhanced_db_manager.save_all_results(results)
             if save_result.get('error'):
@@ -766,7 +831,7 @@ class AutoTrader:
             else:
                 self.logger.debug(f"✅ Results saved - Scan ID: {save_result.get('scan_id', 'Unknown')}")
             
-            # ADDED: Display the comprehensive results table
+            # Display the comprehensive results table
             print("\n" + "=" * 100)
             print("📊 SCAN RESULTS - TOP TRADING OPPORTUNITIES")
             print("=" * 100)
@@ -775,6 +840,16 @@ class AutoTrader:
             
             # Get top opportunities for execution
             opportunities = results.get('top_opportunities', [])
+            
+            # FILTER OUT SYMBOLS WITH EXISTING POSITIONS/ORDERS
+            filtered_opportunities = self.position_manager.filter_signals_by_existing_symbols(opportunities)
+            
+            if not filtered_opportunities:
+                self.logger.warning("⚠️ No signals available for execution after filtering existing symbols")
+                print("⚠️  ALL SIGNALS FILTERED OUT:")
+                print("   Either symbols already have positions/orders")
+                print("   or no valid signals generated")
+                return signals_count, 0
             
             # Check position availability
             can_trade, available_slots = self.position_manager.can_open_new_positions(
@@ -791,17 +866,18 @@ class AutoTrader:
                 return signals_count, 0
             
             # Select opportunities for execution
-            execution_count = min(available_slots, self.config.max_execution_per_trade, len(opportunities))
-            selected_opportunities = opportunities[:execution_count]
+            execution_count = min(available_slots, self.config.max_execution_per_trade, len(filtered_opportunities))
+            selected_opportunities = filtered_opportunities[:execution_count]
             
             print(f"🎯 EXECUTING {execution_count} TRADES:")
+            print(f"   Original Signals: {signals_count}")
+            print(f"   After Symbol Filter: {len(filtered_opportunities)}")
             print(f"   Available Position Slots: {available_slots}")
-            print(f"   Max Executions per Scan: {self.config.max_execution_per_trade}")
             print(f"   Selected for Execution: {execution_count}")
             
             self.logger.info(
-                f"🎯 Executing {execution_count} trades "
-                f"(available slots: {available_slots})"
+                f"🎯 Executing {execution_count} trades after filtering "
+                f"(filtered: {len(filtered_opportunities)}, available slots: {available_slots})"
             )
             
             # Execute selected trades
@@ -853,6 +929,7 @@ class AutoTrader:
             # Final execution summary
             print(f"\n🏁 EXECUTION SUMMARY:")
             print(f"   Signals Generated: {signals_count}")
+            print(f"   Signals After Filtering: {len(filtered_opportunities)}")
             print(f"   Trades Attempted: {execution_count}")
             print(f"   Trades Executed: {executed_count}")
             print(f"   Success Rate: {(executed_count/execution_count*100) if execution_count > 0 else 0:.1f}%")

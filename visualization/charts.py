@@ -604,12 +604,13 @@ class InteractiveChartGenerator:
                 return
             
             # Calculate box coordinates - boxes start closer to the end (only 2-3 candles inside)
-            entry_signal_index = len(df) - 3  # Position signal near last 3 candles
+            entry_signal_index = len(df) - 4  # Position signal near last 4 candles and 8 yet-to-generate candles (wider boxes)
             if entry_signal_index < 0:
                 entry_signal_index = len(df) // 2  # Fallback to middle
             
             box_start = df.index[entry_signal_index]  # Start boxes from signal point
-            box_end = df.index[-1]  # End at chart end
+            # Create 8 future time periods for box extension
+            box_end = df.index[-1] + pd.Timedelta(minutes=30*12)  # Extend 12 periods into future (assuming 30m timeframe)
             
             # Signal marker and color definitions
             marker_color = '#4caf50' if side.lower() == 'buy' else '#f44336'
@@ -801,7 +802,7 @@ class InteractiveChartGenerator:
             
             fig.add_annotation(
                 text=signal_info,
-                x=0.02, y=1.02,  # Moved above the chart (y > 1)
+                x=0.02, y=0.90,
                 xref="x domain", yref="paper",  # Changed to paper reference
                 xanchor="left", yanchor="bottom",  # Changed anchor
                 bgcolor=f"rgba{(*[int(marker_color[i:i+2], 16) for i in (1, 3, 5)], 0.9)}",

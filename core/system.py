@@ -596,7 +596,7 @@ class CompleteEnhancedBybitSystem:
         if opportunities:
             print("=" * 210)
             header = (
-                f"{'Rank':<4} | {'Symbol':<25} | {'Side':<7} | {'Type':<6} | "
+                f"{'Symbol':<25} | {'Side':<7} | {'Type':<6} | "
                 f"{'Conf':<8} | {'MTF':<4} | {'Entry':<12} | {'Stop':<12} | {'TP1':<12} | {'TP2':<12} | "
                 f"{'R/R':<5} | {'Volume':<8} | {'MTF Status':<20} | {'Confirmed':<10} | {'Chart Status':<20}"
             )
@@ -649,7 +649,7 @@ class CompleteEnhancedBybitSystem:
                     tp2_value = opp.get('take_profit_2', 0)
                     
                     row = (
-                        f"{opp['rank']:<4} | {opp['symbol']:<25} | {side_emoji} {opp['side']} | "
+                        f"{opp['symbol']:<25} | {side_emoji} {opp['side']} | "
                         f"{opp['order_type']:<6} | {conf_display:<8} | {mtf_count:<4} | "
                         f"${opp['entry_price']:<11.4f} | ${opp['stop_loss']:<11.4f} | "
                         f"${tp1_value:<11.4f} | ${tp2_value:<11.4f} | "
