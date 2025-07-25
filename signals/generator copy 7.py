@@ -1121,43 +1121,161 @@ class SignalGenerator:
             self.logger.error(f"Market conditions assessment error: {e}")
             return {'liquidity': 'unknown', 'volatility_level': 'unknown', 'sentiment': 'neutral'}
 
-    def filter_signals_by_quality(self, signals: List[Dict], max_signals: int = 25) -> List[Dict]:
-        """Filter signals by quality metrics with tuned approach"""
+    def filter_signals_by_quality(self, signals: List[Dict], max_signals: int = 10) -> List[Dict]:
+        """Filter signals to return only TOP OPPORTUNITIES"""
         try:
             if not signals:
                 return []
             
-            # Sort by confidence and risk-reward
-            quality_signals = []
+            # TIER 1: Premium signals (highest priority)
+            tier1_signals = []
+            # TIER 2: Quality signals  
+            tier2_signals = []
+            # TIER 3: Decent signals
+            tier3_signals = []
             
             for signal in signals:
                 confidence = signal.get('confidence', 0)
                 rr_ratio = signal.get('risk_reward_ratio', 0)
                 volume_24h = signal.get('volume_24h', 0)
+                mtf_status = signal.get('mtf_status', 'NONE')
                 
-                # Quality score calculation (TUNED: more accessible)
+                # Calculate quality score
                 quality_score = (
                     confidence * 0.4 +  # 40% weight on confidence
-                    min(100, rr_ratio * 18) * 0.3 +  # 30% weight on R/R (TUNED: more lenient)
-                    min(100, volume_24h / 800_000) * 0.2 +  # 20% weight on volume (TUNED: lower threshold)
-                    (100 if signal.get('order_type') == 'market' else 92) * 0.1  # 10% weight on execution (TUNED: less penalty)
+                    min(100, rr_ratio * 18) * 0.3 +  # 30% weight on R/R
+                    min(100, volume_24h / 800_000) * 0.2 +  # 20% weight on volume
+                    (100 if signal.get('order_type') == 'market' else 92) * 0.1  # 10% weight on execution
                 )
                 
                 signal['quality_score'] = quality_score
                 
-                # Quality filters (TUNED: more lenient)
-                if (confidence >= 40 and rr_ratio >= 1.6 and volume_24h >= 300_000):  # TUNED: Much lower thresholds
-                    quality_signals.append(signal)
+                # TIER 1: PREMIUM OPPORTUNITIES (Top 10%)
+                if (confidence >= 65 and rr_ratio >= 2.5 and volume_24h >= 2_000_000 and 
+                    mtf_status in ['STRONG', 'PARTIAL']):
+                    tier1_signals.append(signal)
+                
+                # TIER 2: QUALITY OPPORTUNITIES (Next 20%)
+                elif (confidence >= 55 and rr_ratio >= 2.0 and volume_24h >= 1_000_000):
+                    tier2_signals.append(signal)
+                
+                # TIER 3: DECENT OPPORTUNITIES (Backup options)
+                elif (confidence >= 45 and rr_ratio >= 1.8 and volume_24h >= 500_000):
+                    tier3_signals.append(signal)
             
-            # Sort by quality score
-            quality_signals.sort(key=lambda x: x['quality_score'], reverse=True)
+            # Sort each tier by quality score
+            tier1_signals.sort(key=lambda x: x['quality_score'], reverse=True)
+            tier2_signals.sort(key=lambda x: x['quality_score'], reverse=True)
+            tier3_signals.sort(key=lambda x: x['quality_score'], reverse=True)
             
-            # Return top signals
-            return quality_signals[:max_signals]
+            # Build final list prioritizing higher tiers
+            top_opportunities = []
+            
+            # Take best from Tier 1 (max 5)
+            top_opportunities.extend(tier1_signals[:5])
+            remaining_slots = max_signals - len(top_opportunities)
+            
+            # Fill remaining with Tier 2 (max 3 more)
+            if remaining_slots > 0:
+                top_opportunities.extend(tier2_signals[:min(3, remaining_slots)])
+                remaining_slots = max_signals - len(top_opportunities)
+            
+            # Fill any remaining with Tier 3 (max 2 more)
+            if remaining_slots > 0:
+                top_opportunities.extend(tier3_signals[:min(2, remaining_slots)])
+            
+            # Log the filtering results
+            self.logger.info(f"🎯 TOP OPPORTUNITIES FILTER:")
+            self.logger.info(f"   Tier 1 (Premium): {len(tier1_signals)} → Taking {len([s for s in top_opportunities if s in tier1_signals])}")
+            self.logger.info(f"   Tier 2 (Quality): {len(tier2_signals)} → Taking {len([s for s in top_opportunities if s in tier2_signals])}")
+            self.logger.info(f"   Tier 3 (Decent): {len(tier3_signals)} → Taking {len([s for s in top_opportunities if s in tier3_signals])}")
+            self.logger.info(f"   📊 FINAL: {len(top_opportunities)} TOP OPPORTUNITIES selected from {len(signals)} total signals")
+            
+            return top_opportunities
             
         except Exception as e:
-            self.logger.error(f"Signal filtering error: {e}")
-            return signals[:max_signals]
+            self.logger.error(f"Top opportunities filtering error: {e}")
+            # Fallback: return top signals by confidence
+            signals_sorted = sorted(signals, key=lambda x: x.get('confidence', 0), reverse=True)
+            return signals_sorted[:max_signals]
+
+    def get_top_opportunities(self, all_signals: List[Dict], max_opportunities: int = 8) -> List[Dict]:
+        """Main method to get TOP OPPORTUNITIES ONLY"""
+        try:
+            if not all_signals:
+                self.logger.info("📭 No signals generated - no opportunities available")
+                return []
+            
+            # Step 1: Filter by quality to get top opportunities
+            top_opportunities = self.filter_signals_by_quality(all_signals, max_opportunities)
+            
+            # Step 2: Apply additional quality ranking
+            ranked_opportunities = self.rank_opportunities_with_mtf(top_opportunities)
+            
+            # Step 3: Final validation and filtering
+            final_opportunities = []
+            
+            for opportunity in ranked_opportunities:
+                # Additional validation for top opportunities
+                if self.validate_top_opportunity(opportunity):
+                    final_opportunities.append(opportunity)
+                    
+                # Stop when we have enough top opportunities
+                if len(final_opportunities) >= max_opportunities:
+                    break
+            
+            # Log final results
+            self.logger.info(f"🏆 TOP OPPORTUNITIES FINAL SELECTION:")
+            self.logger.info(f"   📊 Started with: {len(all_signals)} total signals")
+            self.logger.info(f"   🎯 Filtered to: {len(top_opportunities)} quality opportunities")
+            self.logger.info(f"   ✅ Final selection: {len(final_opportunities)} TOP OPPORTUNITIES")
+            
+            return final_opportunities
+            
+        except Exception as e:
+            self.logger.error(f"Top opportunities selection error: {e}")
+            return []
+    
+    def validate_top_opportunity(self, opportunity: Dict) -> bool:
+        """Additional validation for top opportunities"""
+        try:
+            confidence = opportunity.get('confidence', 0)
+            rr_ratio = opportunity.get('risk_reward_ratio', 0)
+            volume_24h = opportunity.get('volume_24h', 0)
+            
+            # Stricter validation for top opportunities
+            min_confidence = 50  # Higher minimum for top opportunities
+            min_rr = 2.0        # Higher R/R for top opportunities
+            min_volume = 800_000 # Minimum liquidity
+            
+            # Quality checks
+            quality_check = (
+                confidence >= min_confidence and
+                rr_ratio >= min_rr and
+                volume_24h >= min_volume
+            )
+            
+            if not quality_check:
+                self.logger.debug(f"❌ Opportunity filtered: {opportunity['symbol']} - "
+                                f"Conf:{confidence}% RR:{rr_ratio:.1f} Vol:{volume_24h:,.0f}")
+                return False
+            
+            # Market structure validation
+            analysis = opportunity.get('analysis', {})
+            market_conditions = analysis.get('market_conditions', {})
+            
+            # Must have favorable trading conditions
+            if not market_conditions.get('favorable_for_trading', False):
+                self.logger.debug(f"❌ Opportunity filtered: {opportunity['symbol']} - unfavorable market conditions")
+                return False
+            
+            self.logger.debug(f"✅ Top opportunity validated: {opportunity['symbol']} - "
+                            f"Conf:{confidence}% RR:{rr_ratio:.1f} Vol:{volume_24h:,.0f}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Top opportunity validation error: {e}")
+            return False
 
     def generate_trading_summary(self, opportunities: List[Dict]) -> Dict:
         """Generate comprehensive trading summary"""
@@ -1261,3 +1379,79 @@ class SignalGenerator:
             explanation += "Reasons: Overbought conditions, price near resistance, reversal potential"
         
         return explanation
+
+    def generate_top_opportunities_summary(self, opportunities: List[Dict]) -> Dict:
+        """Generate summary specifically for TOP OPPORTUNITIES"""
+        try:
+            if not opportunities:
+                return {
+                    'status': 'no_opportunities',
+                    'message': '📭 No top opportunities found in current market conditions',
+                    'recommendation': 'Wait for better setups or lower position sizes'
+                }
+            
+            total_ops = len(opportunities)
+            
+            # Categorize by confidence levels
+            premium_ops = len([op for op in opportunities if op['confidence'] >= 65])
+            quality_ops = len([op for op in opportunities if 55 <= op['confidence'] < 65])
+            decent_ops = len([op for op in opportunities if 45 <= op['confidence'] < 55])
+            
+            # Categorize by R/R
+            excellent_rr = len([op for op in opportunities if op.get('risk_reward_ratio', 0) >= 2.5])
+            good_rr = len([op for op in opportunities if 2.0 <= op.get('risk_reward_ratio', 0) < 2.5])
+            
+            # Side distribution
+            buy_signals = len([op for op in opportunities if op['side'] == 'buy'])
+            sell_signals = len([op for op in opportunities if op['side'] == 'sell'])
+            
+            # MTF confirmation
+            mtf_confirmed = len([op for op in opportunities if op.get('mtf_status') in ['STRONG', 'PARTIAL']])
+            
+            # Calculate averages
+            avg_confidence = sum(op['confidence'] for op in opportunities) / total_ops
+            avg_rr = sum(op.get('risk_reward_ratio', 0) for op in opportunities) / total_ops
+            
+            # Market recommendation
+            if premium_ops >= 2:
+                market_status = 'excellent'
+                recommendation = f"🚀 EXCELLENT: {premium_ops} premium opportunities available - consider larger position sizes"
+            elif quality_ops >= 2:
+                market_status = 'good'
+                recommendation = f"✅ GOOD: {quality_ops} quality opportunities - standard position sizing recommended"
+            elif total_ops >= 3:
+                market_status = 'fair'
+                recommendation = f"⚠️ FAIR: {total_ops} opportunities available - use smaller position sizes"
+            else:
+                market_status = 'limited'
+                recommendation = f"📉 LIMITED: Only {total_ops} opportunity(ies) - wait for better setups"
+            
+            return {
+                'status': market_status,
+                'total_opportunities': total_ops,
+                'distribution': {
+                    'premium': premium_ops,
+                    'quality': quality_ops, 
+                    'decent': decent_ops,
+                    'buy_signals': buy_signals,
+                    'sell_signals': sell_signals
+                },
+                'quality_metrics': {
+                    'avg_confidence': round(avg_confidence, 1),
+                    'avg_risk_reward': round(avg_rr, 2),
+                    'excellent_rr_count': excellent_rr,
+                    'good_rr_count': good_rr,
+                    'mtf_confirmed': mtf_confirmed,
+                    'mtf_confirmation_rate': round((mtf_confirmed / total_ops) * 100, 1) if total_ops > 0 else 0
+                },
+                'recommendation': recommendation,
+                'message': f'🎯 {total_ops} TOP OPPORTUNITIES selected from market scan'
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Top opportunities summary error: {e}")
+            return {
+                'status': 'error',
+                'message': f'Error generating summary: {str(e)}',
+                'total_opportunities': len(opportunities)
+            }

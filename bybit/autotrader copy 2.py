@@ -1,7 +1,7 @@
 """
 Auto-Trading System for Enhanced Bybit Trading System.
 Handles scheduled scanning, position management, and automated trading with leverage support.
-UPDATED: Added position filtering to prevent duplicate symbol trades.
+UPDATED: Works with TOP OPPORTUNITIES from system.py and updates top_opportunities table
 """
 
 import asyncio
@@ -335,7 +335,7 @@ class LeveragedProfitMonitor:
             current_side = current_position['side']
             position_size = current_position['contracts']
             
-            # FIXED: Use proper capitalized sides for Bybit API
+            # Use proper capitalized sides for Bybit API
             if current_side.lower() == 'long':
                 close_side = 'Sell'  # Capitalized
             elif current_side.lower() == 'short':
@@ -433,7 +433,7 @@ class LeveragedProfitMonitor:
                         self.logger.error(f"Error monitoring position {position.symbol}: {e}")
                 
                 # Sleep between monitoring cycles
-                time.sleep(10)  # Check every 30 seconds
+                time.sleep(30)  # Check every 30 seconds
                 
         except Exception as e:
             self.logger.error(f"Error in monitoring loop: {e}")
@@ -513,7 +513,7 @@ class OrderExecutor:
             self.logger.info(f"   Position Size: {position_size} units")
             self.logger.info(f"   Required Margin: {required_margin} USDT")
             
-            # FIXED: Capitalize the side parameter for Bybit API
+            # Capitalize the side parameter for Bybit API
             bybit_side = side.capitalize()  # 'buy' -> 'Buy', 'sell' -> 'Sell'
             
             # Place entry order with integrated SL/TP
@@ -570,7 +570,9 @@ class OrderExecutor:
                 'take_profit_order_id': tp_order['id'] if tp_order else None,
                 'signal_confidence': signal.get('confidence', 0),
                 'mtf_status': signal.get('mtf_status', ''),
-                'auto_close_profit_target': self.config.auto_close_profit_at
+                'auto_close_profit_target': self.config.auto_close_profit_at,
+                'quality_tier': signal.get('quality_tier', 'UNKNOWN'),
+                'selection_rank': signal.get('selection_rank', 0)
             }
             
             return True, "Order placed successfully", position_data
@@ -631,18 +633,18 @@ class PositionManager:
             self.logger.error(f"Error getting symbols with orders: {e}")
             return set()
     
-    def filter_signals_by_existing_symbols(self, signals: List[Dict]) -> List[Dict]:
-        """Filter out signals for symbols that already have positions or orders"""
+    def filter_top_opportunities_by_existing_symbols(self, top_opportunities: List[Dict]) -> List[Dict]:
+        """Filter out top opportunities for symbols that already have positions or orders"""
         try:
             symbols_with_positions = self.get_symbols_with_positions()
             symbols_with_orders = self.get_symbols_with_orders()
             excluded_symbols = symbols_with_positions.union(symbols_with_orders)
             
-            filtered_signals = []
+            filtered_opportunities = []
             skipped_count = 0
             
-            for signal in signals:
-                symbol = signal['symbol']
+            for opportunity in top_opportunities:
+                symbol = opportunity['symbol']
                 if symbol in excluded_symbols:
                     reason = ""
                     if symbol in symbols_with_positions:
@@ -650,19 +652,19 @@ class PositionManager:
                     elif symbol in symbols_with_orders:
                         reason = "pending orders"
                     
-                    self.logger.info(f"⏭️ Skipping {symbol} - {reason}")
+                    self.logger.info(f"⏭️ Skipping TOP opportunity {symbol} - {reason}")
                     skipped_count += 1
                 else:
-                    filtered_signals.append(signal)
+                    filtered_opportunities.append(opportunity)
             
             if skipped_count > 0:
-                self.logger.info(f"🔍 Filtered out {skipped_count} symbols with existing exposure")
+                self.logger.info(f"🔍 Filtered out {skipped_count} top opportunities with existing exposure")
                 
-            return filtered_signals
+            return filtered_opportunities
             
         except Exception as e:
-            self.logger.error(f"Error filtering signals by existing symbols: {e}")
-            return signals
+            self.logger.error(f"Error filtering top opportunities by existing symbols: {e}")
+            return top_opportunities
     
     def can_open_new_positions(self, requested_count: int) -> Tuple[bool, int]:
         """Check if we can open new positions"""
@@ -704,6 +706,8 @@ class PositionManager:
                 auto_close_profit_target=position_data.get('auto_close_profit_target', 10.0),
                 signal_confidence=position_data.get('signal_confidence'),
                 mtf_status=position_data.get('mtf_status'),
+                quality_tier=position_data.get('quality_tier', 'UNKNOWN'),
+                selection_rank=position_data.get('selection_rank', 0),
                 status='open'
             )
             
@@ -743,8 +747,109 @@ class PositionManager:
             self.logger.error(f"Error updating position status: {e}")
 
 
+class TopOpportunitiesProcessor:
+    """Process and validate top opportunities for trading"""
+    
+    def __init__(self, config: EnhancedSystemConfig):
+        self.config = config
+        self.logger = logging.getLogger(__name__)
+    
+    def validate_top_opportunity_for_trading(self, opportunity: Dict) -> bool:
+        """Validate that a top opportunity is ready for trading - FIXED: More lenient validation"""
+        try:
+            # Required fields for trading
+            required_fields = [
+                'symbol', 'side', 'entry_price', 'stop_loss', 'take_profit_1',
+                'confidence', 'risk_reward_ratio', 'volume_24h'
+            ]
+            
+            # Check all required fields exist
+            for field in required_fields:
+                if field not in opportunity:
+                    self.logger.warning(f"Missing required field {field} in opportunity {opportunity.get('symbol', 'unknown')}")
+                    return False
+            
+            # FIXED: Much more lenient validation since signals are already filtered
+            # These should match or be more lenient than generator.py validation
+            
+            # Very basic validation - signals are already quality-filtered
+            if opportunity['confidence'] < 30:  # FIXED: Much lower (was 40)
+                self.logger.warning(f"Confidence too low for {opportunity['symbol']}: {opportunity['confidence']}%")
+                return False
+            
+            if opportunity['risk_reward_ratio'] < 1.2:  # FIXED: Much lower (was 1.5)
+                self.logger.warning(f"R/R ratio too low for {opportunity['symbol']}: {opportunity['risk_reward_ratio']}")
+                return False
+            
+            if opportunity['volume_24h'] < 50_000:  # FIXED: Much lower (was 100_000)
+                self.logger.warning(f"Volume too low for {opportunity['symbol']}: {opportunity['volume_24h']}")
+                return False
+            
+            # Additional safety checks for trading
+            if opportunity['entry_price'] <= 0:
+                self.logger.warning(f"Invalid entry price for {opportunity['symbol']}: {opportunity['entry_price']}")
+                return False
+            
+            if opportunity['stop_loss'] <= 0:
+                self.logger.warning(f"Invalid stop loss for {opportunity['symbol']}: {opportunity['stop_loss']}")
+                return False
+            
+            self.logger.debug(f"✅ Top opportunity validated for trading: {opportunity['symbol']}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error validating opportunity: {e}")
+            return False
+    
+    def prioritize_top_opportunities(self, opportunities: List[Dict]) -> List[Dict]:
+        """Further prioritize top opportunities for execution"""
+        try:
+            # They should already be ranked, but we can add additional prioritization
+            prioritized = []
+            
+            for opp in opportunities:
+                # Add execution priority score
+                priority_score = 0
+                
+                # Quality tier bonus
+                quality_tier = opp.get('quality_tier', 'BASIC')
+                if quality_tier == 'PREMIUM':
+                    priority_score += 100
+                elif quality_tier == 'QUALITY':
+                    priority_score += 50
+                elif quality_tier == 'DECENT':
+                    priority_score += 25
+                
+                # MTF confirmation bonus
+                mtf_status = opp.get('mtf_status', 'NONE')
+                if mtf_status == 'STRONG':
+                    priority_score += 75
+                elif mtf_status == 'PARTIAL':
+                    priority_score += 35
+                
+                # Confidence bonus
+                confidence = opp.get('confidence', 0)
+                priority_score += confidence * 0.5
+                
+                # Risk-reward bonus
+                rr_ratio = opp.get('risk_reward_ratio', 0)
+                priority_score += min(50, rr_ratio * 10)
+                
+                opp['execution_priority_score'] = priority_score
+                prioritized.append(opp)
+            
+            # Sort by execution priority
+            prioritized.sort(key=lambda x: x['execution_priority_score'], reverse=True)
+            
+            return prioritized
+            
+        except Exception as e:
+            self.logger.error(f"Error prioritizing opportunities: {e}")
+            return opportunities
+
+
 class AutoTrader:
-    """Main auto-trading orchestration class"""
+    """Main auto-trading orchestration class - FOCUSES ON TOP OPPORTUNITIES ONLY"""
     
     def __init__(self, config: EnhancedSystemConfig):
         self.config = config
@@ -770,6 +875,7 @@ class AutoTrader:
         self.order_executor = OrderExecutor(
             self.exchange, config, self.leverage_manager, self.position_sizer
         )
+        self.top_opportunities_processor = TopOpportunitiesProcessor(config)
         
         # Session tracking
         self.trading_session_id = None
@@ -801,6 +907,7 @@ class AutoTrader:
             self.logger.info(f"   Leverage: {self.config.leverage}")
             self.logger.info(f"   Auto-close profit target: {self.config.auto_close_profit_at}%")
             self.logger.info(f"   Scan interval: {self.config.scan_interval / 3600:.1f} hours")
+            self.logger.info(f"🎯 Focus: TOP OPPORTUNITIES ONLY")
             
             return session_id
             
@@ -809,51 +916,71 @@ class AutoTrader:
             raise
     
     async def run_scan_and_execute(self) -> Tuple[int, int]:
-        """Run signal scan and execute trades"""
+        """Run signal scan and execute trades - FIXED take_profit key error"""
         try:
             self.logger.info("📊 Running signal analysis...")
             
             # Run the existing signal analysis system
             results = self.trading_system.run_complete_analysis_parallel_mtf()
             
-            if not results or not results.get('signals'):
-                self.logger.warning("No signals generated in this scan")
+            if not results:
+                self.logger.warning("❌ No analysis results returned from system")
+                return 0, 0
+                
+            # Check both 'signals' and 'top_opportunities'
+            all_signals = results.get('signals', [])
+            opportunities = results.get('top_opportunities', [])
+            
+            if not all_signals and not opportunities:
+                self.logger.warning("❌ No signals or opportunities generated in this scan")
                 return 0, 0
             
-            total_signals = len(results.get('signals', []))
-            top_opportunities_count = len(results['top_opportunities'])
+            # Use all_signals count for accurate reporting
+            signals_count = len(all_signals) if all_signals else len(opportunities)
             
-            self.logger.info(f"📈 Generated {total_signals} total signals")
-            self.logger.info(f"🏆 Selected {top_opportunities_count} top opportunities for database storage")
-
-            # Save results to database (only top opportunities will be saved)
-            self.logger.info("💾 Saving TOP opportunities to MySQL database...")
+            self.logger.info(f"📈 Generated {signals_count} signals ({len(opportunities)} top opportunities)")
+            
+            # Save results to database
+            self.logger.info("💾 Saving results to MySQL database...")
             save_result = self.enhanced_db_manager.save_all_results(results)
             if save_result.get('error'):
                 self.logger.error(f"Failed to save results: {save_result['error']}")
             else:
-                saved_count = save_result.get('signals', 0)
-                self.logger.info(f"✅ Saved {saved_count} top opportunities to database (Scan ID: {save_result.get('scan_id', 'Unknown')})")
-                        
-            # Display the comprehensive results table
-            print("\n" + "=" * 100)
-            print("📊 SCAN RESULTS - TOP TRADING OPPORTUNITIES")
-            print("=" * 100)
-            self.trading_system.print_comprehensive_results_with_mtf(results)
-            print("=" * 100 + "\n")
+                self.logger.debug(f"✅ Results saved - Scan ID: {save_result.get('scan_id', 'Unknown')}")
             
-            # Get top opportunities for execution
-            opportunities = results.get('top_opportunities', [])
+            # Display ONLY top opportunities (clean console output)
+            print("\n" + "=" * 80)
+            print("📊 TOP TRADING OPPORTUNITIES ONLY")
+            print("=" * 80)
+            self.trading_system.print_comprehensive_results_with_mtf(results)
+            print("=" * 80 + "\n")
+            
+            # Use opportunities for execution, limited by max_execution_per_trade
+            if not opportunities:
+                self.logger.warning("⚠️ No top opportunities available for execution")
+                return signals_count, 0
+            
+            # FIXED: Ensure all opportunities have take_profit key for compatibility
+            for opp in opportunities:
+                # Ensure take_profit key exists (use take_profit_1 as primary)
+                if 'take_profit' not in opp:
+                    opp['take_profit'] = opp.get('take_profit_1', opp.get('take_profit_2', 0))
+                
+                # Ensure all required keys exist with fallbacks
+                if 'take_profit_1' not in opp:
+                    opp['take_profit_1'] = opp.get('take_profit', 0)
+                if 'take_profit_2' not in opp:
+                    opp['take_profit_2'] = opp.get('take_profit_1', 0) * 1.2  # 20% higher as TP2
             
             # FILTER OUT SYMBOLS WITH EXISTING POSITIONS/ORDERS
-            filtered_opportunities = self.position_manager.filter_signals_by_existing_symbols(opportunities)
+            filtered_opportunities = self.position_manager.filter_top_opportunities_by_existing_symbols(opportunities)
             
             if not filtered_opportunities:
                 self.logger.warning("⚠️ No signals available for execution after filtering existing symbols")
                 print("⚠️  ALL SIGNALS FILTERED OUT:")
                 print("   Either symbols already have positions/orders")
                 print("   or no valid signals generated")
-                return total_signals, 0
+                return signals_count, 0
             
             # Check position availability
             can_trade, available_slots = self.position_manager.can_open_new_positions(
@@ -861,52 +988,66 @@ class AutoTrader:
             )
             
             if not can_trade:
-                self.logger.warning(
-                    f"⚠️ Cannot open new positions - at max capacity "
-                    f"({self.config.max_concurrent_positions})"
-                )
-                print(f"⚠️  POSITION LIMIT REACHED: {self.config.max_concurrent_positions} concurrent positions")
-                print(f"   No new trades will be executed until positions are closed")
-                return total_signals, 0
+                self.logger.warning(f"⚠️ Cannot open new positions - at max capacity ({self.config.max_concurrent_positions})")
+                return signals_count, 0
             
-            # Select opportunities for execution
-            execution_count = min(available_slots, self.config.max_execution_per_trade, len(filtered_opportunities))
-            selected_opportunities = filtered_opportunities[:execution_count]
-            
-            print(f"🎯 EXECUTING {execution_count} TRADES:")
-            print(f"   Original Signals: {total_signals}")
-            print(f"   After Symbol Filter: {len(filtered_opportunities)}")
-            print(f"   Available Position Slots: {available_slots}")
-            print(f"   Selected for Execution: {execution_count}")
-            
-            self.logger.info(
-                f"🎯 Executing {execution_count} trades after filtering "
-                f"(filtered: {len(filtered_opportunities)}, available slots: {available_slots})"
+            # Limit execution to max_execution_per_trade
+            execution_count = min(
+                len(filtered_opportunities),
+                self.config.max_execution_per_trade,  # This is the key limit
+                available_slots
             )
             
-            # Execute selected trades
+            # Only execute the top N opportunities
+            selected_opportunities = filtered_opportunities[:execution_count]
+            
+            # Execute trades for selected opportunities
             executed_count = 0
+            
+            print(f"\n🎯 EXECUTING TOP {execution_count} TRADES:")
+            print(f"   Max Per Scan Setting: {self.config.max_execution_per_trade}")
+            print(f"   Available After Filtering: {len(filtered_opportunities)}")
+            print(f"   Selected for Execution: {execution_count}")
+            print("=" * 60)
+            
             for i, opportunity in enumerate(selected_opportunities):
                 try:
-                    print(f"\n📝 EXECUTING TRADE {i+1}/{execution_count}:")
-                    print(f"   Symbol: {opportunity['symbol']}")
-                    print(f"   Side: {opportunity['side'].upper()}")
+                    # FIXED: Get take profit values with proper fallbacks
+                    take_profit_1 = opportunity.get('take_profit_1', opportunity.get('take_profit', 0))
+                    take_profit_2 = opportunity.get('take_profit_2', take_profit_1 * 1.2 if take_profit_1 > 0 else 0)
+                    primary_take_profit = take_profit_1  # Use TP1 as primary target
+                    
+                    print(f"\n📈 TRADE {i+1}/{execution_count}: {opportunity['symbol']} {opportunity['side'].upper()}")
                     print(f"   Confidence: {opportunity['confidence']:.1f}%")
                     print(f"   MTF Status: {opportunity.get('mtf_status', 'N/A')}")
-                    print(f"   Entry Price: ${opportunity['entry_price']:.6f}")
+                    print(f"   Entry: ${opportunity['entry_price']:.6f}")
+                    print(f"   Stop Loss: ${opportunity['stop_loss']:.6f}")
+                    print(f"   Take Profit 1: ${take_profit_1:.6f}")
+                    if take_profit_2 > 0 and take_profit_2 != take_profit_1:
+                        print(f"   Take Profit 2: ${take_profit_2:.6f}")
                     
-                    self.logger.info(f"📝 Executing trade {i+1}/{execution_count}: {opportunity['symbol']}")
+                    # Create a clean opportunity dict for execution
+                    execution_opportunity = {
+                        'symbol': opportunity['symbol'],
+                        'side': opportunity['side'],
+                        'entry_price': opportunity['entry_price'],
+                        'stop_loss': opportunity['stop_loss'],
+                        'take_profit': primary_take_profit,  # Use TP1 as primary
+                        'take_profit_1': take_profit_1,
+                        'take_profit_2': take_profit_2,
+                        'confidence': opportunity['confidence'],
+                        'mtf_status': opportunity.get('mtf_status', 'NONE'),
+                        'order_type': opportunity.get('order_type', 'market'),
+                        'risk_reward_ratio': opportunity.get('risk_reward_ratio', 1.0)
+                    }
                     
-                    success, message, position_data = self.order_executor.place_leveraged_order(
-                        opportunity, self.config.risk_amount, self.config.leverage
-                    )
+                    # Execute the trade
+                    success, message, position_data = await self.position_manager.execute_trade(execution_opportunity)
                     
                     if success:
-                        # Save position to database
-                        position_id = self.position_manager.save_position_to_database(position_data)
                         executed_count += 1
-                        
-                        print(f"   ✅ TRADE EXECUTED SUCCESSFULLY!")
+                        print(f"   ✅ TRADE SUCCESSFUL!")
+                        print(f"   Position ID: {position_data['position_id']}")
                         print(f"   Position Size: {position_data['position_size']:.4f} units")
                         print(f"   Risk Amount: {position_data['risk_amount']:.2f} USDT")
                         print(f"   Leverage: {position_data['leverage']}x")
@@ -918,34 +1059,38 @@ class AutoTrader:
                         )
                         
                         # Send Telegram notification
-                        await self.send_trade_notification(opportunity, position_data, success=True)
+                        await self.send_trade_notification(execution_opportunity, position_data, success=True)
                     else:
                         print(f"   ❌ TRADE FAILED: {message}")
                         self.logger.error(f"❌ Trade failed: {opportunity['symbol']} - {message}")
                         
                         # Send failure notification
-                        await self.send_trade_notification(opportunity, {}, success=False, error_message=message)
+                        await self.send_trade_notification(execution_opportunity, {}, success=False, error_message=message)
                 
                 except Exception as e:
                     print(f"   ❌ TRADE ERROR: {e}")
                     self.logger.error(f"Error executing trade for {opportunity.get('symbol', 'unknown')}: {e}")
+                    # Log the opportunity structure for debugging
+                    self.logger.debug(f"Opportunity keys: {list(opportunity.keys())}")
             
             # Final execution summary
             print(f"\n🏁 EXECUTION SUMMARY:")
-            print(f"   Signals Generated: {total_signals}")
-            print(f"   Signals After Filtering: {len(filtered_opportunities)}")
+            print(f"   Total Signals Generated: {signals_count}")
+            print(f"   Top Opportunities: {len(opportunities)}")
+            print(f"   After Symbol Filtering: {len(filtered_opportunities)}")
+            print(f"   Max Execution Per Scan: {self.config.max_execution_per_trade}")
             print(f"   Trades Attempted: {execution_count}")
             print(f"   Trades Executed: {executed_count}")
             print(f"   Success Rate: {(executed_count/execution_count*100) if execution_count > 0 else 0:.1f}%")
             
-            return total_signals, executed_count
+            return signals_count, executed_count
             
         except Exception as e:
             self.logger.error(f"Error in scan and execute: {e}")
             return 0, 0
-    
+        
     def main_trading_loop(self):
-        """Main auto-trading loop"""
+        """Main auto-trading loop - FIXED"""
         try:
             self.is_running = True
             session_id = self.start_trading_session()
@@ -970,19 +1115,24 @@ class AutoTrader:
                     asyncio.set_event_loop(loop)
                     
                     try:
-                        total_signals, executed_count = loop.run_until_complete(
+                        signals_count, executed_count = loop.run_until_complete(
                             self.run_scan_and_execute()
                         )
+                        
+                        # FIXED: Add proper logging to show the actual results
+                        if signals_count > 0:
+                            self.logger.info(f"✅ Scan successful: {signals_count} signals generated, {executed_count} trades executed")
+                        else:
+                            self.logger.warning("❌ No results returned from analysis")
+                        
                     finally:
                         loop.close()
                     
-                    self.logger.info(
-                        f"📊 Scan complete - Signals: {total_signals}, "
-                        f"Executed: {executed_count}"
-                    )
+                    # FIXED: Properly log the scan completion
+                    self.logger.info(f"📊 Scan complete - Total Signals: {signals_count}, Top Opportunities Executed: {executed_count}")
                     
                     # Update session statistics
-                    self.update_session_stats(total_signals, executed_count)
+                    self.update_session_stats(signals_count, executed_count)
                     
                 except KeyboardInterrupt:
                     self.logger.info("🛑 Received interrupt signal")
@@ -995,7 +1145,7 @@ class AutoTrader:
             self.logger.error(f"Critical error in trading loop: {e}")
         finally:
             self.stop_trading()
-    
+
     def stop_trading(self):
         """Stop auto-trading"""
         try:
@@ -1028,22 +1178,26 @@ class AutoTrader:
             side = opportunity['side'].upper()
             confidence = opportunity.get('confidence', 0)
             mtf_status = opportunity.get('mtf_status', 'N/A')
+            quality_tier = opportunity.get('quality_tier', 'Unknown')
+            selection_rank = opportunity.get('selection_rank', 'Unknown')
             
             if success:
-                # Success notification
+                # Success notification for TOP OPPORTUNITY
                 risk_usdt = position_data.get('risk_amount', 0)
                 leverage = position_data.get('leverage', 0)
                 position_size = position_data.get('position_size', 0)
                 entry_price = position_data.get('entry_price', 0)
                 
-                message = f"🚀 **TRADE EXECUTED**\n\n"
+                message = f"🏆 **TOP OPPORTUNITY EXECUTED**\n\n"
                 message += f"📊 **{symbol}** {side}\n"
                 message += f"💰 Entry Price: ${entry_price:.6f}\n"
                 message += f"📈 Position Size: {position_size:.4f} units\n"
                 message += f"⚡ Leverage: {leverage}x\n"
                 message += f"💵 Risk: {risk_usdt:.2f} USDT ({self.config.risk_amount}%)\n\n"
-                message += f"🎯 **Signal Quality:**\n"
+                message += f"🎯 **TOP OPPORTUNITY QUALITY:**\n"
                 message += f"   Confidence: {confidence:.1f}%\n"
+                message += f"   Quality Tier: {quality_tier}\n"
+                message += f"   Selection Rank: #{selection_rank}\n"
                 message += f"   MTF Status: {mtf_status}\n\n"
                 message += f"🎯 Profit Target: {self.config.auto_close_profit_at}%\n"
                 message += f"🕒 {datetime.now().strftime('%H:%M:%S')}"
@@ -1055,10 +1209,12 @@ class AutoTrader:
                 ]
                 
             else:
-                # Failure notification
-                message = f"❌ **TRADE FAILED**\n\n"
+                # Failure notification for TOP OPPORTUNITY
+                message = f"❌ **TOP OPPORTUNITY FAILED**\n\n"
                 message += f"📊 **{symbol}** {side}\n"
                 message += f"🎯 Confidence: {confidence:.1f}%\n"
+                message += f"📈 Quality Tier: {quality_tier}\n"
+                message += f"🔢 Selection Rank: #{selection_rank}\n"
                 message += f"📈 MTF Status: {mtf_status}\n\n"
                 message += f"💥 **Error:** {error_message}\n\n"
                 message += f"🕒 {datetime.now().strftime('%H:%M:%S')}"
@@ -1075,10 +1231,10 @@ class AutoTrader:
         try:
             next_scan = self.schedule_manager.calculate_next_scan_time()
             
-            message = f"📊 **SCAN COMPLETE**\n\n"
-            message += f"🔍 Signals Found: {total_signals}\n"
-            message += f"⚡ Trades Executed: {executed_count}\n"
-            message += f"📈 Success Rate: {(executed_count/total_signals*100) if total_signals > 0 else 0:.1f}%\n\n"
+            message = f"📊 **TOP OPPORTUNITIES SCAN COMPLETE**\n\n"
+            message += f"🔍 Total Signals: {total_signals}\n"
+            message += f"🏆 Top Opportunities Executed: {executed_count}\n"
+            message += f"📈 Focus: Quality over Quantity\n\n"
             message += f"⏰ Next Scan: {next_scan.strftime('%H:%M')}\n"
             message += f"🕒 {datetime.now().strftime('%H:%M:%S')}"
             
@@ -1122,7 +1278,7 @@ class AutoTrader:
 
 # Main execution function for standalone usage
 def main():
-    """Main function for running the auto-trader"""
+    """Main function for running the auto-trader with TOP OPPORTUNITIES focus"""
     try:
         from config.config import DatabaseConfig, EnhancedSystemConfig
         from utils.logging import setup_logging
@@ -1142,6 +1298,9 @@ def main():
         if config.risk_amount <= 0:
             logger.error(f"Invalid risk amount: {config.risk_amount}")
             return
+        
+        logger.info("🏆 Starting AUTO-TRADER with TOP OPPORTUNITIES focus")
+        logger.info("🎯 Only the highest quality signals will be executed")
         
         # Start auto-trader
         auto_trader = AutoTrader(config)
