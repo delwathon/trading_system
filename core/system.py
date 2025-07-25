@@ -66,7 +66,7 @@ class CompleteEnhancedBybitSystem:
         self.results_queue = Queue()
         self.processed_count = 0
         
-        self.logger.info("🚀 TOP OPPORTUNITIES SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!")
+        self.logger.debug("🚀 TOP OPPORTUNITIES SYSTEM WITH MULTI-TIMEFRAME & MYSQL DATABASE INITIALIZED!")
         self.logger.debug("✅ Enhanced Technical Analysis (FIXED Ichimoku & Stochastic RSI)")
         self.logger.debug("✅ Volume Profile Analysis") 
         self.logger.debug("✅ Fibonacci & Confluence Analysis")
@@ -86,7 +86,7 @@ class CompleteEnhancedBybitSystem:
             # Fetch primary timeframe data (configurable)
             df = self.exchange_manager.fetch_ohlcv_data(symbol, self.config.timeframe)
             if df.empty or len(df) < 50:
-                self.logger.warning(f"Insufficient {self.config.timeframe} data for {symbol}")
+                self.logger.debug(f"Insufficient {self.config.timeframe} data for {symbol}")
                 return None
             
             # APPROACH 1: Enhanced Technical Analysis
@@ -188,7 +188,7 @@ class CompleteEnhancedBybitSystem:
         charts_generated = 0
         
         try:
-            self.logger.info(f"📊 Generating charts for TOP {len(top_signals)} signals only...")
+            self.logger.debug(f"📊 Generating charts for TOP {len(top_signals)} signals only...")
             
             for i, signal in enumerate(top_signals):
                 try:
@@ -238,7 +238,7 @@ class CompleteEnhancedBybitSystem:
                     self.logger.error(f"   Error generating chart for {signal.get('symbol', 'unknown')}: {e}")
                     signal['chart_file'] = f"Chart generation failed: {str(e)}"
             
-            self.logger.info(f"✅ Chart generation complete: {charts_generated}/{len(top_signals)} charts created")
+            self.logger.info(f"✅ Chart generation completed")
             return charts_generated
             
         except Exception as e:
@@ -277,7 +277,7 @@ class CompleteEnhancedBybitSystem:
         
         timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"
         self.logger.info(f"🚀 STARTING OPTIMIZED ANALYSIS WITH {timeframe_display} MTF CONFIRMATION")
-        self.logger.info("   📊 Charts generated ONLY for top-ranked signals (after analysis complete)")
+        self.logger.debug("   📊 Charts generated ONLY for top-ranked signals (after analysis complete)")
         self.logger.info("=" * 90)
         
         # Get top symbols
@@ -286,12 +286,12 @@ class CompleteEnhancedBybitSystem:
             self.logger.error("No symbols found")
             return {}
         
-        self.logger.info(f"📊 Analyzing {len(symbols)} symbols with MTF confirmation...")
-        self.logger.info(f"   Primary Timeframe: {self.config.timeframe}")
-        self.logger.info(f"   Confirmation Timeframes: {', '.join(self.config.confirmation_timeframes)}")
-        self.logger.info(f"   MTF Weight Multiplier: {self.config.mtf_weight_multiplier}x")
-        self.logger.info(f"   Database: MySQL @ {self.config.db_config.host}")
-        self.logger.info(f"   Chart Strategy: Top {self.config.charts_per_batch} signals only")
+        self.logger.debug(f"📊 Analyzing {len(symbols)} symbols with MTF confirmation...")
+        self.logger.debug(f"   Primary Timeframe: {self.config.timeframe}")
+        self.logger.debug(f"   Confirmation Timeframes: {', '.join(self.config.confirmation_timeframes)}")
+        self.logger.debug(f"   MTF Weight Multiplier: {self.config.mtf_weight_multiplier}x")
+        self.logger.debug(f"   Database: MySQL @ {self.config.db_config.host}")
+        self.logger.debug(f"   Chart Strategy: Top {self.config.charts_per_batch} signals only")
         
         # Initialize counters
         self.processed_count = 0
@@ -299,7 +299,7 @@ class CompleteEnhancedBybitSystem:
         analysis_results = []
         
         # ===== PHASE 1: SIGNAL GENERATION (NO CHARTS) =====
-        self.logger.info("📈 PHASE 1: Signal Generation (No Charts)")
+        self.logger.info("📈 PHASE 1: Signal Generation")
         
         with ThreadPoolExecutor(max_workers=self.config.max_workers) as executor:
             future_to_symbol = {}
@@ -351,6 +351,8 @@ class CompleteEnhancedBybitSystem:
                         'status': 'error',
                         'error': str(e)
                     })
+        
+        self.logger.info(f"✅ Signal generation completed")
 
         # ===== PHASE 2: SIGNAL RANKING =====
         analysis_time = time.time() - start_time
@@ -376,13 +378,15 @@ class CompleteEnhancedBybitSystem:
         all_signals.sort(key=get_sort_key, reverse=True)
         
         # Log top signals after ranking
-        self.logger.info(f"🏆 Top {self.config.charts_per_batch} Signals After Ranking:")
+        self.logger.debug(f"🏆 Top {self.config.charts_per_batch} Signals After Ranking:")
         for i, signal in enumerate(all_signals[:self.config.charts_per_batch]):
             mtf_status = signal.get('mtf_status', 'UNKNOWN')
             confidence = signal.get('confidence', 0)
             symbol = signal.get('symbol', 'UNKNOWN')
             side = signal.get('side', 'UNKNOWN')
-            self.logger.info(f"   {i+1}. {symbol} {side.upper()} - {confidence}% conf - MTF: {mtf_status}")
+            self.logger.debug(f"   {i+1}. {symbol} {side.upper()} - {confidence}% conf - MTF: {mtf_status}")
+        
+        self.logger.info(f"✅ Signal ranking completed")
         
         # ===== PHASE 3: OPTIMIZED CHART GENERATION =====
         # Generate charts ONLY for top N signals
@@ -416,28 +420,29 @@ class CompleteEnhancedBybitSystem:
         # Create comprehensive results with properly sorted signals
         results = {
             'scan_info': scan_info,
-            'signals': all_signals,  # Now properly sorted
+            # 'signals': all_signals,  # Now properly sorted
+            'signals': top_signals_for_charts,
             'analysis_results': analysis_results,
-            'top_opportunities': self.signal_generator.rank_opportunities_with_mtf(all_signals),
-            'market_summary': self.create_market_summary_with_mtf(symbols, all_signals),
+            'top_opportunities': self.signal_generator.rank_opportunities_with_mtf(top_signals_for_charts),
+            'market_summary': self.create_market_summary_with_mtf(symbols, top_signals_for_charts),
             'system_performance': {
-                'signals_per_minute': len(all_signals) / (execution_time / 60) if execution_time > 0 else 0,
-                'avg_confidence': np.mean([s['confidence'] for s in all_signals]) if all_signals else 0,
-                'avg_original_confidence': np.mean([s.get('original_confidence', s['confidence']) for s in all_signals]) if all_signals else 0,
-                'mtf_boost_avg': np.mean([s['confidence'] - s.get('original_confidence', s['confidence']) for s in all_signals]) if all_signals else 0,
-                'order_type_distribution': self.get_order_type_distribution(all_signals),
-                'mtf_distribution': self.get_mtf_status_distribution(all_signals),
+                'signals_per_minute': len(top_signals_for_charts) / (execution_time / 60) if execution_time > 0 else 0,
+                'avg_confidence': np.mean([s['confidence'] for s in top_signals_for_charts]) if top_signals_for_charts else 0,
+                'avg_original_confidence': np.mean([s.get('original_confidence', s['confidence']) for s in top_signals_for_charts]) if top_signals_for_charts else 0,
+                'mtf_boost_avg': np.mean([s['confidence'] - s.get('original_confidence', s['confidence']) for s in top_signals_for_charts]) if top_signals_for_charts else 0,
+                'order_type_distribution': self.get_order_type_distribution(top_signals_for_charts),
+                'mtf_distribution': self.get_mtf_status_distribution(top_signals_for_charts),
                 'speedup_factor': self.calculate_speedup_factor(execution_time, len(symbols)),
-                'chart_efficiency': f"{charts_generated}/{len(all_signals)} signals charted"
+                'chart_efficiency': f"{charts_generated}/{len(top_signals_for_charts)} signals charted"
             }
         }
         
-        self.logger.info(f"⚡ {timeframe_display} OPTIMIZED MTF ANALYSIS COMPLETED!")
-        self.logger.info(f"   Total Execution Time: {execution_time:.1f}s")
-        self.logger.info(f"   Signal Generation: {analysis_time:.1f}s ({len(all_signals)} signals)")
-        self.logger.info(f"   Chart Generation: {execution_time - analysis_time:.1f}s ({charts_generated} charts)")
-        self.logger.info(f"   Chart Efficiency: {charts_generated}/{len(all_signals)} = {charts_generated/max(1,len(all_signals))*100:.1f}% charted")
-        self.logger.info(f"   MTF Confirmations: {self.count_mtf_confirmations(all_signals)}")
+        self.logger.info(f"⚡ {timeframe_display} OPTIMIZED MTF ANALYSIS COMPLETED! in {execution_time:.1f}s")
+        self.logger.debug(f"   Total Execution Time: {execution_time:.1f}s")
+        self.logger.debug(f"   Signal Generation: {analysis_time:.1f}s ({len(top_signals_for_charts)} signals)")
+        self.logger.debug(f"   Chart Generation: {execution_time - analysis_time:.1f}s ({charts_generated} charts)")
+        self.logger.debug(f"   Chart Efficiency: {charts_generated}/{len(top_signals_for_charts)} = {charts_generated/max(1,len(top_signals_for_charts))*100:.1f}% charted")
+        self.logger.debug(f"   MTF Confirmations: {self.count_mtf_confirmations(top_signals_for_charts)}")
 
         # FIXED: ADD THE MISSING RETURN STATEMENT!
         return results
@@ -804,11 +809,11 @@ class CompleteEnhancedBybitSystem:
         total_signals = scan_info.get('signals_generated', 0)
         charts_generated = scan_info.get('charts_generated', 0)
         
-        print(f"\n📊 SCAN SUMMARY:")
-        print(f"   Total Signals Generated: {total_signals}")
-        print(f"   Top Opportunities Selected: {len(opportunities)}")
-        print(f"   Charts Generated: {charts_generated}")
-        print(f"   Analysis Time: {scan_info.get('execution_time_seconds', 0):.1f}s")
+        # print(f"\n📊 SCAN SUMMARY:")
+        # print(f"   Total Signals Generated: {total_signals}")
+        # print(f"   Top Opportunities Selected: {len(opportunities)}")
+        # print(f"   Charts Generated: {charts_generated}")
+        # print(f"   Analysis Time: {scan_info.get('execution_time_seconds', 0):.1f}s")
         
         # Enhanced Top Opportunities Table
         timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"

@@ -108,7 +108,7 @@ class EnhancedSystemConfig:
             ).first()
             
             if config_record:
-                self.logger.info(f"Loading configuration '{self.config_name}' from MySQL database")
+                self.logger.debug(f"Loading configuration '{self.config_name}' from MySQL database")
                 self._apply_config(config_record)
             else:
                 self.logger.info(f"Configuration '{self.config_name}' not found, creating default")

@@ -83,7 +83,7 @@ def setup_logging(console_level: str = None, file_level: str = None, log_file: s
     _logging_initialized = True
     
     # Log the configuration
-    _main_logger.info(f"Logging initialized - Console: {console_level.upper()}, File: {file_level.upper()}")
+    _main_logger.debug(f"Logging initialized - Console: {console_level.upper()}, File: {file_level.upper()}")
     _main_logger.debug(f"🐛 DEBUG logging active in file: {_log_file_path}")
     _main_logger.debug(f"📊 Console shows {console_level.upper()} and above, File captures {file_level.upper()} and above")
     _main_logger.debug(f"🔒 Logging system locked to prevent multiple log files")

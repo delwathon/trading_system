@@ -640,7 +640,7 @@ class SignalGenerator:
             # Sort by priority first, then by score
             opportunities.sort(key=lambda x: (x['priority'], x['score']), reverse=True)
             
-            self.logger.info(f"📊 Ranked {len(opportunities)} opportunities")
+            # self.logger.info(f"📊 Ranked {len(opportunities)} opportunities")
             return opportunities
             
         except Exception as e:

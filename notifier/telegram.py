@@ -51,7 +51,7 @@ class TelegramBootstrapManager:
             self.application.add_handler(CallbackQueryHandler(self.handle_callback))
             self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
             
-            self.logger.info("✅ Telegram bot initialized successfully")
+            self.logger.debug("✅ Telegram bot initialized successfully")
             
         except Exception as e:
             self.logger.error(f"Failed to initialize Telegram bot: {e}")

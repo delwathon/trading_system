@@ -638,8 +638,8 @@ class EnhancedDatabaseManager:
                 if self.save_opportunities(top_opportunities, scan_session_id):
                     saved_data['opportunities'] = len(top_opportunities)
                 
-                self.logger.info(f"✅ DATABASE STORAGE: Only TOP {len(top_opportunities)} opportunities saved")
-                self.logger.info(f"   (These match exactly what's displayed in console)")
+                self.logger.debug(f"✅ DATABASE STORAGE: Only TOP {len(top_opportunities)} opportunities saved")
+                self.logger.debug(f"   (These match exactly what's displayed in console)")
             else:
                 self.logger.info("ℹ️  No top opportunities to save to database")
                 saved_data['signals'] = 0

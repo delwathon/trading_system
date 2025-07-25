@@ -355,7 +355,7 @@ class LeveragedProfitMonitor:
                 params={'reduceOnly': True}  # Ensure this closes the position
             )
             
-            self.logger.info(f"✅ Closed position {position.symbol} - Profit target reached")
+            self.logger.debug(f"✅ Closed position {position.symbol} - Profit target reached")
             self.logger.debug(f"Close order: {order}")
             return True
             
@@ -421,7 +421,7 @@ class LeveragedProfitMonitor:
                         if self.should_auto_close(position, current_price):
                             leveraged_profit = self.calculate_leveraged_profit_pct(position, current_price)
                             self.logger.info(
-                                f"🎯 Auto-close triggered for {position.symbol}: "
+                                f"💰 Auto-close triggered for {position.symbol}: "
                                 f"{leveraged_profit:.2f}% profit (target: {self.config.auto_close_profit_at}%)"
                             )
                             
@@ -572,7 +572,8 @@ class OrderExecutor:
                 'mtf_status': signal.get('mtf_status', ''),
                 'auto_close_profit_target': self.config.auto_close_profit_at
             }
-            
+            self.logger.info("=" * 100 + "\n")
+
             return True, "Order placed successfully", position_data
             
         except Exception as e:
@@ -794,13 +795,13 @@ class AutoTrader:
             session.close()
             
             self.logger.info(f"🚀 Started auto-trading session: {session_id}")
-            self.logger.info(f"⚙️ Configuration:")
-            self.logger.info(f"   Max concurrent positions: {self.config.max_concurrent_positions}")
-            self.logger.info(f"   Max executions per scan: {self.config.max_execution_per_trade}")
-            self.logger.info(f"   Risk amount per trade: {self.config.risk_amount}%")
-            self.logger.info(f"   Leverage: {self.config.leverage}")
-            self.logger.info(f"   Auto-close profit target: {self.config.auto_close_profit_at}%")
-            self.logger.info(f"   Scan interval: {self.config.scan_interval / 3600:.1f} hours")
+            self.logger.debug(f"⚙️ Configuration: {self.config.max_concurrent_positions} ")
+            self.logger.debug(f"   Max concurrent positions: {self.config.max_concurrent_positions}")
+            self.logger.debug(f"   Max executions per scan: {self.config.max_execution_per_trade}")
+            self.logger.debug(f"   Risk amount per trade: {self.config.risk_amount}%")
+            self.logger.debug(f"   Leverage: {self.config.leverage}")
+            self.logger.debug(f"   Auto-close profit target: {self.config.auto_close_profit_at}%")
+            self.logger.debug(f"   Scan interval: {self.config.scan_interval / 3600:.1f} hours")
             
             return session_id
             
@@ -820,40 +821,83 @@ class AutoTrader:
                 self.logger.warning("No signals generated in this scan")
                 return 0, 0
             
-            total_signals = len(results.get('signals', []))
-            top_opportunities_count = len(results['top_opportunities'])
+            signals_count = len(results['signals'])
+            self.logger.debug(f"📈 Generated {signals_count} signals")
             
-            self.logger.info(f"📈 Generated {total_signals} total signals")
-            self.logger.info(f"🏆 Selected {top_opportunities_count} top opportunities for database storage")
-
-            # Save results to database (only top opportunities will be saved)
-            self.logger.info("💾 Saving TOP opportunities to MySQL database...")
-            save_result = self.enhanced_db_manager.save_all_results(results)
-            if save_result.get('error'):
-                self.logger.error(f"Failed to save results: {save_result['error']}")
-            else:
-                saved_count = save_result.get('signals', 0)
-                self.logger.info(f"✅ Saved {saved_count} top opportunities to database (Scan ID: {save_result.get('scan_id', 'Unknown')})")
-                        
-            # Display the comprehensive results table
-            print("\n" + "=" * 100)
-            print("📊 SCAN RESULTS - TOP TRADING OPPORTUNITIES")
-            print("=" * 100)
-            self.trading_system.print_comprehensive_results_with_mtf(results)
-            print("=" * 100 + "\n")
+            # ===== CRITICAL FIX: FILTER BEFORE DISPLAYING TABLE =====
+            print("\n🔍 FILTERING OUT EXISTING POSITIONS & ORDERS...")
             
-            # Get top opportunities for execution
-            opportunities = results.get('top_opportunities', [])
+            # Get all signals and opportunities
+            all_signals = results.get('signals', [])
+            original_opportunities = results.get('top_opportunities', [])
             
-            # FILTER OUT SYMBOLS WITH EXISTING POSITIONS/ORDERS
-            filtered_opportunities = self.position_manager.filter_signals_by_existing_symbols(opportunities)
+            # Filter out symbols with existing positions/orders
+            filtered_opportunities = self.position_manager.filter_signals_by_existing_symbols(original_opportunities)
             
             if not filtered_opportunities:
+                # Save original results to database first
+                save_result = self.enhanced_db_manager.save_all_results(results)
+                
                 self.logger.warning("⚠️ No signals available for execution after filtering existing symbols")
                 print("⚠️  ALL SIGNALS FILTERED OUT:")
                 print("   Either symbols already have positions/orders")
                 print("   or no valid signals generated")
-                return total_signals, 0
+                return signals_count, 0
+            
+            # Get filtered symbols
+            filtered_symbol_set = set(opp['symbol'] for opp in filtered_opportunities)
+            
+            # Filter signals to match the opportunities (for chart generation)
+            filtered_signals = [signal for signal in all_signals if signal['symbol'] in filtered_symbol_set]
+            
+            # ===== GET TOP N FILTERED OPPORTUNITIES FOR DISPLAY =====
+            # Get the configuration for how many to show in table (charts_per_batch controls this)
+            max_display_opportunities = self.config.charts_per_batch  # Usually 5
+            
+            # Take only top N filtered opportunities for display and chart generation
+            top_filtered_opportunities = filtered_opportunities[:max_display_opportunities]
+            
+            # Get signals that match the top opportunities (for chart generation)
+            top_filtered_symbols = set(opp['symbol'] for opp in top_filtered_opportunities)
+            top_filtered_signals = [signal for signal in filtered_signals if signal['symbol'] in top_filtered_symbols]
+            
+            # ===== UPDATE RESULTS WITH TOP FILTERED DATA =====
+            results['top_opportunities'] = top_filtered_opportunities  # Only top N for display
+            results['signals'] = top_filtered_signals  # Only top N signals for charts
+            
+            # Update scan info to reflect filtering
+            if 'scan_info' not in results:
+                results['scan_info'] = {}
+            results['scan_info']['original_signals_count'] = signals_count
+            results['scan_info']['total_filtered_opportunities'] = len(filtered_opportunities)
+            results['scan_info']['displayed_opportunities'] = len(top_filtered_opportunities)
+            results['scan_info']['filtered_signals_count'] = len(top_filtered_signals)
+            results['scan_info']['original_opportunities_count'] = len(original_opportunities)
+            results['scan_info']['symbols_filtered_out'] = len(original_opportunities) - len(filtered_opportunities)
+            
+            # print(f"📊 FILTERING RESULTS:")
+            # print(f"   Original Opportunities: {len(original_opportunities)}")
+            # print(f"   After Position/Order Filter: {len(filtered_opportunities)}")
+            # print(f"   Filtered Out: {len(original_opportunities) - len(filtered_opportunities)} symbols")
+            # print(f"   Top Opportunities to Display: {len(top_filtered_opportunities)}")
+            
+            # Save filtered results to database
+            self.logger.debug("💾 Saving filtered results to MySQL database...")
+            save_result = self.enhanced_db_manager.save_all_results(results)
+            if save_result.get('error'):
+                self.logger.error(f"Failed to save results: {save_result['error']}")
+            else:
+                self.logger.debug(f"✅ Filtered results saved - Scan ID: {save_result.get('scan_id', 'Unknown')}")
+            
+            # ===== NOW DISPLAY THE TOP FILTERED RESULTS TABLE =====
+            print("\n" + "=" * 100)
+            print(f"📊 SCAN RESULTS - TOP {len(top_filtered_opportunities)} TRADING OPPORTUNITIES (FILTERED)")
+            print("=" * 100)
+            self.trading_system.print_comprehensive_results_with_mtf(results)
+            print("=" * 100 + "\n")
+            
+            # ===== CHARTS ARE NOW AUTOMATICALLY GENERATED FOR FILTERED SIGNALS =====
+            # Because we updated results['signals'] with filtered_signals above
             
             # Check position availability
             can_trade, available_slots = self.position_manager.can_open_new_positions(
@@ -867,19 +911,20 @@ class AutoTrader:
                 )
                 print(f"⚠️  POSITION LIMIT REACHED: {self.config.max_concurrent_positions} concurrent positions")
                 print(f"   No new trades will be executed until positions are closed")
-                return total_signals, 0
+                return signals_count, 0
             
-            # Select opportunities for execution
+            # Select opportunities for execution from ALL filtered opportunities (not just displayed ones)
             execution_count = min(available_slots, self.config.max_execution_per_trade, len(filtered_opportunities))
-            selected_opportunities = filtered_opportunities[:execution_count]
+            selected_opportunities = filtered_opportunities[:execution_count]  # Use all filtered, not just top displayed
             
             print(f"🎯 EXECUTING {execution_count} TRADES:")
-            print(f"   Original Signals: {total_signals}")
-            print(f"   After Symbol Filter: {len(filtered_opportunities)}")
+            print(f"   Original Signals: {signals_count}")
+            print(f"   Total After Position/Order Filter: {len(filtered_opportunities)}")
+            print(f"   Top Displayed in Table: {len(top_filtered_opportunities)}")
             print(f"   Available Position Slots: {available_slots}")
             print(f"   Selected for Execution: {execution_count}")
             
-            self.logger.info(
+            self.logger.debug(
                 f"🎯 Executing {execution_count} trades after filtering "
                 f"(filtered: {len(filtered_opportunities)}, available slots: {available_slots})"
             )
@@ -888,12 +933,12 @@ class AutoTrader:
             executed_count = 0
             for i, opportunity in enumerate(selected_opportunities):
                 try:
-                    print(f"\n📝 EXECUTING TRADE {i+1}/{execution_count}:")
-                    print(f"   Symbol: {opportunity['symbol']}")
-                    print(f"   Side: {opportunity['side'].upper()}")
-                    print(f"   Confidence: {opportunity['confidence']:.1f}%")
-                    print(f"   MTF Status: {opportunity.get('mtf_status', 'N/A')}")
-                    print(f"   Entry Price: ${opportunity['entry_price']:.6f}")
+                    # print(f"\n📝 EXECUTING TRADE {i+1}/{execution_count}:")
+                    # print(f"   Symbol: {opportunity['symbol']}")
+                    # print(f"   Side: {opportunity['side'].upper()}")
+                    # print(f"   Confidence: {opportunity['confidence']:.1f}%")
+                    # print(f"   MTF Status: {opportunity.get('mtf_status', 'N/A')}")
+                    # print(f"   Entry Price: ${opportunity['entry_price']:.6f}")
                     
                     self.logger.info(f"📝 Executing trade {i+1}/{execution_count}: {opportunity['symbol']}")
                     
@@ -906,44 +951,36 @@ class AutoTrader:
                         position_id = self.position_manager.save_position_to_database(position_data)
                         executed_count += 1
                         
-                        print(f"   ✅ TRADE EXECUTED SUCCESSFULLY!")
-                        print(f"   Position Size: {position_data['position_size']:.4f} units")
-                        print(f"   Risk Amount: {position_data['risk_amount']:.2f} USDT")
-                        print(f"   Leverage: {position_data['leverage']}x")
+                        # print(f"   ✅ TRADE EXECUTED SUCCESSFULLY!")
+                        # print(f"   Position ID: {position_id}")
+                        # print(f"   Message: {message}")
                         
-                        self.logger.info(
-                            f"✅ Trade executed: {opportunity['symbol']} "
-                            f"({opportunity['confidence']:.1f}% confidence, "
-                            f"MTF: {opportunity.get('mtf_status', 'N/A')})"
-                        )
-                        
-                        # Send Telegram notification
+                        # Send trade notification using the existing AutoTrader method
                         await self.send_trade_notification(opportunity, position_data, success=True)
                     else:
-                        print(f"   ❌ TRADE FAILED: {message}")
-                        self.logger.error(f"❌ Trade failed: {opportunity['symbol']} - {message}")
+                        print(f"   ❌ TRADE FAILED!")
+                        print(f"   Error: {message}")
+                        self.logger.error(f"Trade execution failed: {message}")
                         
                         # Send failure notification
                         await self.send_trade_notification(opportunity, {}, success=False, error_message=message)
-                
+                        
                 except Exception as e:
-                    print(f"   ❌ TRADE ERROR: {e}")
-                    self.logger.error(f"Error executing trade for {opportunity.get('symbol', 'unknown')}: {e}")
+                    error_msg = f"Error executing trade for {opportunity['symbol']}: {e}"
+                    print(f"   ❌ {error_msg}")
+                    self.logger.error(error_msg)
             
-            # Final execution summary
-            print(f"\n🏁 EXECUTION SUMMARY:")
-            print(f"   Signals Generated: {total_signals}")
-            print(f"   Signals After Filtering: {len(filtered_opportunities)}")
-            print(f"   Trades Attempted: {execution_count}")
-            print(f"   Trades Executed: {executed_count}")
-            print(f"   Success Rate: {(executed_count/execution_count*100) if execution_count > 0 else 0:.1f}%")
+            # print(f"\n📊 EXECUTION SUMMARY:")
+            # print(f"   Trades Attempted: {execution_count}")
+            # print(f"   Trades Executed: {executed_count}")
+            # print(f"   Success Rate: {executed_count/execution_count*100:.1f}%" if execution_count > 0 else "N/A")
             
-            return total_signals, executed_count
+            return signals_count, executed_count
             
         except Exception as e:
             self.logger.error(f"Error in scan and execute: {e}")
-            return 0, 0
-    
+            raise
+
     def main_trading_loop(self):
         """Main auto-trading loop"""
         try:

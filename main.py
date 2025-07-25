@@ -115,7 +115,7 @@ def display_auto_trading_config(config: EnhancedSystemConfig):
     logger.info(f"   Min Volume 24h: ${config.min_volume_24h:,}")
     
     # Risk management
-    logger.info("⚠️ Risk Management:")
+    logger.info("⚠️  Risk Management:")
     logger.info(f"   Risk per Trade: {config.risk_amount}% of account balance")
     max_risk_exposure_pct = config.max_concurrent_positions * config.risk_amount
     logger.info(f"   Max Total Risk Exposure: {max_risk_exposure_pct}% of account balance")
@@ -191,7 +191,7 @@ def create_default_config_with_autotrading():
 def setup_database_with_autotrading(db_config: DatabaseConfig) -> bool:
     """Setup database with auto-trading tables"""
     try:
-        print("🔗 Testing MySQL database connection...")
+        # print("🔗 Testing MySQL database connection...")
         
         # Test connection
         db_manager = DatabaseManager(db_config.get_database_url())
@@ -204,10 +204,10 @@ def setup_database_with_autotrading(db_config: DatabaseConfig) -> bool:
             return False
         
         # Create tables (including new auto-trading tables)
-        print("📊 Creating database tables (including auto-trading tables)...")
+        # print("📊 Creating database tables (including auto-trading tables)...")
         db_manager.create_tables()
         
-        print("✅ MySQL database setup complete with auto-trading support!")
+        # print("✅ MySQL database setup complete with auto-trading support!")
         return True
         
     except Exception as e:
@@ -264,17 +264,17 @@ def load_configuration(config_path: str = 'enhanced_config.yaml'):
     
     try:
         # Load database configuration from YAML
-        logger.info(f"Loading database configuration from {config_path}")
+        logger.debug(f"Loading database configuration from {config_path}")
         db_config = DatabaseConfig.from_yaml_file(config_path)
         
-        logger.info(f"Database config loaded:")
-        logger.info(f"   Host: {db_config.host}:{db_config.port}")
-        logger.info(f"   Database: {db_config.database}")
-        logger.info(f"   Username: {db_config.username}")
-        logger.info(f"   Password: {'***' if db_config.password else 'NOT SET'}")
+        logger.debug(f"Database config loaded:")
+        logger.debug(f"   Host: {db_config.host}:{db_config.port}")
+        logger.debug(f"   Database: {db_config.database}")
+        logger.debug(f"   Username: {db_config.username}")
+        logger.debug(f"   Password: {'***' if db_config.password else 'NOT SET'}")
         
         # Load system configuration from database using the YAML database config
-        logger.info("Loading system configuration from MySQL database...")
+        logger.debug("Loading system configuration from MySQL database...")
         config = EnhancedSystemConfig.from_database(db_config, 'default')
         
         return db_config, config
@@ -316,11 +316,11 @@ def main():
             print(f"   Please ensure {config_path} exists and has valid database settings")
             return
         
-        print(f"⚙️  Database Configuration:")
-        print(f"   Host: {db_config.host}:{db_config.port}")
-        print(f"   Database: {db_config.database}")
-        print(f"   Username: {db_config.username}")
-        print("")
+        # print(f"⚙️  Database Configuration:")
+        # print(f"   Host: {db_config.host}:{db_config.port}")
+        # print(f"   Database: {db_config.database}")
+        # print(f"   Username: {db_config.username}")
+        # print("")
         
         # Setup database with auto-trading support
         if not setup_database_with_autotrading(db_config):
@@ -358,7 +358,7 @@ def main():
             print("   Please fix the configuration issues and try again.")
             return
         
-        print("✅ Auto-trading configuration validated successfully!")
+        # print("✅ Auto-trading configuration validated successfully!")
         print("")
         
         # Initialize and start auto-trader
@@ -371,7 +371,7 @@ def main():
             print("   Please check your API credentials and network connection")
             return
         
-        print("✅ Exchange connection successful!")
+        # print("✅ Exchange connection successful!")
         print("")
         
         # Start auto-trading
