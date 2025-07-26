@@ -276,7 +276,7 @@ class ScheduleManager:
 
 
 class LeveragedProfitMonitor:
-    """Monitor leveraged profits and auto-close positions"""
+    """Monitor leveraged profits/losses and auto-close positions"""
     
     def __init__(self, exchange, config: EnhancedSystemConfig):
         self.exchange = exchange
@@ -306,14 +306,24 @@ class LeveragedProfitMonitor:
             self.logger.error(f"Error calculating leveraged profit for {position.symbol}: {e}")
             return 0.0
     
-    def should_auto_close(self, position: PositionData, current_price: float) -> bool:
-        """Check if position should be auto-closed based on profit target"""
+    def should_auto_close(self, position: PositionData, current_price: float) -> tuple[bool, str]:
+        """Check if position should be auto-closed based on profit/loss targets"""
         try:
             leveraged_profit_pct = self.calculate_leveraged_profit_pct(position, current_price)
-            return leveraged_profit_pct >= self.config.auto_close_profit_at
+            
+            # Check profit target
+            if leveraged_profit_pct >= self.config.auto_close_profit_at:
+                return True, 'profit_target'
+            
+            # Check loss limit
+            if leveraged_profit_pct <= -abs(self.config.auto_close_loss_at):
+                return True, 'loss_limit'
+            
+            return False, None
+            
         except Exception as e:
             self.logger.error(f"Error checking auto-close for {position.symbol}: {e}")
-            return False
+            return False, None
     
     def close_position(self, position: PositionData) -> bool:
         """Close a position on the exchange"""
@@ -355,7 +365,7 @@ class LeveragedProfitMonitor:
                 params={'reduceOnly': True}  # Ensure this closes the position
             )
             
-            self.logger.debug(f"✅ Closed position {position.symbol} - Profit target reached")
+            self.logger.debug(f"✅ Closed position {position.symbol}")
             self.logger.debug(f"Close order: {order}")
             return True
             
@@ -417,23 +427,44 @@ class LeveragedProfitMonitor:
                         ticker = self.exchange.fetch_ticker(position.symbol)
                         current_price = ticker['last']
                         
-                        # Check if should auto-close
-                        if self.should_auto_close(position, current_price):
-                            leveraged_profit = self.calculate_leveraged_profit_pct(position, current_price)
-                            self.logger.info(
-                                f"💰 Auto-close triggered for {position.symbol}: "
-                                f"{leveraged_profit:.2f}% profit (target: {self.config.auto_close_profit_at}%)"
-                            )
+                        # Check if auto-close is enabled and should auto-close (profit or loss)
+                        if self.config.auto_close_enabled:
+                            should_close, close_reason = self.should_auto_close(position, current_price)
                             
-                            if self.close_position(position):
-                                # Update database record
-                                self.update_position_in_database(position, 'closed', 'profit_target')
+                            if should_close:
+                                leveraged_profit = self.calculate_leveraged_profit_pct(position, current_price)
+                                
+                                # Log appropriate message based on close reason
+                                if close_reason == 'profit_target':
+                                    self.logger.info(
+                                        f"💰 Profit target reached for {position.symbol}: "
+                                        f"{leveraged_profit:.2f}% profit (target: {self.config.auto_close_profit_at}%)"
+                                    )
+                                elif close_reason == 'loss_limit':
+                                    self.logger.warning(
+                                        f"🛑 Stop loss triggered for {position.symbol}: "
+                                        f"{leveraged_profit:.2f}% loss (limit: -{abs(self.config.auto_close_loss_at)}%)"
+                                    )
+                                
+                                # Attempt to close position
+                                if self.close_position(position):
+                                    # Update database record
+                                    self.update_position_in_database(position, 'closed', close_reason)
+                                    
+                                    # Log final close message
+                                    if close_reason == 'profit_target':
+                                        self.logger.info(f"✅ Successfully closed profitable position {position.symbol}")
+                                    else:
+                                        self.logger.info(f"✅ Successfully closed losing position {position.symbol}")
+                        else:
+                            # Optional: Log that monitoring is happening but auto-close is disabled
+                            self.logger.debug(f"Monitoring {position.symbol} but auto-close is disabled")
                         
                     except Exception as e:
                         self.logger.error(f"Error monitoring position {position.symbol}: {e}")
                 
                 # Sleep between monitoring cycles
-                time.sleep(10)  # Check every 30 seconds
+                time.sleep(10)  # Check every 10 seconds
                 
         except Exception as e:
             self.logger.error(f"Error in monitoring loop: {e}")
@@ -444,7 +475,7 @@ class LeveragedProfitMonitor:
             self.monitoring = True
             self.monitor_thread = threading.Thread(target=self.monitor_positions, daemon=True)
             self.monitor_thread.start()
-            self.logger.info("📊 Started position monitoring")
+            self.logger.info("📊 Started position monitoring for profit targets and stop losses")
     
     def stop_monitoring(self):
         """Stop position monitoring"""
@@ -456,9 +487,8 @@ class LeveragedProfitMonitor:
     def update_position_in_database(self, position: PositionData, status: str, close_reason: str = None):
         """Update position status in database"""
         # This would be implemented to update the TradingPosition table
-        # Left as placeholder for database integration
+        # close_reason can be: 'profit_target', 'loss_limit', etc.
         pass
-
 
 class OrderExecutor:
     """Execute leveraged orders with proper sizing"""
@@ -477,7 +507,7 @@ class OrderExecutor:
             side = signal['side']
             entry_price = signal['entry_price']
             stop_loss = signal['stop_loss']
-            take_profit = signal.get('take_profit_1', signal.get('take_profit', 0))
+            take_profit = signal.get('take_profit_2', signal.get('take_profit', 0))
             
             self.logger.info(f"🚀 Placing {side.upper()} order for {symbol}")
             
@@ -507,11 +537,11 @@ class OrderExecutor:
                 return False, f"Insufficient balance: need {required_margin}, have {available_balance}", {}
             
             self.logger.info(f"💰 Risk calculation:")
-            self.logger.info(f"   Account Balance: {available_balance} USDT")
-            self.logger.info(f"   Risk Percentage: {risk_amount_pct}%")
-            self.logger.info(f"   Risk Amount: {risk_amount_usdt} USDT")
-            self.logger.info(f"   Position Size: {position_size} units")
-            self.logger.info(f"   Required Margin: {required_margin} USDT")
+            self.logger.info(f"   Account Balance: {available_balance:.2f} USDT")
+            self.logger.info(f"   Risk Percentage: {risk_amount_pct:.0f}%")
+            self.logger.info(f"   Risk Amount: {risk_amount_usdt:.2f} USDT")
+            self.logger.info(f"   Position Size: {position_size:.2f} units")
+            self.logger.info(f"   Required Margin: {required_margin:.2f} USDT")
             
             # FIXED: Capitalize the side parameter for Bybit API
             bybit_side = side.capitalize()  # 'buy' -> 'Buy', 'sell' -> 'Sell'
@@ -570,7 +600,8 @@ class OrderExecutor:
                 'take_profit_order_id': tp_order['id'] if tp_order else None,
                 'signal_confidence': signal.get('confidence', 0),
                 'mtf_status': signal.get('mtf_status', ''),
-                'auto_close_profit_target': self.config.auto_close_profit_at
+                'auto_close_profit_target': self.config.auto_close_profit_at,
+                'auto_close_loss_target': self.config.auto_close_loss_at
             }
             self.logger.info("=" * 100 + "\n")
 
@@ -580,7 +611,6 @@ class OrderExecutor:
             error_msg = f"Failed to place order for {signal.get('symbol', 'unknown')}: {e}"
             self.logger.error(error_msg)
             return False, error_msg, {}
-
 
 class PositionManager:
     """Track and manage concurrent positions"""
@@ -801,6 +831,7 @@ class AutoTrader:
             self.logger.debug(f"   Risk amount per trade: {self.config.risk_amount}%")
             self.logger.debug(f"   Leverage: {self.config.leverage}")
             self.logger.debug(f"   Auto-close profit target: {self.config.auto_close_profit_at}%")
+            self.logger.debug(f"   Auto-close loss target: {self.config.auto_close_loss_at}%")
             self.logger.debug(f"   Scan interval: {self.config.scan_interval / 3600:.1f} hours")
             
             return session_id
@@ -850,19 +881,12 @@ class AutoTrader:
             # Filter signals to match the opportunities (for chart generation)
             filtered_signals = [signal for signal in all_signals if signal['symbol'] in filtered_symbol_set]
             
-            # ===== GET TOP N FILTERED OPPORTUNITIES FOR DISPLAY =====
-            # Get the configuration for how many to show in table (charts_per_batch controls this)
-            max_display_opportunities = self.config.charts_per_batch  # Usually 5
-            
-            # Take only top N filtered opportunities for display and chart generation
-            top_filtered_opportunities = filtered_opportunities[:max_display_opportunities]
-            
             # Get signals that match the top opportunities (for chart generation)
-            top_filtered_symbols = set(opp['symbol'] for opp in top_filtered_opportunities)
+            top_filtered_symbols = set(opp['symbol'] for opp in filtered_opportunities)
             top_filtered_signals = [signal for signal in filtered_signals if signal['symbol'] in top_filtered_symbols]
             
             # ===== UPDATE RESULTS WITH TOP FILTERED DATA =====
-            results['top_opportunities'] = top_filtered_opportunities  # Only top N for display
+            results['top_opportunities'] = filtered_opportunities  # Only top N for display
             results['signals'] = top_filtered_signals  # Only top N signals for charts
             
             # Update scan info to reflect filtering
@@ -870,7 +894,7 @@ class AutoTrader:
                 results['scan_info'] = {}
             results['scan_info']['original_signals_count'] = signals_count
             results['scan_info']['total_filtered_opportunities'] = len(filtered_opportunities)
-            results['scan_info']['displayed_opportunities'] = len(top_filtered_opportunities)
+            results['scan_info']['displayed_opportunities'] = len(filtered_opportunities)
             results['scan_info']['filtered_signals_count'] = len(top_filtered_signals)
             results['scan_info']['original_opportunities_count'] = len(original_opportunities)
             results['scan_info']['symbols_filtered_out'] = len(original_opportunities) - len(filtered_opportunities)
@@ -879,7 +903,7 @@ class AutoTrader:
             # print(f"   Original Opportunities: {len(original_opportunities)}")
             # print(f"   After Position/Order Filter: {len(filtered_opportunities)}")
             # print(f"   Filtered Out: {len(original_opportunities) - len(filtered_opportunities)} symbols")
-            # print(f"   Top Opportunities to Display: {len(top_filtered_opportunities)}")
+            # print(f"   Top Opportunities to Display: {len(filtered_opportunities)}")
             
             # Save filtered results to database
             self.logger.debug("💾 Saving filtered results to MySQL database...")
@@ -890,14 +914,11 @@ class AutoTrader:
                 self.logger.debug(f"✅ Filtered results saved - Scan ID: {save_result.get('scan_id', 'Unknown')}")
             
             # ===== NOW DISPLAY THE TOP FILTERED RESULTS TABLE =====
-            print("\n" + "=" * 100)
-            print(f"📊 SCAN RESULTS - TOP {len(top_filtered_opportunities)} TRADING OPPORTUNITIES (FILTERED)")
-            print("=" * 100)
+            print("\n" + "=" * 150)
+            print(f"📊 SCAN RESULTS - TOP {len(filtered_opportunities)} TRADING OPPORTUNITIES (FILTERED)")
+            print("=" * 150)
             self.trading_system.print_comprehensive_results_with_mtf(results)
-            print("=" * 100 + "\n")
-            
-            # ===== CHARTS ARE NOW AUTOMATICALLY GENERATED FOR FILTERED SIGNALS =====
-            # Because we updated results['signals'] with filtered_signals above
+            print("=" * 150 + "\n")
             
             # Check position availability
             can_trade, available_slots = self.position_manager.can_open_new_positions(
@@ -920,61 +941,72 @@ class AutoTrader:
             print(f"🎯 EXECUTING {execution_count} TRADES:")
             print(f"   Original Signals: {signals_count}")
             print(f"   Total After Position/Order Filter: {len(filtered_opportunities)}")
-            print(f"   Top Displayed in Table: {len(top_filtered_opportunities)}")
+            print(f"   Top Displayed in Table: {len(filtered_opportunities)}")
             print(f"   Available Position Slots: {available_slots}")
             print(f"   Selected for Execution: {execution_count}")
+            print(f"")
             
             self.logger.debug(
                 f"🎯 Executing {execution_count} trades after filtering "
                 f"(filtered: {len(filtered_opportunities)}, available slots: {available_slots})"
             )
+
+            executed_count = 0
             
             # Execute selected trades
-            executed_count = 0
-            for i, opportunity in enumerate(selected_opportunities):
-                try:
-                    # print(f"\n📝 EXECUTING TRADE {i+1}/{execution_count}:")
-                    # print(f"   Symbol: {opportunity['symbol']}")
-                    # print(f"   Side: {opportunity['side'].upper()}")
-                    # print(f"   Confidence: {opportunity['confidence']:.1f}%")
-                    # print(f"   MTF Status: {opportunity.get('mtf_status', 'N/A')}")
-                    # print(f"   Entry Price: ${opportunity['entry_price']:.6f}")
-                    
-                    self.logger.info(f"📝 Executing trade {i+1}/{execution_count}: {opportunity['symbol']}")
-                    
-                    success, message, position_data = self.order_executor.place_leveraged_order(
-                        opportunity, self.config.risk_amount, self.config.leverage
-                    )
-                    
-                    if success:
-                        # Save position to database
-                        position_id = self.position_manager.save_position_to_database(position_data)
-                        executed_count += 1
+            if self.config.auto_execute_trades:
+                self.logger.info("🚀 Starting trade execution...")
+                for i, opportunity in enumerate(selected_opportunities):
+                    try:
+                        # print(f"\n📝 EXECUTING TRADE {i+1}/{execution_count}:")
+                        # print(f"   Symbol: {opportunity['symbol']}")
+                        # print(f"   Side: {opportunity['side'].upper()}")
+                        # print(f"   Confidence: {opportunity['confidence']:.1f}%")
+                        # print(f"   MTF Status: {opportunity.get('mtf_status', 'N/A')}")
+                        # print(f"   Entry Price: ${opportunity['entry_price']:.6f}")
                         
-                        # print(f"   ✅ TRADE EXECUTED SUCCESSFULLY!")
-                        # print(f"   Position ID: {position_id}")
-                        # print(f"   Message: {message}")
+                        self.logger.info(f"📝 Executing trade {i+1}/{execution_count}: {opportunity['symbol']}")
                         
-                        # Send trade notification using the existing AutoTrader method
-                        await self.send_trade_notification(opportunity, position_data, success=True)
-                    else:
-                        print(f"   ❌ TRADE FAILED!")
-                        print(f"   Error: {message}")
-                        self.logger.error(f"Trade execution failed: {message}")
+                        success, message, position_data = self.order_executor.place_leveraged_order(
+                            opportunity, self.config.risk_amount, self.config.leverage
+                        )
                         
-                        # Send failure notification
-                        await self.send_trade_notification(opportunity, {}, success=False, error_message=message)
-                        
-                except Exception as e:
-                    error_msg = f"Error executing trade for {opportunity['symbol']}: {e}"
-                    print(f"   ❌ {error_msg}")
-                    self.logger.error(error_msg)
+                        if success:
+                            # Save position to database
+                            position_id = self.position_manager.save_position_to_database(position_data)
+                            executed_count += 1
+                            
+                            # print(f"   ✅ TRADE EXECUTED SUCCESSFULLY!")
+                            # print(f"   Position ID: {position_id}")
+                            # print(f"   Message: {message}")
+                            
+                            # Send trade notification using the existing AutoTrader method
+                            await self.send_trade_notification(opportunity, position_data, success=True)
+                        else:
+                            print(f"   ❌ TRADE FAILED!")
+                            print(f"   Error: {message}")
+                            self.logger.error(f"Trade execution failed: {message}")
+                            
+                            # Send failure notification
+                            await self.send_trade_notification(opportunity, {}, success=False, error_message=message)
+                            
+                    except Exception as e:
+                        error_msg = f"Error executing trade for {opportunity['symbol']}: {e}"
+                        print(f"   ❌ {error_msg}")
+                        self.logger.error(error_msg)
             
             # print(f"\n📊 EXECUTION SUMMARY:")
             # print(f"   Trades Attempted: {execution_count}")
             # print(f"   Trades Executed: {executed_count}")
             # print(f"   Success Rate: {executed_count/execution_count*100:.1f}%" if execution_count > 0 else "N/A")
-            
+                        
+            # ===== GENERATE CHARTS FOR FILTERED SIGNALS =====
+            if filtered_signals:
+                self.logger.info(f"📊 PHASE 3: Chart Generation (Top {len(filtered_signals)} signals only)")
+                self.trading_system.generate_charts_for_top_signals(filtered_signals)
+            else:
+                self.logger.info("📊 PHASE 3: No signals found for chart generation")                
+
             return signals_count, executed_count
             
         except Exception as e:
@@ -988,7 +1020,10 @@ class AutoTrader:
             session_id = self.start_trading_session()
             
             # Start profit monitoring
-            self.profit_monitor.start_monitoring()
+            if self.config.auto_close_enabled:
+                self.logger.info("📈 Starting profit monitoring for open positions")
+                self.profit_monitor.set_session_id(session_id)
+                self.profit_monitor.start_monitoring()
             
             self.logger.info("🤖 Auto-trading loop started")
             
@@ -1083,6 +1118,7 @@ class AutoTrader:
                 message += f"   Confidence: {confidence:.1f}%\n"
                 message += f"   MTF Status: {mtf_status}\n\n"
                 message += f"🎯 Profit Target: {self.config.auto_close_profit_at}%\n"
+                message += f"🎯 Loss Target: {self.config.auto_close_loss_at}%\n"
                 message += f"🕒 {datetime.now().strftime('%H:%M:%S')}"
                 
                 # Add inline keyboard for position management

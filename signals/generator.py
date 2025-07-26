@@ -279,6 +279,267 @@ class SignalGenerator:
             self.logger.error(f"Very strong uptrend check error: {e}")
             return False
     
+    # def create_buy_signal(self, symbol_data: Dict, current_price: float, latest: pd.Series,
+    #                      volume_entry: Dict, confluence_zones: List[Dict],
+    #                      tech_score: int, trend_score: int, stoch_score: int, structure_score: int) -> Dict:
+    #     """Create BUY signal with adaptive entry logic based on market structure and confluence"""
+    #     try:
+    #         entry_candidates = []
+
+    #         # Always consider current price
+    #         entry_candidates.append({
+    #             'price': current_price,
+    #             'score': 0.5,
+    #             'reason': 'current_price'
+    #         })
+
+    #         # Score all support zones
+    #         for zone in confluence_zones:
+    #             if zone['zone_type'] == 'support':
+    #                 distance = abs(zone['price'] - current_price) / current_price
+    #                 # Score: closer is better, but if market is ranging or reversal, further is OK
+    #                 score = 1.0 - distance
+    #                 # Add bonus for strong structure or bounce potential
+    #                 if structure_score >= 2:
+    #                     score += 0.15
+    #                 if zone.get('confluence', 0) > 1:
+    #                     score += 0.1 * zone['confluence']
+    #                 # If price is in lower range, boost further supports
+    #                 if structure_score >= 2 and distance > 0.01:
+    #                     score += 0.05
+    #                 entry_candidates.append({
+    #                     'price': zone['price'],
+    #                     'score': score,
+    #                     'reason': f"support_{zone.get('label', '')}"
+    #                 })
+
+    #         # Volume-based entry
+    #         if (volume_entry.get('confidence', 0) > 0.5 and
+    #             volume_entry.get('entry_price', current_price) < current_price):
+    #             score = 0.7
+    #             if structure_score >= 2:
+    #                 score += 0.1
+    #             entry_candidates.append({
+    #                 'price': volume_entry['entry_price'],
+    #                 'score': score,
+    #                 'reason': 'volume_profile'
+    #             })
+
+    #         # Lower Bollinger Band
+    #         bb_lower = latest.get('bb_lower', current_price * 0.98)
+    #         if bb_lower < current_price:
+    #             score = 0.6
+    #             if structure_score >= 2:
+    #                 score += 0.05
+    #             entry_candidates.append({
+    #                 'price': bb_lower,
+    #                 'score': score,
+    #                 'reason': 'bb_lower'
+    #             })
+
+    #         # If trending, prefer dynamic levels (e.g., SMA20)
+    #         if structure_score >= 2 and trend_score >= 2:
+    #             sma_20 = latest.get('sma_20', current_price)
+    #             entry_candidates.append({
+    #                 'price': sma_20,
+    #                 'score': 0.8,
+    #                 'reason': 'sma_20'
+    #             })
+
+    #         # Select the candidate with the highest score
+    #         best_entry = max(entry_candidates, key=lambda x: x['score'])
+    #         optimal_entry = best_entry['price']
+
+    #         distance_pct = abs(optimal_entry - current_price) / current_price
+
+    #         # Order type logic for BUY
+    #         if distance_pct > 0.01 or latest.get('stoch_rsi_k', 50) < 30:
+    #             order_type = 'limit'
+    #         else:
+    #             order_type = 'market'
+    #             optimal_entry = current_price
+
+    #         # Stop loss and take profit for BUY
+    #         atr = latest.get('atr', current_price * 0.02)
+    #         stop_loss = optimal_entry - (3.0 * atr)
+    #         take_profit_1 = optimal_entry + (5.0 * atr)
+    #         take_profit_2 = optimal_entry + (9.0 * atr)
+
+    #         # Risk-reward calculation for BUY
+    #         risk_amount = optimal_entry - stop_loss
+    #         reward_amount = take_profit_2 - optimal_entry
+    #         risk_reward_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
+
+    #         # Confidence calculation for BUY
+    #         base_confidence = 55
+    #         base_confidence += tech_score * 3.5
+    #         base_confidence += trend_score * 3.5
+    #         base_confidence += stoch_score * 3.5
+    #         base_confidence += structure_score * 3
+    #         if any(c['reason'].startswith('support') for c in entry_candidates):
+    #             base_confidence += 6
+    #         if volume_entry.get('confidence', 0) > 0.6:
+    #             base_confidence += 4
+    #         confidence = min(88, base_confidence)
+
+    #         return {
+    #             'symbol': symbol_data['symbol'],
+    #             'side': 'Buy',
+    #             'order_type': order_type,
+    #             'entry_price': optimal_entry,
+    #             'current_price': current_price,
+    #             'stop_loss': stop_loss,
+    #             'take_profit_1': take_profit_1,
+    #             'take_profit_2': take_profit_2,
+    #             'risk_reward_ratio': risk_reward_ratio,
+    #             'confidence': confidence,
+    #             'signal_type': 'tuned_technical_buy',
+    #             'volume_24h': symbol_data['volume_24h'],
+    #             'price_change_24h': symbol_data['price_change_24h'],
+    #             'entry_methods': {
+    #                 'technical_score': tech_score,
+    #                 'trend_score': trend_score,
+    #                 'stoch_score': stoch_score,
+    #                 'structure_score': structure_score,
+    #                 'support_zones_count': len([z for z in confluence_zones if z['zone_type'] == 'support']),
+    #                 'volume_confidence': volume_entry.get('confidence', 0),
+    #                 'entry_reason': best_entry['reason']
+    #             }
+    #         }
+
+    #     except Exception as e:
+    #         self.logger.error(f"BUY signal creation error: {e}")
+    #         return None
+
+    # def create_sell_signal(self, symbol_data: Dict, current_price: float, latest: pd.Series,
+    #                       volume_entry: Dict, confluence_zones: List[Dict],
+    #                       tech_score: int, trend_score: int, stoch_score: int, structure_score: int) -> Dict:
+    #     """Create SELL signal with adaptive entry logic based on market structure and confluence"""
+    #     try:
+    #         entry_candidates = []
+
+    #         # Always consider current price
+    #         entry_candidates.append({
+    #             'price': current_price,
+    #             'score': 0.5,
+    #             'reason': 'current_price'
+    #         })
+
+    #         # Score all resistance zones
+    #         for zone in confluence_zones:
+    #             if zone['zone_type'] == 'resistance':
+    #                 distance = abs(zone['price'] - current_price) / current_price
+    #                 score = 1.0 - distance
+    #                 if structure_score >= 2:
+    #                     score += 0.15
+    #                 if zone.get('confluence', 0) > 1:
+    #                     score += 0.1 * zone['confluence']
+    #                 if structure_score >= 2 and distance > 0.01:
+    #                     score += 0.05
+    #                 entry_candidates.append({
+    #                     'price': zone['price'],
+    #                     'score': score,
+    #                     'reason': f"resistance_{zone.get('label', '')}"
+    #                 })
+
+    #         # Volume-based entry
+    #         if (volume_entry.get('confidence', 0) > 0.5 and
+    #             volume_entry.get('entry_price', current_price) > current_price):
+    #             score = 0.7
+    #             if structure_score >= 2:
+    #                 score += 0.1
+    #             entry_candidates.append({
+    #                 'price': volume_entry['entry_price'],
+    #                 'score': score,
+    #                 'reason': 'volume_profile'
+    #             })
+
+    #         # Upper Bollinger Band
+    #         bb_upper = latest.get('bb_upper', current_price * 1.02)
+    #         if bb_upper > current_price:
+    #             score = 0.6
+    #             if structure_score >= 2:
+    #                 score += 0.05
+    #             entry_candidates.append({
+    #                 'price': bb_upper,
+    #                 'score': score,
+    #                 'reason': 'bb_upper'
+    #             })
+
+    #         # If trending, prefer dynamic levels (e.g., SMA20)
+    #         if structure_score >= 2 and trend_score >= 2:
+    #             sma_20 = latest.get('sma_20', current_price)
+    #             entry_candidates.append({
+    #                 'price': sma_20,
+    #                 'score': 0.8,
+    #                 'reason': 'sma_20'
+    #             })
+
+    #         # Select the candidate with the highest score
+    #         best_entry = max(entry_candidates, key=lambda x: x['score'])
+    #         optimal_entry = best_entry['price']
+
+    #         distance_pct = abs(optimal_entry - current_price) / current_price
+
+    #         # Order type logic for SELL
+    #         if distance_pct > 0.01 or latest.get('stoch_rsi_k', 50) > 75:
+    #             order_type = 'limit'
+    #         else:
+    #             order_type = 'market'
+    #             optimal_entry = current_price
+
+    #         # Stop loss and take profit for SELL
+    #         atr = latest.get('atr', current_price * 0.02)
+    #         stop_loss = optimal_entry + (3.0 * atr)
+    #         take_profit_1 = optimal_entry - (5.0 * atr)
+    #         take_profit_2 = optimal_entry - (9.0 * atr)
+
+    #         # Risk-reward calculation for SELL
+    #         risk_amount = stop_loss - optimal_entry
+    #         reward_amount = optimal_entry - take_profit_2
+    #         risk_reward_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
+
+    #         # Confidence calculation for SELL
+    #         base_confidence = 52
+    #         base_confidence += tech_score * 3.5
+    #         base_confidence += trend_score * 3.5
+    #         base_confidence += stoch_score * 3.5
+    #         base_confidence += structure_score * 3
+    #         if any(c['reason'].startswith('resistance') for c in entry_candidates):
+    #             base_confidence += 6
+    #         if volume_entry.get('confidence', 0) > 0.6:
+    #             base_confidence += 4
+    #         confidence = min(88, base_confidence)
+
+    #         return {
+    #             'symbol': symbol_data['symbol'],
+    #             'side': 'Sell',
+    #             'order_type': order_type,
+    #             'entry_price': optimal_entry,
+    #             'current_price': current_price,
+    #             'stop_loss': stop_loss,
+    #             'take_profit_1': take_profit_1,
+    #             'take_profit_2': take_profit_2,
+    #             'risk_reward_ratio': risk_reward_ratio,
+    #             'confidence': confidence,
+    #             'signal_type': 'tuned_technical_sell',
+    #             'volume_24h': symbol_data['volume_24h'],
+    #             'price_change_24h': symbol_data['price_change_24h'],
+    #             'entry_methods': {
+    #                 'technical_score': tech_score,
+    #                 'trend_score': trend_score,
+    #                 'stoch_score': stoch_score,
+    #                 'structure_score': structure_score,
+    #                 'resistance_zones_count': len([z for z in confluence_zones if z['zone_type'] == 'resistance']),
+    #                 'volume_confidence': volume_entry.get('confidence', 0),
+    #                 'entry_reason': best_entry['reason']
+    #             }
+    #         }
+
+    #     except Exception as e:
+    #         self.logger.error(f"SELL signal creation error: {e}")
+    #         return None
+        
     def create_buy_signal(self, symbol_data: Dict, current_price: float, latest: pd.Series,
                          volume_entry: Dict, confluence_zones: List[Dict],
                          tech_score: int, trend_score: int, stoch_score: int, structure_score: int) -> Dict:
@@ -311,7 +572,7 @@ class SignalGenerator:
             distance_pct = abs(optimal_entry - current_price) / current_price
             
             # Order type logic for BUY (TUNED: more market orders)
-            if distance_pct > 0.008 or latest.get('stoch_rsi_k', 50) < 30:  # TUNED: Lower threshold (was 0.01)
+            if distance_pct > 0.01 or latest.get('stoch_rsi_k', 50) < 30:  # TUNED: Lower threshold (was 0.01)
                 order_type = 'limit'
             else:
                 order_type = 'market'
@@ -319,9 +580,9 @@ class SignalGenerator:
             
             # Stop loss and take profit for BUY
             atr = latest.get('atr', current_price * 0.02)
-            stop_loss = optimal_entry - (1.8 * atr)      # TUNED: Tighter stop (was 2.0)
-            take_profit_1 = optimal_entry + (2.8 * atr)  # TUNED: Closer TP1 (was 3.0)
-            take_profit_2 = optimal_entry + (5.5 * atr)  # TUNED: Closer TP2 (was 6.0)
+            stop_loss = optimal_entry - (3.0 * atr)      # TUNED: Tighter stop (was 2.0)
+            take_profit_1 = optimal_entry + (3.5 * atr)  # TUNED: Closer TP1 (was 3.0)
+            take_profit_2 = optimal_entry + (7.5 * atr)  # TUNED: Closer TP2 (was 6.0)
             
             # Risk-reward calculation for BUY
             risk_amount = optimal_entry - stop_loss
@@ -347,7 +608,7 @@ class SignalGenerator:
             
             return {
                 'symbol': symbol_data['symbol'],
-                'side': 'buy',
+                'side': 'Buy',
                 'order_type': order_type,
                 'entry_price': optimal_entry,
                 'current_price': current_price,
@@ -405,7 +666,7 @@ class SignalGenerator:
             distance_pct = abs(optimal_entry - current_price) / current_price
             
             # Order type logic for SELL (TUNED: more market orders)
-            if distance_pct > 0.008 or latest.get('stoch_rsi_k', 50) > 75:  # TUNED: Lower threshold (was 0.01)
+            if distance_pct > 0.01 or latest.get('stoch_rsi_k', 50) > 75:  # TUNED: Lower threshold (was 0.01)
                 order_type = 'limit'
             else:
                 order_type = 'market'
@@ -413,9 +674,9 @@ class SignalGenerator:
             
             # Stop loss and take profit for SELL
             atr = latest.get('atr', current_price * 0.02)
-            stop_loss = optimal_entry + (1.8 * atr)      # TUNED: Tighter stop (was 2.0)
-            take_profit_1 = optimal_entry - (2.8 * atr)  # TUNED: Closer TP1 (was 3.0)
-            take_profit_2 = optimal_entry - (5.5 * atr)  # TUNED: Closer TP2 (was 6.0)
+            stop_loss = optimal_entry + (3.0 * atr)      # TUNED: Tighter stop (was 2.0)
+            take_profit_1 = optimal_entry - (3.5 * atr)  # TUNED: Closer TP1 (was 3.0)
+            take_profit_2 = optimal_entry - (7.5 * atr)  # TUNED: Closer TP2 (was 6.0)
             
             # Risk-reward calculation for SELL
             risk_amount = stop_loss - optimal_entry
@@ -441,7 +702,7 @@ class SignalGenerator:
             
             return {
                 'symbol': symbol_data['symbol'],
-                'side': 'sell',
+                'side': 'Sell',
                 'order_type': order_type,
                 'entry_price': optimal_entry,
                 'current_price': current_price,
@@ -466,7 +727,8 @@ class SignalGenerator:
         except Exception as e:
             self.logger.error(f"SELL signal creation error: {e}")
             return None
-         
+  
+
     def validate_signal_quality(self, signal: Dict, df: pd.DataFrame, market_structure: Dict) -> Optional[Dict]:
         """Signal quality validation with tuned thresholds"""
         try:
@@ -530,8 +792,11 @@ class SignalGenerator:
             self.logger.error(f"Signal validation error: {e}")
             return None
 
-    def rank_opportunities_with_mtf(self, signals: List[Dict]) -> List[Dict]:
-        """Enhanced ranking that balances signal quality with accessibility"""
+    def rank_opportunities_with_mtf(self, signals: List[Dict], dfs: Optional[Dict[str, pd.DataFrame]] = None) -> List[Dict]:
+        """
+        Enhanced ranking that balances signal quality, accessibility, and likelihood of hitting profit before loss.
+        Optionally pass a dict of DataFrames keyed by symbol for profit likelihood calculation.
+        """
         try:
             opportunities = []
             
@@ -540,87 +805,93 @@ class SignalGenerator:
                 confidence = signal['confidence']
                 original_confidence = signal.get('original_confidence', confidence)
                 mtf_boost = confidence - original_confidence
-                
-                # ===== TUNED SCORING SYSTEM =====
-                
+
                 # 1. SIGNAL CONFIDENCE (35% weight)
                 confidence_score = confidence / 100
-                
-                # 2. RISK-REWARD RATIO (25% weight)  
+
+                # 2. RISK-REWARD RATIO (25% weight)
                 analysis = signal.get('analysis', {})
                 risk_assessment = analysis.get('risk_assessment', {})
                 rr_ratio = risk_assessment.get('risk_reward_ratio', signal.get('risk_reward_ratio', 1))
-                rr_score = min(1.0, rr_ratio / 3.0)  # TUNED: Lower target (was 3.5)
-                
+                rr_score = min(1.0, rr_ratio / 3.0)
+
                 # 3. MARKET STRUCTURE ALIGNMENT (20% weight)
                 entry_methods = signal.get('entry_methods', {})
                 structure_score = 0
                 if 'structure_score' in entry_methods:
-                    structure_score = min(1.0, entry_methods['structure_score'] / 2.5)  # TUNED: Lower requirement
+                    structure_score = min(1.0, entry_methods['structure_score'] / 2.5)
                 elif 'confluence_zones' in entry_methods:
-                    structure_score = min(1.0, entry_methods['confluence_zones'] / 1.5)  # TUNED: Lower requirement
-                
+                    structure_score = min(1.0, entry_methods['confluence_zones'] / 1.5)
+
                 # 4. VOLUME QUALITY (10% weight)
-                volume_score = min(1.0, signal['volume_24h'] / 20_000_000)  # TUNED: Lower requirement (was 30M)
-                
+                volume_score = min(1.0, signal['volume_24h'] / 20_000_000)
+
                 # 5. MTF CONFIRMATION (15% weight)
                 mtf_analysis = signal.get('mtf_analysis', {})
                 confirmed_count = len(mtf_analysis.get('confirmed_timeframes', []))
                 total_timeframes = len(getattr(self.config, 'confirmation_timeframes', [])) or 3
-                
                 if total_timeframes > 0:
                     mtf_score = confirmed_count / total_timeframes
                     mtf_bonus = mtf_score * 0.15
                 else:
                     mtf_bonus = 0
-                
+
                 # 6. DISTANCE PENALTY (3% weight)
                 distance = abs(signal['entry_price'] - signal['current_price']) / signal['current_price']
-                distance_score = max(0, 1 - distance * 6)  # TUNED: Less penalty (was 8)
-                
+                distance_score = max(0, 1 - distance * 6)
+
                 # 7. ORDER TYPE (2% weight)
-                order_type_score = 1.0 if signal['order_type'] == 'market' else 0.97  # TUNED: Less penalty
+                order_type_score = 1.0 if signal['order_type'] == 'market' else 0.97
+
+                # 8. PROFIT LIKELIHOOD (NEW, 10% weight, subtracted from volume/structure if needed)
+                profit_likelihood = 0.5  # Default neutral
+                latest = None
+                if dfs and signal['symbol'] in dfs:
+                    latest = dfs[signal['symbol']].iloc[-1]
+                elif 'analysis' in signal and 'technical_summary' in signal['analysis']:
+                    # Try to get latest from analysis if available
+                    latest = signal['analysis']['technical_summary']
+                if latest is not None:
+                    profit_likelihood = self.estimate_profit_likelihood(signal, latest)
+                # Weight: 10%
                 
                 # ===== CALCULATE TOTAL SCORE =====
                 total_score = (
-                    confidence_score * 0.35 +      # 35% - Signal quality first
-                    rr_score * 0.25 +              # 25% - Risk management second  
-                    structure_score * 0.20 +       # 20% - Market structure third
-                    volume_score * 0.10 +          # 10% - Volume support
+                    confidence_score * 0.30 +      # 30% - Signal quality
+                    rr_score * 0.22 +              # 22% - Risk management
+                    structure_score * 0.16 +       # 16% - Market structure
+                    volume_score * 0.08 +          # 8% - Volume support
                     mtf_bonus +                    # 15% - MTF confirmation (additive)
                     distance_score * 0.03 +        # 3% - Entry distance
-                    order_type_score * 0.02        # 2% - Order type
+                    order_type_score * 0.01 +      # 1% - Order type
+                    profit_likelihood * 0.15       # 15% - Likelihood of hitting profit before loss
                 )
-                
+
                 # ===== TUNED PRIORITY SYSTEM =====
                 mtf_status = signal.get('mtf_status', 'NONE')
-                
-                # Base priority on confidence and R/R (TUNED: more accessible)
-                if confidence >= 70 and rr_ratio >= 3.0:
-                    base_priority = 1000  # Exceptional signals
-                elif confidence >= 60 and rr_ratio >= 2.5:  # TUNED: Lower requirements
-                    base_priority = 500   # High quality signals
-                elif confidence >= 50 and rr_ratio >= 2.0:  # TUNED: Lower requirements
-                    base_priority = 250   # Good signals (increased)
-                elif confidence >= 45 and rr_ratio >= 1.8:  # TUNED: Added tier
-                    base_priority = 100   # Decent signals
+                if confidence >= 70 and rr_ratio >= 3.0 and profit_likelihood > 0.7:
+                    base_priority = 1200  # Exceptional signals
+                elif confidence >= 60 and rr_ratio >= 2.5 and profit_likelihood > 0.6:
+                    base_priority = 600   # High quality signals
+                elif confidence >= 50 and rr_ratio >= 2.0 and profit_likelihood > 0.5:
+                    base_priority = 300   # Good signals
+                elif confidence >= 45 and rr_ratio >= 1.8:
+                    base_priority = 120   # Decent signals
                 else:
-                    base_priority = 50    # Marginal signals
-                
-                # MTF modifier (balanced)
+                    base_priority = 60    # Marginal signals
+
                 mtf_modifier = {
-                    'STRONG': 1.4,   # 40% boost
-                    'PARTIAL': 1.15,  # 15% boost
-                    'NONE': 1.0,     # No change
-                    'DISABLED': 1.0  # No change
+                    'STRONG': 1.4,
+                    'PARTIAL': 1.15,
+                    'NONE': 1.0,
+                    'DISABLED': 1.0
                 }.get(mtf_status, 1.0)
-                
+
                 final_priority = int(base_priority * mtf_modifier)
-                
-                # Get MTF confirmation details
+
                 confirmed_timeframes = mtf_analysis.get('confirmed_timeframes', [])
                 conflicting_timeframes = mtf_analysis.get('conflicting_timeframes', [])
-                
+
                 opportunities.append({
                     **signal,
                     'score': total_score,
@@ -631,22 +902,21 @@ class SignalGenerator:
                     'volume_score': volume_score,
                     'mtf_score': mtf_score if 'mtf_score' in locals() else 0,
                     'distance_score': distance_score,
+                    'profit_likelihood': profit_likelihood,
                     'original_confidence': original_confidence,
                     'mtf_boost': mtf_boost,
                     'confirmed_timeframes': confirmed_timeframes,
                     'conflicting_timeframes': conflicting_timeframes
                 })
-            
-            # Sort by priority first, then by score
-            opportunities.sort(key=lambda x: (x['priority'], x['score']), reverse=True)
-            
-            # self.logger.info(f"📊 Ranked {len(opportunities)} opportunities")
-            return opportunities
-            
+
+            # Sort by priority first, then by score, then by profit likelihood
+            opportunities.sort(key=lambda x: (x['priority'], x['score'], x['profit_likelihood']), reverse=True)
+            return opportunities[:self.config.charts_per_batch]
+
         except Exception as e:
             self.logger.error(f"Ranking error: {e}")
             return signals
-
+    
     def assess_risk(self, signal: Dict, df: pd.DataFrame, market_data: Dict) -> Dict:
         """Enhanced risk assessment with tuned approach"""
         try:
@@ -1261,3 +1531,39 @@ class SignalGenerator:
             explanation += "Reasons: Overbought conditions, price near resistance, reversal potential"
         
         return explanation
+
+    def estimate_profit_likelihood(self, signal: Dict, latest: pd.Series) -> float:
+        """
+        Estimate the likelihood of hitting take profit before stop loss.
+        Returns a score between 0 and 1 (higher = more likely to hit profit first).
+        """
+        entry = signal['entry_price']
+        stop = signal['stop_loss']
+        tp = signal['take_profit_1']  # or use auto_close_profit_at if you want
+        atr = latest.get('atr', entry * 0.02)
+        side = signal['side'].lower()
+
+        # Distance to profit/loss
+        if side == 'buy':
+            dist_profit = tp - entry
+            dist_loss = entry - stop
+            direction_factor = 1 if latest.get('trend', {}).get('direction', '') in ['bullish', 'strong_bullish'] else 0.8
+        else:
+            dist_profit = entry - tp
+            dist_loss = stop - entry
+            direction_factor = 1 if latest.get('trend', {}).get('direction', '') in ['bearish', 'strong_bearish'] else 0.8
+
+        # Normalize by ATR (volatility)
+        profit_moves = dist_profit / atr if atr > 0 else 0
+        loss_moves = dist_loss / atr if atr > 0 else 0
+
+        # Simple likelihood: closer TP, further SL, and trend in favor
+        if profit_moves + loss_moves == 0:
+            return 0.5  # Neutral if no movement
+
+        base_likelihood = profit_moves / (profit_moves + loss_moves)
+        likelihood = base_likelihood * direction_factor
+
+        # Clamp between 0 and 1
+        return max(0, min(1, likelihood))
+    

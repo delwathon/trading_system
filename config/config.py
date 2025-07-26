@@ -197,11 +197,14 @@ class EnhancedSystemConfig:
                 encryption_password='bybit_trading_system_secure_key_2024',
                 
                 # NEW: Auto-Trading Configuration
-                max_concurrent_positions=5,
-                max_execution_per_trade=2,
+                max_concurrent_positions=10,
+                max_execution_per_trade=3,
                 day_trade_start_hour='01:00',
                 scan_interval=3600,  # 3 hours in seconds
-                auto_close_profit_at=10.0  # 10% profit target
+                auto_execute_trades=True,
+                auto_close_enabled=True,
+                auto_close_profit_at=20.0,  # 20% profit target
+                auto_close_loss_at=100.0  # 100% profit target
             )
             
             session.add(default_config)
@@ -281,11 +284,14 @@ class EnhancedSystemConfig:
         self.encryption_password = 'bybit_trading_system_secure_key_2024'
         
         # NEW: Auto-Trading Configuration Fallback
-        self.max_concurrent_positions = 5
-        self.max_execution_per_trade = 2
+        self.max_concurrent_positions = 10
+        self.max_execution_per_trade = 3
         self.day_trade_start_hour = '01:00'
         self.scan_interval = 3600  # 3 hours
-        self.auto_close_profit_at = 10.0  # 10% profit
+        self.auto_execute_trades = True
+        self.auto_close_enabled=True
+        self.auto_close_profit_at = 20.0  # 20% profit
+        self.auto_close_loss_at = 100.0  # 100% profit
         
         self._post_init()
 
@@ -310,6 +316,7 @@ class EnhancedSystemConfig:
         self.max_execution_per_trade = max(1, min(10, self.max_execution_per_trade))
         self.risk_amount = max(0.1, min(50.0, self.risk_amount))  # 0.1% to 50% of account balance
         self.auto_close_profit_at = max(0.5, min(100.0, self.auto_close_profit_at))  # 0.5% to 100%
+        self.auto_close_loss_at = max(0.5, min(100.0, self.auto_close_loss_at))  # 0.5% to 100%
         self.scan_interval = max(300, self.scan_interval)  # Minimum 5 minutes between scans
         
         # Validate leverage
@@ -480,7 +487,10 @@ class EnhancedSystemConfig:
                 'max_execution_per_trade': self.max_execution_per_trade,
                 'day_trade_start_hour': self.day_trade_start_hour,
                 'scan_interval': self.scan_interval,
-                'auto_close_profit_at': self.auto_close_profit_at
+                'auto_execute_trades': self.auto_execute_trades,
+                'auto_close_enabled': self.auto_close_enabled,
+                'auto_close_profit_at': self.auto_close_profit_at,
+                'auto_close_loss_at': self.auto_close_loss_at
             }
             
             with open(file_path, 'w') as f:
@@ -539,11 +549,14 @@ class EnhancedSystemConfig:
             # NEW: Encryption password
             'encryption_password': getattr(self, 'encryption_password', 'bybit_trading_system_secure_key_2024'),
             # NEW: Auto-trading configuration
-            'max_concurrent_positions': getattr(self, 'max_concurrent_positions', 5),
-            'max_execution_per_trade': getattr(self, 'max_execution_per_trade', 2),
+            'max_concurrent_positions': getattr(self, 'max_concurrent_positions', 10),
+            'max_execution_per_trade': getattr(self, 'max_execution_per_trade', 3),
             'day_trade_start_hour': getattr(self, 'day_trade_start_hour', '01:00'),
             'scan_interval': getattr(self, 'scan_interval', 3600),
-            'auto_close_profit_at': getattr(self, 'auto_close_profit_at', 10.0)
+            'auto_execute_trades': getattr(self, 'auto_execute_trades', True),
+            'auto_close_enabled': getattr(self, 'auto_close_enabled', True),
+            'auto_close_profit_at': getattr(self, 'auto_close_profit_at', 20.0),
+            'auto_close_loss_at': getattr(self, 'auto_close_loss_at', 100.0)
         }
     
     @classmethod

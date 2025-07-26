@@ -33,7 +33,7 @@ class MultiTimeframeAnalyzer:
                 'timeframe_signals': {}
             }
             
-            primary_side = primary_signal['side']
+            primary_side = primary_signal['side'].lower()
             
             # Analyze each confirmation timeframe
             for timeframe in self.config.confirmation_timeframes:
@@ -52,10 +52,13 @@ class MultiTimeframeAnalyzer:
                     
                     # Generate signal for this timeframe
                     timeframe_signal = self.generate_timeframe_signal(df, timeframe)
+
+                    # self.logger.info(f"   primary signal: {primary_signal}")
+                    # self.logger.info(f"   {timeframe} signal: {timeframe_signal}") 
                     
                     if timeframe_signal:
                         confirmation_results['timeframe_signals'][timeframe] = timeframe_signal
-                        
+
                         if timeframe_signal['side'] == primary_side:
                             confirmation_results['confirmed_timeframes'].append(timeframe)
                             self.logger.debug(f"   ✅ {timeframe}: {symbol} {timeframe_signal['side'].upper()} signal confirmed")

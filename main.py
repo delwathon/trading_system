@@ -63,6 +63,12 @@ def validate_auto_trading_config(config: EnhancedSystemConfig, skip_api_check: b
         logger.error("   Must be between 0.1% and 1000%")
         return False
     
+    # Validate loss target
+    if config.auto_close_loss_at <= 0 or config.auto_close_loss_at > 1000:
+        logger.error(f"❌ Invalid auto_close_loss_at: {config.auto_close_loss_at}%")
+        logger.error("   Must be between 0.1% and 1000%")
+        return False
+    
     # Validate scan interval
     if config.scan_interval < 300:  # Minimum 5 minutes
         logger.error(f"❌ Invalid scan_interval: {config.scan_interval} seconds")
@@ -99,7 +105,11 @@ def display_auto_trading_config(config: EnhancedSystemConfig):
     logger.info(f"   Risk Amount per Trade: {config.risk_amount}% of account balance")
     logger.info(f"   Max Concurrent Positions: {config.max_concurrent_positions}")
     logger.info(f"   Max Executions per Scan: {config.max_execution_per_trade}")
-    logger.info(f"   Auto-Close Profit Target: {config.auto_close_profit_at}%")
+    logger.info("   Auto-Execute Trades: " + ("Enabled" if config.auto_execute_trades else "Disabled"))
+    logger.info("   Auto-Close Trades: " + ("Enabled" if config.auto_close_enabled else "Disabled"))
+    if config.auto_close_enabled:
+        logger.info(f"   Auto-Close Profit Target: {config.auto_close_profit_at}%")
+        logger.info(f"   Auto-Close Loss Target: {config.auto_close_loss_at}%")
     
     # Scheduling parameters
     scan_interval_hours = config.scan_interval / 3600
@@ -440,9 +450,9 @@ def run_single_scan():
             
             if results:
                 # Display the comprehensive results table
-                print("\n" + "=" * 80)
+                print("\n" + "=" * 110)
                 auto_trader.trading_system.print_comprehensive_results_with_mtf(results)
-                print("=" * 80)
+                print("=" * 110)
                 
                 # Show execution simulation
                 if results.get('top_opportunities'):

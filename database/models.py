@@ -89,11 +89,14 @@ class SystemConfig(Base):
     risk_amount = Column(Float, default=5.0)  # Risk percentage of account balance (e.g., 5.0 = 5%)
     
     # NEW: Auto-Trading Configuration
-    max_concurrent_positions = Column(Integer, default=5)
-    max_execution_per_trade = Column(Integer, default=2)
+    max_concurrent_positions = Column(Integer, default=10)
+    max_execution_per_trade = Column(Integer, default=3)
     day_trade_start_hour = Column(String(10), default='01:00')
     scan_interval = Column(Integer, default=3600)  # 3 hours in seconds
-    auto_close_profit_at = Column(Float, default=10.0)  # 10% profit target
+    auto_execute_trades = Column(Boolean, default=True)  # Enable auto-trading execution
+    auto_close_enabled = Column(Boolean, default=True)  # Enable auto-close feature
+    auto_close_profit_at = Column(Float, default=20.0)  # 20% profit target
+    auto_close_loss_at = Column(Float, default=100.0)  # 100% profit target
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -149,7 +152,10 @@ class SystemConfig(Base):
             'max_execution_per_trade': self.max_execution_per_trade,
             'day_trade_start_hour': self.day_trade_start_hour,
             'scan_interval': self.scan_interval,
-            'auto_close_profit_at': self.auto_close_profit_at
+            'auto_execute_trades': self.auto_execute_trades,  # Enable auto-trading execution
+            'auto_close_enabled': self.auto_close_enabled,  # Enable auto-close feature
+            'auto_close_profit_at': self.auto_close_profit_at,
+            'auto_close_loss_at': self.auto_close_loss_at  # 100% profit target
         }
 
 

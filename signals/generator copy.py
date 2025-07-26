@@ -347,7 +347,7 @@ class SignalGenerator:
             
             return {
                 'symbol': symbol_data['symbol'],
-                'side': 'buy',
+                'side': 'Buy',
                 'order_type': order_type,
                 'entry_price': optimal_entry,
                 'current_price': current_price,
@@ -441,7 +441,7 @@ class SignalGenerator:
             
             return {
                 'symbol': symbol_data['symbol'],
-                'side': 'sell',
+                'side': 'Sell',
                 'order_type': order_type,
                 'entry_price': optimal_entry,
                 'current_price': current_price,
@@ -640,7 +640,7 @@ class SignalGenerator:
             # Sort by priority first, then by score
             opportunities.sort(key=lambda x: (x['priority'], x['score']), reverse=True)
             
-            self.logger.info(f"📊 Ranked {len(opportunities)} opportunities")
+            # self.logger.info(f"📊 Ranked {len(opportunities)} opportunities")
             return opportunities
             
         except Exception as e:

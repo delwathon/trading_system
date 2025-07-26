@@ -365,7 +365,7 @@ class ExchangeManager:
             # Filter for USDT perpetual contracts
             usdt_symbols = []
             for symbol, ticker in tickers.items():
-                if '/USDT:USDT' in symbol and ticker.get('quoteVolume', 0) >= self.config.min_volume_24h:
+                if 'USDT' in symbol and ticker.get('quoteVolume', 0) >= self.config.min_volume_24h:
                     usdt_symbols.append({
                         'symbol': symbol,
                         'volume_24h': ticker['quoteVolume'],

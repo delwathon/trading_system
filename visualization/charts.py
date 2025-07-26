@@ -663,7 +663,7 @@ class InteractiveChartGenerator:
                             x=[box_start, box_end],
                             y=[take_profit_1, take_profit_1],
                             mode='lines',
-                            line=dict(color="#4caf50", width=2, dash="dash"),
+                            line=dict(color="#6b996c", width=1, dash="dash"),
                             name=f"TP1: ${take_profit_1:.6f}",
                             visible=True
                         ),
@@ -677,7 +677,7 @@ class InteractiveChartGenerator:
                             x=[box_start, box_end],
                             y=[take_profit_2, take_profit_2],
                             mode='lines',
-                            line=dict(color="#2e7d32", width=2),
+                            line=dict(color="#2e7d32", width=0),
                             name=f"TP2: ${take_profit_2:.6f}",
                             visible=True
                         ),
@@ -707,7 +707,7 @@ class InteractiveChartGenerator:
                             x=[box_start, box_end],
                             y=[stop_loss, stop_loss],
                             mode='lines',
-                            line=dict(color="#f44336", width=2),
+                            line=dict(color="#f44336", width=0),
                             name=f"Stop Loss: ${stop_loss:.6f}",
                             visible=True
                         ),
@@ -740,7 +740,7 @@ class InteractiveChartGenerator:
                             x=[box_start, box_end],
                             y=[take_profit_1, take_profit_1],
                             mode='lines',
-                            line=dict(color="#4caf50", width=2, dash="dash"),
+                            line=dict(color="#6b996c", width=2, dash="dash"),
                             name=f"TP1: ${take_profit_1:.6f}",
                             visible=True
                         ),
@@ -754,7 +754,7 @@ class InteractiveChartGenerator:
                             x=[box_start, box_end],
                             y=[take_profit_2, take_profit_2],
                             mode='lines',
-                            line=dict(color="#2e7d32", width=2),
+                            line=dict(color="#2e7d32", width=0),
                             name=f"TP2: ${take_profit_2:.6f}",
                             visible=True
                         ),
@@ -784,7 +784,7 @@ class InteractiveChartGenerator:
                             x=[box_start, box_end],
                             y=[stop_loss, stop_loss],
                             mode='lines',
-                            line=dict(color="#f44336", width=2),
+                            line=dict(color="#f44336", width=0),
                             name=f"Stop Loss: ${stop_loss:.6f}",
                             visible=True
                         ),
