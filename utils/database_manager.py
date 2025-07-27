@@ -665,23 +665,6 @@ class EnhancedDatabaseManager:
             
             return saved_data
             
-            # Save performance metrics if available
-            performance_metrics = results.get('performance_metrics', [])
-            if performance_metrics and self.save_performance_metrics(performance_metrics, scan_session_id):
-                saved_data['performance_metrics'] = len(performance_metrics)
-            
-            self.logger.debug(f"📄 MySQL Database Save Complete (Scan ID: {scan_id}):")
-            self.logger.debug(f"   Primary Timeframe: {primary_tf}")
-            self.logger.debug(f"   Confirmation Timeframes: {confirmation_tfs}")
-            self.logger.debug(f"   Signals: {saved_data.get('signals', 0)}")
-            self.logger.debug(f"   Opportunities: {saved_data.get('opportunities', 0)}")
-            self.logger.debug(f"   Market Summary: {'✅' if saved_data.get('market_summary') else '❌'}")
-            self.logger.debug(f"   Performance Metrics: {saved_data.get('performance_metrics', 0)}")
-            if auto_trading_session_id:
-                self.logger.debug(f"   Auto-Trading Session: {auto_trading_session_id}")
-            
-            return saved_data
-            
         except Exception as e:
             self.logger.error(f"MySQL database save error: {e}")
             return {'error': str(e)}

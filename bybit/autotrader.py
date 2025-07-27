@@ -16,7 +16,7 @@ import ccxt
 
 from config.config import EnhancedSystemConfig
 from core.system import CompleteEnhancedBybitSystem
-from database.models import DatabaseManager, TradingPosition, AutoTradingSession
+from database.models import DatabaseManager, TradingPosition, AutoTradingSession, TradingSignal, TradingOpportunity
 from utils.database_manager import EnhancedDatabaseManager
 from notifier.telegram import send_trading_notification
 
@@ -899,13 +899,9 @@ class AutoTrader:
             results['scan_info']['original_opportunities_count'] = len(original_opportunities)
             results['scan_info']['symbols_filtered_out'] = len(original_opportunities) - len(filtered_opportunities)
             
-            # print(f"📊 FILTERING RESULTS:")
-            # print(f"   Original Opportunities: {len(original_opportunities)}")
-            # print(f"   After Position/Order Filter: {len(filtered_opportunities)}")
-            # print(f"   Filtered Out: {len(original_opportunities) - len(filtered_opportunities)} symbols")
-            # print(f"   Top Opportunities to Display: {len(filtered_opportunities)}")
             
-            # Save filtered results to database
+            
+            # ====== SAVE FILTERED RESULTS TO DATABASE =====
             self.logger.debug("💾 Saving filtered results to MySQL database...")
             save_result = self.enhanced_db_manager.save_all_results(results)
             if save_result.get('error'):
@@ -913,14 +909,27 @@ class AutoTrader:
             else:
                 self.logger.debug(f"✅ Filtered results saved - Scan ID: {save_result.get('scan_id', 'Unknown')}")
             
+            
+            
             # ===== NOW DISPLAY THE TOP FILTERED RESULTS TABLE =====
-            print("\n" + "=" * 150)
-            print(f"📊 SCAN RESULTS - TOP {len(filtered_opportunities)} TRADING OPPORTUNITIES (FILTERED)")
-            print("=" * 150)
             self.trading_system.print_comprehensive_results_with_mtf(results)
             print("=" * 150 + "\n")
+
             
-            # Check position availability
+            
+            # ===== SEND TELEGRAM NOTIFICATION FOR EACH SIGNAL IN FILTERED OPPORTUNITES WITH CHART FILE IMAGE =====
+            self.logger.info("📢 Sending signal notifications for filtered opportunities...")
+            for opportunity in filtered_opportunities:
+                try:
+                    # Send signal notification using a new defined method which imcludes chart file attachment
+                    await self.send_signal_notification(opportunity)
+                    self.logger.debug(f"✅ Notification sent for {opportunity['symbol']}")
+                except Exception as e:
+                    self.logger.error(f"Error sending notification for {opportunity['symbol']}: {e}")
+            
+            
+            
+            # ===== CHECK POSITION AVAILABILITY AND EXECUTE TRADES ===== 
             can_trade, available_slots = self.position_manager.can_open_new_positions(
                 self.config.max_execution_per_trade
             )
@@ -934,10 +943,14 @@ class AutoTrader:
                 print(f"   No new trades will be executed until positions are closed")
                 return signals_count, 0
             
-            # Select opportunities for execution from ALL filtered opportunities (not just displayed ones)
+            
+            
+            # ===== EXECUTE TRADES BASED ON FILTERED OPPORTUNITIES =====            
             execution_count = min(available_slots, self.config.max_execution_per_trade, len(filtered_opportunities))
             selected_opportunities = filtered_opportunities[:execution_count]  # Use all filtered, not just top displayed
             
+            print("")
+            print("=" * 150 + "\n")
             print(f"🎯 EXECUTING {execution_count} TRADES:")
             print(f"   Original Signals: {signals_count}")
             print(f"   Total After Position/Order Filter: {len(filtered_opportunities)}")
@@ -958,13 +971,6 @@ class AutoTrader:
                 self.logger.info("🚀 Starting trade execution...")
                 for i, opportunity in enumerate(selected_opportunities):
                     try:
-                        # print(f"\n📝 EXECUTING TRADE {i+1}/{execution_count}:")
-                        # print(f"   Symbol: {opportunity['symbol']}")
-                        # print(f"   Side: {opportunity['side'].upper()}")
-                        # print(f"   Confidence: {opportunity['confidence']:.1f}%")
-                        # print(f"   MTF Status: {opportunity.get('mtf_status', 'N/A')}")
-                        # print(f"   Entry Price: ${opportunity['entry_price']:.6f}")
-                        
                         self.logger.info(f"📝 Executing trade {i+1}/{execution_count}: {opportunity['symbol']}")
                         
                         success, message, position_data = self.order_executor.place_leveraged_order(
@@ -973,12 +979,13 @@ class AutoTrader:
                         
                         if success:
                             # Save position to database
-                            position_id = self.position_manager.save_position_to_database(position_data)
-                            executed_count += 1
+                            position_id = self.position_manager.save_position_to_database(position_data, save_result['scan_session_id'])
                             
-                            # print(f"   ✅ TRADE EXECUTED SUCCESSFULLY!")
-                            # print(f"   Position ID: {position_id}")
-                            # print(f"   Message: {message}")
+                            if not position_id:
+                                self.logger.error(f"Failed to save position data for {opportunity['symbol']}")
+                                continue
+
+                            executed_count += 1
                             
                             # Send trade notification using the existing AutoTrader method
                             await self.send_trade_notification(opportunity, position_data, success=True)
@@ -993,19 +1000,7 @@ class AutoTrader:
                     except Exception as e:
                         error_msg = f"Error executing trade for {opportunity['symbol']}: {e}"
                         print(f"   ❌ {error_msg}")
-                        self.logger.error(error_msg)
-            
-            # print(f"\n📊 EXECUTION SUMMARY:")
-            # print(f"   Trades Attempted: {execution_count}")
-            # print(f"   Trades Executed: {executed_count}")
-            # print(f"   Success Rate: {executed_count/execution_count*100:.1f}%" if execution_count > 0 else "N/A")
-                        
-            # ===== GENERATE CHARTS FOR FILTERED SIGNALS =====
-            if filtered_signals:
-                self.logger.info(f"📊 PHASE 3: Chart Generation (Top {len(filtered_signals)} signals only)")
-                self.trading_system.generate_charts_for_top_signals(filtered_signals)
-            else:
-                self.logger.info("📊 PHASE 3: No signals found for chart generation")                
+                        self.logger.error(error_msg)         
 
             return signals_count, executed_count
             
@@ -1022,7 +1017,6 @@ class AutoTrader:
             # Start profit monitoring
             if self.config.auto_close_enabled:
                 self.logger.info("📈 Starting profit monitoring for open positions")
-                self.profit_monitor.set_session_id(session_id)
                 self.profit_monitor.start_monitoring()
             
             self.logger.info("🤖 Auto-trading loop started")
@@ -1092,7 +1086,55 @@ class AutoTrader:
             
         except Exception as e:
             self.logger.error(f"Error stopping trading: {e}")
-    
+        
+    async def send_signal_notification(self, opportunity: Dict):
+        """Send Telegram notification for trading signal, with chart image attached if available"""
+        try:
+            symbol = opportunity['symbol']
+            chart_file = opportunity['chart_file']
+            order_type = opportunity['order_type'].upper()
+            side = opportunity['side'].upper()
+            entry_price = opportunity['entry_price']
+            take_profit_1 = opportunity.get('take_profit_1', 0)
+            take_profit_2 = opportunity.get('take_profit_2', 0)
+            stop_loss = opportunity.get('stop_loss', 0)    
+            risk_reward = opportunity.get('risk_reward_ratio', 0)        
+            confidence = opportunity.get('confidence', 0)
+            mtf_status = opportunity.get('mtf_status', 'N/A')
+
+            message = f"📊 **NEW SIGNAL**\n\n"
+            if side == 'Buy':
+                message += f"🟢 **LONG {symbol}**\n"
+            else:
+                message += f"🔴 **SHORT {symbol}**\n\n"
+            message += f"📈 **{order_type} ORDER**\n"
+            message += f"    💰 Entry Price: ${entry_price:.6f}\n"
+            message += f"    🎯 Take Profit 1: ${take_profit_1:.6f}\n"
+            message += f"    🎯 Take Profit 2: ${take_profit_2:.6f}\n"
+            message += f"    🚫 Stop Loss: ${stop_loss:.6f}\n\n"
+            message += f"📊 CAUTION\n"
+            message += f"    🔍 Leverage: 10X\n"
+            message += f"    🔍 Risk: 5%\n"
+            message += f"    📊 Risk/Reward: {risk_reward:.2f}:1\n\n"
+            message += f"🎯 **Signal Quality:**\n"
+            message += f"    🎯 Confidence: {confidence:.1f}%\n"
+            message += f"    📈 MTF Status: {mtf_status}\n\n"
+            message += f"🕒 {datetime.now().strftime('%H:%M:%S')}\n\n"
+            message += f"Always use proper risk management and do your own research before trading!\n\n"
+
+            keyboard = [
+                # [{"text": "🚀 Execute Trade", "callback_data": f"execute_trade_{symbol}"}],
+            ]
+
+            # Send as photo if local image, else as text
+            if chart_file and chart_file.endswith('.png') and chart_file.startswith('charts/'):
+                await send_trading_notification(self.config, message, keyboard, image_path=chart_file)
+            else:
+                await send_trading_notification(self.config, message, keyboard)
+
+        except Exception as e:
+            self.logger.error(f"Failed to send signal notification: {e}")
+
     async def send_trade_notification(self, opportunity: Dict, position_data: Dict, success: bool, error_message: str = None):
         """Send Telegram notification for trade execution"""
         try:
@@ -1192,7 +1234,6 @@ class AutoTrader:
         except Exception as e:
             self.logger.error(f"Error updating session stats: {e}")
 
-
 # Main execution function for standalone usage
 def main():
     """Main function for running the auto-trader"""
@@ -1225,7 +1266,6 @@ def main():
     except Exception as e:
         logger.error(f"Auto-trader failed: {e}")
         raise
-
 
 if __name__ == "__main__":
     main()

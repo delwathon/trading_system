@@ -667,20 +667,56 @@ def check_bootstrap_needed(config: EnhancedSystemConfig) -> bool:
     return bootstrap_manager.should_enter_bootstrap_mode()
 
 
-async def send_trading_notification(config: EnhancedSystemConfig, message: str, keyboard: List[List[InlineKeyboardButton]] = None):
-    """Send trading notification to Telegram"""
+# async def send_trading_notification(config: EnhancedSystemConfig, message: str, keyboard: List[List[InlineKeyboardButton]] = None):
+#     """Send trading notification to Telegram"""
+#     try:
+#         bot = Bot(token=config.telegram_bot_token)
+        
+#         reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
+        
+#         await bot.send_message(
+#             chat_id=config.telegram_id,
+#             text=message,
+#             reply_markup=reply_markup,
+#             parse_mode='Markdown'
+#         )
+        
+#     except Exception as e:
+#         logging.error(f"Failed to send Telegram notification: {e}")
+
+
+from telegram.constants import ParseMode
+
+async def send_trading_notification(
+    config: EnhancedSystemConfig,
+    message: str,
+    keyboard: List[List[InlineKeyboardButton]] = None,
+    image_path: str = None
+):
+    """Send trading notification to Telegram, with optional image attachment"""
     try:
         bot = Bot(token=config.telegram_bot_token)
-        
         reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
-        
-        await bot.send_message(
-            chat_id=config.telegram_id,
-            text=message,
-            reply_markup=reply_markup,
-            parse_mode='Markdown'
-        )
-        
+
+        if image_path:
+            # Send as photo with caption
+            with open(image_path, "rb") as img_file:
+                await bot.send_photo(
+                    chat_id=config.telegram_id,
+                    photo=img_file,
+                    caption=message,
+                    reply_markup=reply_markup,
+                    parse_mode=ParseMode.MARKDOWN
+                )
+        else:
+            # Send as text message
+            await bot.send_message(
+                chat_id=config.telegram_id,
+                text=message,
+                reply_markup=reply_markup,
+                parse_mode=ParseMode.MARKDOWN
+            )
+
     except Exception as e:
         logging.error(f"Failed to send Telegram notification: {e}")
 

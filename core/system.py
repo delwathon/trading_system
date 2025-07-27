@@ -366,9 +366,18 @@ class CompleteEnhancedBybitSystem:
             return {}
         
         # Re-rank ranked_signals by market order type first, then by profit likelihood, then by priority, then by score
-        # ranked_signals.sort(key=lambda x: (x.get('order_type', 'limit') == 'market'), reverse=True)
+        ranked_signals.sort(key=lambda x: (x.get('order_type', 'limit') == 'market', x['priority'], x['score'], x['profit_likelihood']), reverse=True)
         
         self.logger.info(f"✅ Signal ranking completed, returned {len(ranked_signals)} ranked signals")
+        
+        # ===== PHASE 3: OPTIMIZED CHART GENERATION =====
+        charts_generated = 0
+
+        if ranked_signals:
+            self.logger.info(f"📊 PHASE 3: Chart Generation (Top {len(ranked_signals)} signals only)")
+            charts_generated = self.generate_charts_for_top_signals(ranked_signals)
+        else:
+            self.logger.info("📊 PHASE 3: No signals found for chart generation")
         
         execution_time = time.time() - start_time
         
@@ -379,6 +388,7 @@ class CompleteEnhancedBybitSystem:
             'symbols_analyzed': len(symbols),
             'signals_generated': len(ranked_signals),
             'success_rate': len(ranked_signals) / len(symbols) * 100 if symbols else 0,
+            'charts_generated': charts_generated,
             'parallel_processing': True,
             'threads_used': self.config.max_workers,
             'mtf_enabled': self.config.mtf_confirmation_required,
@@ -401,13 +411,16 @@ class CompleteEnhancedBybitSystem:
                 'mtf_boost_avg': np.mean([s['confidence'] - s.get('original_confidence', s['confidence']) for s in ranked_signals]) if ranked_signals else 0,
                 'order_type_distribution': self.get_order_type_distribution(ranked_signals),
                 'mtf_distribution': self.get_mtf_status_distribution(ranked_signals),
-                'speedup_factor': self.calculate_speedup_factor(execution_time, len(symbols))
+                'speedup_factor': self.calculate_speedup_factor(execution_time, len(symbols)),
+                'chart_efficiency': f"{charts_generated}/{len(ranked_signals)} signals charted"
             }
         }
         
         self.logger.info(f"⚡ {timeframe_display} OPTIMIZED MTF ANALYSIS COMPLETED! in {execution_time:.1f}s")
         self.logger.debug(f"   Total Execution Time: {execution_time:.1f}s")
         self.logger.debug(f"   Signal Generation: {analysis_time:.1f}s ({len(ranked_signals)} signals)")
+        self.logger.info(f"   Chart Generation: {execution_time - analysis_time:.1f}s ({charts_generated} charts)")
+        self.logger.info(f"   Chart Efficiency: {charts_generated}/{len(ranked_signals)} = {charts_generated/max(1,len(ranked_signals))*100:.1f}% charted")
         self.logger.debug(f"   MTF Confirmations: {self.count_mtf_confirmations(ranked_signals)}")
 
         # FIXED: ADD THE MISSING RETURN STATEMENT!
@@ -638,22 +651,17 @@ class CompleteEnhancedBybitSystem:
         total_signals = scan_info.get('signals_generated', 0)
         charts_generated = scan_info.get('charts_generated', 0)
         
-        # print(f"\n📊 SCAN SUMMARY:")
-        # print(f"   Total Signals Generated: {total_signals}")
-        # print(f"   Top Opportunities Selected: {len(opportunities)}")
-        # print(f"   Charts Generated: {charts_generated}")
-        # print(f"   Analysis Time: {scan_info.get('execution_time_seconds', 0):.1f}s")
-        
         # Enhanced Top Opportunities Table
         timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"
-        print(f"\n🏆 TOP OPPORTUNITIES ONLY ({timeframe_display} MTF CONFIRMATION):")
+        print("=" * 150)
+        print(f"\n🏆 📊 SCAN RESULTS - TOP {len(results)} TRADING OPPORTUNITIES ({timeframe_display} MTF CONFIRMATION):")
+        print("=" * 150)
         
         if opportunities:
             # Show only top opportunities that would be executed
             max_display = max(self.config.charts_per_batch, 5)  # Show at least 5, or charts_per_batch
-            display_opportunities = opportunities[:max_display]
+            display_opportunities = opportunities[:max_display]            
             
-            print("=" * 150)
             header = (
                 f"{'#':<3} | {'Symbol':<20} | {'Side':<7} | {'Type':<7} | "
                 f"{'Entry':<12} | {'Stop':<12} | {'TP1':<12} | {'TP2':<12} | "
