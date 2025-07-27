@@ -105,9 +105,12 @@ class CompleteEnhancedBybitSystem:
             )
             
             # Generate primary signal on 30m timeframe
-            primary_signal = self.signal_generator.generate_enhanced_signal(
-                df, symbol_data, volume_entry, confluence_zones
-            )
+            # primary_signal = self.signal_generator.generate_enhanced_signal(
+            #     df, symbol_data, volume_entry, confluence_zones
+            # )
+            primary_signal = self.signal_generator.analyze_symbol_comprehensive(
+                df, symbol_data, volume_entry, fibonacci_data, confluence_zones
+            )            
             
             if primary_signal:
                 # Store original confidence before MTF boost

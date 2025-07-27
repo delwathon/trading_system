@@ -1103,7 +1103,7 @@ class AutoTrader:
             mtf_status = opportunity.get('mtf_status', 'N/A')
 
             message = f"📊 **NEW SIGNAL**\n\n"
-            if side == 'Buy':
+            if side == 'BUY':
                 message += f"🟢 **LONG {symbol}**\n"
             else:
                 message += f"🔴 **SHORT {symbol}**\n\n"

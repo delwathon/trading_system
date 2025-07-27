@@ -63,35 +63,36 @@ class SignalGenerator:
                 
                 # Primary BUY conditions (TUNED: more flexible)
                 buy_technical_conditions = [
-                    rsi < 35,                                    # TUNED: Slightly less strict (was 30)
+                    rsi < 30,                                    # TUNED: Slightly less strict (was 30)
                     macd > macd_signal * 0.95,                  # TUNED: Allow slight MACD lag
                     current_price < sma_20 * 1.01,             # TUNED: Allow slightly above SMA20
-                    current_price > sma_200 * 0.93,            # TUNED: More flexible support (was 0.95)
-                    volume_ratio > 1.1,                         # TUNED: Reduced volume requirement (was 1.2)
-                    bb_position < 0.35,                         # TUNED: Slightly more flexible (was 0.3)
+                    current_price > sma_200 * 0.95,            # TUNED: More flexible support (was 0.95)
+                    volume_ratio > 1.2,                         # TUNED: Reduced volume requirement (was 1.2)
+                    bb_position < 0.33,                         # TUNED: Slightly more flexible (was 0.3)
+                    ichimoku_bullish,
                 ]
                 
                 # BUY trend conditions (TUNED: more flexible)
                 buy_trend_conditions = [
-                    ema_12 > ema_26 * 0.96,                     # TUNED: More flexible trend (was 0.98)
-                    current_price > sma_50 * 0.93,             # TUNED: More flexible support (was 0.95)
-                    sma_20 > sma_50 * 0.96,                     # TUNED: More flexible trend (was 0.98)
+                    ema_12 > ema_26 * 0.98,                     # TUNED: More flexible trend (was 0.98)
+                    current_price > sma_50 * 0.95,             # TUNED: More flexible support (was 0.95)
+                    sma_20 > sma_50 * 0.98,                     # TUNED: More flexible trend (was 0.98)
                     current_price > bb_lower * 1.01,           # TUNED: More flexible BB position
                 ]
                 
                 # BUY Stochastic RSI conditions (TUNED: more flexible)
                 buy_stoch_conditions = [
-                    stoch_rsi_k < 30,                           # TUNED: Less strict (was 25)
+                    stoch_rsi_k < 25,                           # TUNED: Less strict (was 25)
                     stoch_rsi_k > stoch_rsi_d * 0.95,          # TUNED: Allow for close values
-                    stoch_rsi_k > 3,                            # TUNED: Not at absolute bottom (was 5)
-                    stoch_rsi_d < 35,                           # TUNED: More flexible (was 30)
+                    stoch_rsi_k > 5,                            # TUNED: Not at absolute bottom (was 5)
+                    stoch_rsi_d < 30,                           # TUNED: More flexible (was 30)
                 ]
                 
                 # Market structure for BUY (TUNED: more flexible)
                 buy_structure_conditions = [
                     market_structure.get('near_support', False) or market_structure.get('bounce_potential', False),
                     not market_structure.get('strong_downtrend', False),
-                    market_structure.get('price_range_position', 0.5) < 0.4,  # In lower part of range
+                    market_structure.get('price_range_position', 0.5) < 0.5,  # In lower part of range
                     current_price <= latest.get('vwap', current_price) * 1.01,  # At or slightly above VWAP
                 ]
                 
@@ -102,7 +103,7 @@ class SignalGenerator:
                 buy_structure_score = sum(buy_structure_conditions)
                 
                 # TUNED: Relaxed BUY requirements
-                if (buy_tech_score >= 3 and buy_trend_score >= 2 and 
+                if (buy_tech_score >= 4 and buy_trend_score >= 2 and 
                     buy_stoch_score >= 2 and buy_structure_score >= 1):
                     
                     signal = self.create_buy_signal(
@@ -117,28 +118,29 @@ class SignalGenerator:
                     
                     # Primary SELL conditions (TUNED: more flexible)
                     sell_technical_conditions = [
-                        rsi > 70,                                   # TUNED: Less strict (was 75)
+                        rsi > 75,                                   # TUNED: Less strict (was 75)
                         macd < macd_signal * 1.05,                 # TUNED: Allow slight MACD lag
                         current_price > sma_20 * 0.99,             # TUNED: Allow slightly below SMA20
-                        current_price < sma_200 * 1.12,            # TUNED: More flexible resistance (was 1.10)
-                        volume_ratio > 1.3,                         # TUNED: Reduced volume requirement (was 1.5)
-                        bb_position > 0.65,                         # TUNED: More flexible (was 0.7)
+                        current_price < sma_200 * 1.10,            # TUNED: More flexible resistance (was 1.10)
+                        volume_ratio > 1.5,                         # TUNED: Reduced volume requirement (was 1.5)
+                        bb_position > 0.7,                         # TUNED: More flexible (was 0.7)
+                        ichimoku_bearish,
                     ]
                     
                     # SELL trend conditions (TUNED: more flexible)
                     sell_trend_conditions = [
-                        ema_12 < ema_26 * 1.04,                    # TUNED: More flexible (was 1.02)
-                        current_price < sma_50 * 1.10,             # TUNED: More flexible (was 1.08)
-                        sma_20 < sma_50 * 1.07,                    # TUNED: More flexible (was 1.05)
+                        ema_12 < ema_26 * 1.02,                    # TUNED: More flexible (was 1.02)
+                        current_price < sma_50 * 1.08,             # TUNED: More flexible (was 1.08)
+                        sma_20 < sma_50 * 1.05,                    # TUNED: More flexible (was 1.05)
                         current_price < bb_upper * 0.99,           # TUNED: More flexible rejection
                     ]
                     
                     # SELL Stochastic RSI conditions (TUNED: more flexible)
                     sell_stoch_conditions = [
-                        stoch_rsi_k > 75,                           # TUNED: Less strict (was 80)
+                        stoch_rsi_k > 80,                           # TUNED: Less strict (was 80)
                         stoch_rsi_k < stoch_rsi_d * 1.05,          # TUNED: Allow for close values
-                        stoch_rsi_k < 97,                           # TUNED: Not at absolute top (was 95)
-                        stoch_rsi_d > 70,                           # TUNED: More flexible (was 75)
+                        stoch_rsi_k < 95,                           # TUNED: Not at absolute top (was 95)
+                        stoch_rsi_d > 75,                           # TUNED: More flexible (was 75)
                     ]
                     
                     # Market structure for SELL (TUNED: more flexible)
@@ -156,7 +158,7 @@ class SignalGenerator:
                     sell_structure_score = sum(sell_structure_conditions)
                     
                     # TUNED: Relaxed SELL requirements
-                    if (sell_tech_score >= 3 and sell_trend_score >= 2 and 
+                    if (sell_tech_score >= 4 and sell_trend_score >= 2 and 
                         sell_stoch_score >= 2 and sell_structure_score >= 1):
                         
                         signal = self.create_sell_signal(
