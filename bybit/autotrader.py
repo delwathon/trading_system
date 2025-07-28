@@ -859,13 +859,12 @@ class AutoTrader:
             print("\n🔍 FILTERING OUT EXISTING POSITIONS & ORDERS...")
             
             # Get all signals and opportunities
-            all_signals = results.get('signals', [])
-            original_opportunities = results.get('top_opportunities', [])
+            already_ranked_signals = results.get('signals', [])
             
             # Filter out symbols with existing positions/orders
-            filtered_opportunities = self.position_manager.filter_signals_by_existing_symbols(original_opportunities)
+            signals_left_after_filter_out_existing_orders = self.position_manager.filter_signals_by_existing_symbols(already_ranked_signals)
             
-            if not filtered_opportunities:
+            if not signals_left_after_filter_out_existing_orders:
                 # Save original results to database first
                 save_result = self.enhanced_db_manager.save_all_results(results)
                 
@@ -876,28 +875,28 @@ class AutoTrader:
                 return signals_count, 0
             
             # Get filtered symbols
-            filtered_symbol_set = set(opp['symbol'] for opp in filtered_opportunities)
+            filtered_symbol_set = set(opp['symbol'] for opp in signals_left_after_filter_out_existing_orders)
             
             # Filter signals to match the opportunities (for chart generation)
-            filtered_signals = [signal for signal in all_signals if signal['symbol'] in filtered_symbol_set]
+            filtered_signals = [signal for signal in already_ranked_signals if signal['symbol'] in filtered_symbol_set]
             
             # Get signals that match the top opportunities (for chart generation)
-            top_filtered_symbols = set(opp['symbol'] for opp in filtered_opportunities)
+            top_filtered_symbols = set(opp['symbol'] for opp in signals_left_after_filter_out_existing_orders)
             top_filtered_signals = [signal for signal in filtered_signals if signal['symbol'] in top_filtered_symbols]
             
             # ===== UPDATE RESULTS WITH TOP FILTERED DATA =====
-            results['top_opportunities'] = filtered_opportunities  # Only top N for display
+            results['top_opportunities'] = signals_left_after_filter_out_existing_orders  # Only top N for display
             results['signals'] = top_filtered_signals  # Only top N signals for charts
             
             # Update scan info to reflect filtering
             if 'scan_info' not in results:
                 results['scan_info'] = {}
             results['scan_info']['original_signals_count'] = signals_count
-            results['scan_info']['total_filtered_opportunities'] = len(filtered_opportunities)
-            results['scan_info']['displayed_opportunities'] = len(filtered_opportunities)
+            results['scan_info']['total_signals_left_after_filter_out_existing_orders'] = len(signals_left_after_filter_out_existing_orders)
+            results['scan_info']['displayed_opportunities'] = len(signals_left_after_filter_out_existing_orders)
             results['scan_info']['filtered_signals_count'] = len(top_filtered_signals)
-            results['scan_info']['original_opportunities_count'] = len(original_opportunities)
-            results['scan_info']['symbols_filtered_out'] = len(original_opportunities) - len(filtered_opportunities)
+            results['scan_info']['already_ranked_signals_count'] = len(already_ranked_signals)
+            results['scan_info']['symbols_filtered_out'] = len(already_ranked_signals) - len(signals_left_after_filter_out_existing_orders)
             
             
             
@@ -919,7 +918,7 @@ class AutoTrader:
             
             # ===== SEND TELEGRAM NOTIFICATION FOR EACH SIGNAL IN FILTERED OPPORTUNITES WITH CHART FILE IMAGE =====
             self.logger.info("📢 Sending signal notifications for filtered opportunities...")
-            for opportunity in filtered_opportunities:
+            for opportunity in signals_left_after_filter_out_existing_orders:
                 try:
                     # Send signal notification using a new defined method which imcludes chart file attachment
                     await self.send_signal_notification(opportunity)
@@ -946,22 +945,22 @@ class AutoTrader:
             
             
             # ===== EXECUTE TRADES BASED ON FILTERED OPPORTUNITIES =====            
-            execution_count = min(available_slots, self.config.max_execution_per_trade, len(filtered_opportunities))
-            selected_opportunities = filtered_opportunities[:execution_count]  # Use all filtered, not just top displayed
+            execution_count = min(available_slots, self.config.max_execution_per_trade, len(signals_left_after_filter_out_existing_orders))
+            selected_opportunities = signals_left_after_filter_out_existing_orders[:execution_count]  # Use all filtered, not just top displayed
             
             print("")
             print("=" * 150 + "\n")
             print(f"🎯 EXECUTING {execution_count} TRADES:")
             print(f"   Original Signals: {signals_count}")
-            print(f"   Total After Position/Order Filter: {len(filtered_opportunities)}")
-            print(f"   Top Displayed in Table: {len(filtered_opportunities)}")
+            print(f"   Total After Position/Order Filter: {len(signals_left_after_filter_out_existing_orders)}")
+            print(f"   Top Displayed in Table: {len(signals_left_after_filter_out_existing_orders)}")
             print(f"   Available Position Slots: {available_slots}")
             print(f"   Selected for Execution: {execution_count}")
             print(f"")
             
             self.logger.debug(
                 f"🎯 Executing {execution_count} trades after filtering "
-                f"(filtered: {len(filtered_opportunities)}, available slots: {available_slots})"
+                f"(filtered: {len(signals_left_after_filter_out_existing_orders)}, available slots: {available_slots})"
             )
 
             executed_count = 0

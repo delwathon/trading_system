@@ -8,13 +8,7 @@ import ta
 import time
 import logging
 from typing import Dict, List, Optional
-
 from config.config import EnhancedSystemConfig
-from core.exchange import ExchangeManager
-from analysis.technical import EnhancedTechnicalAnalysis
-from analysis.volume_profile import VolumeProfileAnalyzer
-from analysis.fibonacci import FibonacciConfluenceAnalyzer
-from signals.generator import SignalGenerator
 
 
 class MultiTimeframeAnalyzer:
@@ -24,17 +18,10 @@ class MultiTimeframeAnalyzer:
         self.exchange = exchange
         self.config = config
         self.logger = logging.getLogger(__name__)
-
-        self.exchange_manager = ExchangeManager(config)
-        self.enhanced_ta = EnhancedTechnicalAnalysis()
-        self.volume_analyzer = VolumeProfileAnalyzer()
-        self.fibonacci_analyzer = FibonacciConfluenceAnalyzer()
-        self.signal_generator = SignalGenerator(config)
         
-    def analyze_symbol_multi_timeframe(self, symbol_data: Dict, primary_signal: Dict) -> Dict:
+    def analyze_symbol_multi_timeframe(self, symbol: str, primary_signal: Dict) -> Dict:
         """Analyze symbol across multiple timeframes for signal confirmation"""
         try:
-            symbol = symbol_data['symbol']
             self.logger.debug(f"🔍 Multi-timeframe analysis for {symbol}")
             
             confirmation_results = {
@@ -46,7 +33,7 @@ class MultiTimeframeAnalyzer:
                 'timeframe_signals': {}
             }
             
-            primary_side = primary_signal['side']
+            primary_side = primary_signal['side'].lower()
             
             # Analyze each confirmation timeframe
             for timeframe in self.config.confirmation_timeframes:
@@ -54,40 +41,20 @@ class MultiTimeframeAnalyzer:
                     self.logger.debug(f"   Analyzing {timeframe} timeframe...")
                     
                     # Fetch data for this timeframe
-                    df = self.exchange_manager.fetch_ohlcv_data(symbol, timeframe)
+                    df = self.fetch_timeframe_data(symbol, timeframe)
                     if df.empty or len(df) < 50:
-                        self.logger.debug(f"Insufficient {timeframe} data for {symbol}")
+                        self.logger.debug(f"   Insufficient {timeframe} data for {symbol}")
                         confirmation_results['neutral_timeframes'].append(timeframe)
                         continue
+                    
+                    # Calculate indicators for this timeframe
+                    df = self.calculate_timeframe_indicators(df)
+                    
+                    # Generate signal for this timeframe
+                    timeframe_signal = self.generate_timeframe_signal(df, timeframe)
 
-                    # APPROACH 1: Enhanced Technical Analysis
-                    df = self.enhanced_ta.calculate_all_indicators(df, self.config)
-                    
-                    # APPROACH 2: Volume Profile Analysis
-                    volume_profile = self.volume_analyzer.calculate_volume_profile(df)
-                    volume_entry = self.volume_analyzer.find_optimal_entry_from_volume(
-                        df, symbol_data['current_price'], 'buy'
-                    )
-                    
-                    # APPROACH 3: Fibonacci & Confluence Analysis
-                    fibonacci_data = self.fibonacci_analyzer.calculate_fibonacci_levels(df)
-                    confluence_zones = self.fibonacci_analyzer.find_confluence_zones(
-                        df, volume_profile, symbol_data['current_price']
-                    )
-                    
-                    timeframe_signal = self.signal_generator.analyze_symbol_comprehensive(
-                        df, symbol_data, volume_entry, fibonacci_data, confluence_zones
-                    )
-
-                    # if timeframe_signal:
-                    #     # Log all the timeframe signal details
-                    #     self.logger.info(f"   30m side: {primary_signal['side']}")
-                    #     self.logger.info(f"   {timeframe} side: {timeframe_signal['side']}")
-                    #     self.logger.info(f"   Primary signal: {primary_signal['side'].upper()} at {primary_signal['entry_price']}")
-                    #     self.logger.info(f"   {timeframe} signal: {timeframe_signal['side'].upper()} at {timeframe_signal['entry_price']}")
-                    #     self.logger.info("")
-                    # else:
-                    #     self.logger.info(f"No valid signal generated for {symbol} on {timeframe}")           
+                    # self.logger.info(f"   primary signal: {primary_signal}")
+                    # self.logger.info(f"   {timeframe} signal: {timeframe_signal}") 
                     
                     if timeframe_signal:
                         confirmation_results['timeframe_signals'][timeframe] = timeframe_signal
@@ -113,7 +80,6 @@ class MultiTimeframeAnalyzer:
             total_timeframes = len(self.config.confirmation_timeframes)
             confirmed_count = len(confirmation_results['confirmed_timeframes'])
             conflicting_count = len(confirmation_results['conflicting_timeframes'])
-            neutral_count = len(confirmation_results['neutral_timeframes'])
             
             if total_timeframes > 0:
                 confirmation_results['confirmation_strength'] = confirmed_count / total_timeframes

@@ -120,7 +120,7 @@ class CompleteEnhancedBybitSystem:
                 if self.config.mtf_confirmation_required and self.mtf_analyzer:
                     confirmation_tfs = ', '.join(self.config.confirmation_timeframes)
                     self.logger.debug(f"🔍 Running {confirmation_tfs} confirmation for {symbol}...")
-                    mtf_analysis = self.mtf_analyzer.analyze_symbol_multi_timeframe(symbol, primary_signal)
+                    mtf_analysis = self.mtf_analyzer.analyze_symbol_multi_timeframe(symbol_data, primary_signal)
                     
                     # Add MTF data to signal
                     primary_signal['mtf_analysis'] = mtf_analysis
@@ -135,10 +135,20 @@ class CompleteEnhancedBybitSystem:
                     confirmed_count = len(mtf_analysis['confirmed_timeframes'])
                     total_timeframes = len(self.config.confirmation_timeframes)
                     
-                    if confirmed_count >= max(2, total_timeframes * 0.75):  # 75% confirmation threshold
+                    # if confirmed_count >= max(2, total_timeframes * 0.75):  # 75% confirmation threshold
+                    #     primary_signal['mtf_status'] = 'STRONG'
+                    #     primary_signal['priority_boost'] = 100
+                    # elif confirmed_count >= max(1, total_timeframes * 0.5):  # 50% confirmation threshold
+                    #     primary_signal['mtf_status'] = 'PARTIAL'
+                    #     primary_signal['priority_boost'] = 50
+                    # else:
+                    #     primary_signal['mtf_status'] = 'NONE'
+                    #     primary_signal['priority_boost'] = 0
+
+                    if confirmed_count == total_timeframes:
                         primary_signal['mtf_status'] = 'STRONG'
                         primary_signal['priority_boost'] = 100
-                    elif confirmed_count >= max(1, total_timeframes * 0.5):  # 50% confirmation threshold
+                    elif confirmed_count >= 1:
                         primary_signal['mtf_status'] = 'PARTIAL'
                         primary_signal['priority_boost'] = 50
                     else:
@@ -179,6 +189,9 @@ class CompleteEnhancedBybitSystem:
                 
                 self.logger.debug(f"✅ {symbol} - {primary_signal['side'].upper()} signal generated ({self.config.timeframe} base) - Chart: Pending")
                 return primary_signal
+            
+            # else:
+            #     self.logger.info(f"No valid signal generated for {symbol} on {self.config.timeframe}")
             
             return None
             
@@ -369,8 +382,12 @@ class CompleteEnhancedBybitSystem:
             return {}
         
         # Re-rank ranked_signals by market order type first, then by profit likelihood, then by priority, then by score
-        ranked_signals.sort(key=lambda x: (x.get('order_type', 'limit') == 'market', x['priority'], x['score'], x['profit_likelihood']), reverse=True)
+        # ranked_signals.sort(key=lambda x: (x.get('order_type', 'limit') == 'market', x['priority'], x['score']), reverse=True)
         
+        # print("\n" + "=" * 110)
+        # self.print_comprehensive_results_with_mtf(ranked_signals)
+        # print("=" * 110)
+
         self.logger.info(f"✅ Signal ranking completed, returned {len(ranked_signals)} ranked signals")
         
         # ===== PHASE 3: OPTIMIZED CHART GENERATION =====
@@ -657,7 +674,7 @@ class CompleteEnhancedBybitSystem:
         # Enhanced Top Opportunities Table
         timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"
         print("=" * 150)
-        print(f"\n🏆 📊 SCAN RESULTS - TOP {len(results)} TRADING OPPORTUNITIES ({timeframe_display} MTF CONFIRMATION):")
+        print(f"\n🏆 📊 SCAN RESULTS - TOP {len(opportunities)} TRADING OPPORTUNITIES ({timeframe_display} MTF CONFIRMATION):")
         print("=" * 150)
         
         if opportunities:
@@ -668,10 +685,11 @@ class CompleteEnhancedBybitSystem:
             header = (
                 f"{'#':<3} | {'Symbol':<20} | {'Side':<7} | {'Type':<7} | "
                 f"{'Entry':<12} | {'Stop':<12} | {'TP1':<12} | {'TP2':<12} | "
-                f"{'Prof-Like':<8} | "
+                # f"{'Prof-Like':<8} | "
                 f"{'Conf':<8} | {'MTF':<12} | "
                 f"{'Satisfied TF':<12} | "
                 f"{'Opposing TF':<12} | "
+                f"{'Neutral TF':<12} | "
                 f"{'R/R':<5} | {'Volume':<8} | {'Status':<12}"
             )
             print(header)
@@ -683,8 +701,8 @@ class CompleteEnhancedBybitSystem:
                     will_execute = i < self.config.max_execution_per_trade
                     status = "🎯 EXECUTE" if will_execute else "⏭️ SKIP"
                     
-                    side_emoji = "🟢 LONG" if opp['side'] == 'Buy' else "🔴 SHORT"
-                    order_type = "Market" if opp['order_type'] == 'market' else "Limit"
+                    side_emoji = "🟢 LONG" if opp['side'] == 'buy' else "🔴 SHORT"
+                    order_type = "Limit" if opp['order_type'] == 'limit' else "Market"
                     volume_str = f"${opp['volume_24h']/1e6:.0f}M"
                     
                     # MTF status with emojis
@@ -705,12 +723,13 @@ class CompleteEnhancedBybitSystem:
                     
                     row = (
                         f"{i+1:<3} | {opp['symbol']:<20} | {side_emoji:<7} | {order_type:<7} | "
-                        f"{opp['entry_price']:<12.4f} | {opp['stop_loss']:<12.4f} | "
-                        f"{opp['take_profit_1']:<12.4f} | {opp['take_profit_2']:<12.4f} | "
-                        f"{opp['profit_likelihood']*100:<7.1f}% | "
+                        f"{opp['entry_price']:<12.6f} | {opp['stop_loss']:<12.6f} | "
+                        f"{opp['take_profit_1']:<12.6f} | {opp['take_profit_2']:<12.6f} | "
+                        # f"{opp['profit_likelihood']*100:<7.1f}% | "
                         f"{conf_display:<8} | {mtf_display:<12} | "
                         f"{', '.join(opp.get('mtf_analysis', {}).get('confirmed_timeframes', [])):<12} | "
                         f"{', '.join(opp.get('mtf_analysis', {}).get('conflicting_timeframes', [])):<12} | "
+                        f"{', '.join(opp.get('mtf_analysis', {}).get('neutral_timeframes', [])):<12} | "
                         f"{opp.get('risk_reward_ratio', 'N/A'):<5.1f} | {volume_str:<8} | {status:<12}"
                     )
                     print(f"{row}")
