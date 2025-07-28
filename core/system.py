@@ -104,10 +104,6 @@ class CompleteEnhancedBybitSystem:
                 df, volume_profile, symbol_data['current_price']
             )
             
-            # Generate primary signal on 30m timeframe
-            # primary_signal = self.signal_generator.generate_enhanced_signal(
-            #     df, symbol_data, volume_entry, confluence_zones
-            # )
             primary_signal = self.signal_generator.analyze_symbol_comprehensive(
                 df, symbol_data, volume_entry, fibonacci_data, confluence_zones
             )            
@@ -134,16 +130,6 @@ class CompleteEnhancedBybitSystem:
                     # Mark MTF status
                     confirmed_count = len(mtf_analysis['confirmed_timeframes'])
                     total_timeframes = len(self.config.confirmation_timeframes)
-                    
-                    # if confirmed_count >= max(2, total_timeframes * 0.75):  # 75% confirmation threshold
-                    #     primary_signal['mtf_status'] = 'STRONG'
-                    #     primary_signal['priority_boost'] = 100
-                    # elif confirmed_count >= max(1, total_timeframes * 0.5):  # 50% confirmation threshold
-                    #     primary_signal['mtf_status'] = 'PARTIAL'
-                    #     primary_signal['priority_boost'] = 50
-                    # else:
-                    #     primary_signal['mtf_status'] = 'NONE'
-                    #     primary_signal['priority_boost'] = 0
 
                     if confirmed_count == total_timeframes:
                         primary_signal['mtf_status'] = 'STRONG'
@@ -684,7 +670,7 @@ class CompleteEnhancedBybitSystem:
             
             header = (
                 f"{'#':<3} | {'Symbol':<20} | {'Side':<7} | {'Type':<7} | "
-                f"{'Entry':<12} | {'Stop':<12} | {'TP1':<12} | {'TP2':<12} | "
+                f"{'Entry':<12} | {'Stop':<12} | {'TP1 ✅':<12} | {'TP2':<12} | "
                 # f"{'Prof-Like':<8} | "
                 f"{'Conf':<8} | {'MTF':<12} | "
                 f"{'Satisfied TF':<12} | "

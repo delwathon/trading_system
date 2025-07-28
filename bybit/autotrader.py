@@ -507,7 +507,7 @@ class OrderExecutor:
             side = signal['side']
             entry_price = signal['entry_price']
             stop_loss = signal['stop_loss']
-            take_profit = signal.get('take_profit_2', signal.get('take_profit', 0))
+            take_profit = signal.get('take_profit_1', signal.get('take_profit', 0))
             
             self.logger.info(f"🚀 Placing {side.upper()} order for {symbol}")
             
@@ -872,6 +872,7 @@ class AutoTrader:
                 print("⚠️  ALL SIGNALS FILTERED OUT:")
                 print("   Either symbols already have positions/orders")
                 print("   or no valid signals generated")
+                print("")
                 return signals_count, 0
             
             # Get filtered symbols

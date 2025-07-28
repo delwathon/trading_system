@@ -752,7 +752,7 @@ class SignalGenerator:
 
             # Risk-reward calculation
             risk_amount = optimal_entry - stop_loss
-            reward_amount = take_profit_2 - optimal_entry
+            reward_amount = take_profit_1 - optimal_entry
             risk_reward_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
 
             # Context-aware confidence calculation
@@ -892,7 +892,7 @@ class SignalGenerator:
 
             # Risk-reward calculation
             risk_amount = stop_loss - optimal_entry
-            reward_amount = optimal_entry - take_profit_2
+            reward_amount = optimal_entry - take_profit_1
             risk_reward_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
 
             # Context-aware confidence calculation
@@ -1401,30 +1401,299 @@ class SignalGenerator:
     #         self.logger.error(f"Enhanced ranking error: {e}")
     #         return signals
 
+    # def rank_opportunities_with_mtf(self, signals: List[Dict], dfs: Optional[Dict[str, pd.DataFrame]] = None) -> List[Dict]:
+    #     """MTF-Priority Ranking System - Fixed to prioritize confirmed signals"""
+    #     try:
+    #         opportunities = []
+            
+    #         for signal in signals:
+    #             # === MTF CONFIRMATION ANALYSIS (HIGHEST PRIORITY) ===
+    #             mtf_analysis = signal.get('mtf_analysis', {})
+    #             mtf_status = signal.get('mtf_status', 'NONE')
+                
+    #             # MTF Score and Multiplier (MOST IMPORTANT)
+    #             if mtf_status == 'STRONG':
+    #                 mtf_score = 1.0
+    #                 mtf_priority_tier = 3000  # Top tier
+    #                 mtf_multiplier = 1.5      # 50% boost
+    #             elif mtf_status == 'PARTIAL':
+    #                 confirmed_timeframes = mtf_analysis.get('confirmed_timeframes', [])
+    #                 mtf_score = len(confirmed_timeframes) / len(self.config.confirmation_timeframes)  # Assuming 3 timeframes
+    #                 mtf_priority_tier = 2000  # Second tier
+    #                 mtf_multiplier = 1.0 + (mtf_score * 0.3)  # Up to 30% boost
+    #             else:  # NONE
+    #                 mtf_score = 0.0
+    #                 mtf_priority_tier = 1000  # Third tier
+    #                 mtf_multiplier = 0.7      # 30% PENALTY for no confirmation
+                
+    #             # === CORE SIGNAL METRICS ===
+    #             confidence = signal['confidence']
+    #             confidence_score = confidence / 100
+    #             rr_ratio = signal.get('risk_reward_ratio', 1)
+    #             rr_score = min(1.0, rr_ratio / 3.0)
+                
+    #             # === SIGNAL STRENGTH ===
+    #             analysis_details = signal.get('analysis_details', {})
+    #             signal_strength = analysis_details.get('signal_strength', 'weak')
+                
+    #             strength_multipliers = {
+    #                 'strong': 1.3,
+    #                 'moderate': 1.1,
+    #                 'weak': 0.9
+    #             }
+    #             strength_multiplier = strength_multipliers[signal_strength]
+                
+    #             # === MARKET QUALITY FACTORS ===
+    #             volume_24h = signal.get('volume_24h', 0)
+                
+    #             # Volume scoring (liquidity is crucial)
+    #             if volume_24h >= 10_000_000:
+    #                 volume_score = 1.0
+    #                 volume_bonus = 200  # Priority bonus
+    #             elif volume_24h >= 5_000_000:
+    #                 volume_score = 0.8
+    #                 volume_bonus = 100
+    #             elif volume_24h >= 1_000_000:
+    #                 volume_score = 0.6
+    #                 volume_bonus = 50
+    #             else:
+    #                 volume_score = 0.3
+    #                 volume_bonus = -100  # Priority penalty
+                
+    #             # === ENTRY STRATEGY QUALITY ===
+    #             entry_strategy = signal.get('entry_strategy', 'immediate')
+    #             strategy_scores = {
+    #                 'wait_for_pullback': 0.9,  # Best entries
+    #                 'limit_order': 0.8,
+    #                 'immediate': 0.7
+    #             }
+    #             strategy_score = strategy_scores.get(entry_strategy, 0.7)
+                
+    #             # === TECHNICAL COMPONENT SCORING ===
+    #             component_scores = analysis_details.get('component_scores', {})
+    #             technical_score = component_scores.get('technical', 0.5)
+    #             structure_score = component_scores.get('structure', 0.5)
+    #             trend_score = component_scores.get('trend', 0.5)
+                
+    #             # === RISK PENALTIES ===
+    #             risk_penalty = 1.0
+                
+    #             # Heavy penalty for weak signals without MTF confirmation
+    #             if mtf_status == 'NONE' and signal_strength == 'weak':
+    #                 risk_penalty = 0.5  # 50% penalty
+    #             elif mtf_status == 'NONE' and confidence < 60:
+    #                 risk_penalty = 0.6  # 40% penalty
+    #             elif mtf_status == 'PARTIAL' and confidence < 50:
+    #                 risk_penalty = 0.8  # 20% penalty
+                
+    #             # === CALCULATE BASE SCORE ===
+    #             base_score = (
+    #                 confidence_score * 0.25 +
+    #                 rr_score * 0.20 +
+    #                 technical_score * 0.18 +
+    #                 structure_score * 0.15 +
+    #                 trend_score * 0.12 +
+    #                 strategy_score * 0.10
+    #             )
+                
+    #             # === APPLY ALL MULTIPLIERS ===
+    #             final_score = (
+    #                 base_score *
+    #                 mtf_multiplier *      # MOST IMPORTANT
+    #                 strength_multiplier *
+    #                 risk_penalty
+    #             ) + (volume_score * 0.05)  # Small volume bonus to final score
+                
+    #             # Cap the score
+    #             final_score = max(0, min(1.0, final_score))
+                
+    #             # === PRIORITY CALCULATION (MTF-FIRST) ===
+    #             # Start with MTF tier, then add other factors
+    #             base_priority = mtf_priority_tier
+                
+    #             # Add confidence-based priority within tier
+    #             confidence_priority = int(confidence * 8)  # 0-800 range
+                
+    #             # Add R/R priority
+    #             rr_priority = int(min(rr_ratio, 4.0) * 50)  # 0-200 range
+                
+    #             # Add volume bonus/penalty
+    #             priority_adjustment = volume_bonus + confidence_priority + rr_priority
+                
+    #             final_priority = base_priority + priority_adjustment
+                
+    #             # === SPECIAL CASES ===
+    #             # Boost for exceptional non-MTF signals (rare cases)
+    #             if (mtf_status == 'NONE' and confidence >= 85 and 
+    #                 rr_ratio >= 3.0 and signal_strength == 'strong'):
+    #                 final_priority += 500  # Still lower than PARTIAL, but competitive
+    #                 final_score *= 1.1
+                
+    #             # === QUALITY GATES ===
+    #             quality_flags = []
+                
+    #             # Critical quality issues
+    #             if mtf_status == 'NONE' and confidence < 55:
+    #                 quality_flags.append('low_confidence_no_mtf')
+    #             if volume_24h < 500_000:
+    #                 quality_flags.append('low_liquidity')
+    #             if rr_ratio < 1.5:
+    #                 quality_flags.append('poor_risk_reward')
+                
+    #             # === STORE DETAILED RANKING INFO ===
+    #             ranking_details = {
+    #                 'mtf_status': mtf_status,
+    #                 'mtf_score': mtf_score,
+    #                 'mtf_priority_tier': mtf_priority_tier,
+    #                 'mtf_multiplier': mtf_multiplier,
+    #                 'base_score': base_score,
+    #                 'final_score': final_score,
+    #                 'strength_multiplier': strength_multiplier,
+    #                 'risk_penalty': risk_penalty,
+    #                 'volume_score': volume_score,
+    #                 'quality_flags': quality_flags,
+    #                 'priority_breakdown': {
+    #                     'mtf_tier': mtf_priority_tier,
+    #                     'confidence_bonus': confidence_priority,
+    #                     'rr_bonus': rr_priority,
+    #                     'volume_bonus': volume_bonus
+    #                 }
+    #             }
+                
+    #             opportunities.append({
+    #                 **signal,
+    #                 'score': final_score,
+    #                 'priority': final_priority,
+    #                 'ranking_details': ranking_details,
+    #                 'quality_grade': self._calculate_quality_grade(signal, ranking_details)
+    #             })
+
+    #         # === SORT BY MTF-PRIORITY RANKING ===
+    #         opportunities.sort(key=lambda x: (x['priority'], x['score']), reverse=True)
+            
+    #         # === APPLY QUALITY FILTERS ===
+    #         filtered_opportunities = []
+    #         for opp in opportunities:
+    #             quality_flags = opp['ranking_details']['quality_flags']
+                
+    #             # Allow high-quality signals regardless of MTF
+    #             if (opp['confidence'] >= 80 and opp['risk_reward_ratio'] >= 2.5 and 
+    #                 opp['volume_24h'] >= 1_000_000):
+    #                 filtered_opportunities.append(opp)
+    #             # Require MTF for medium-quality signals
+    #             elif opp.get('mtf_status') in ['STRONG', 'PARTIAL']:
+    #                 filtered_opportunities.append(opp)
+    #             # Very strict criteria for no-MTF signals
+    #             elif (opp.get('mtf_status') == 'NONE' and opp['confidence'] >= 75 and 
+    #                 opp['risk_reward_ratio'] >= 2.8 and len(quality_flags) == 0):
+    #                 filtered_opportunities.append(opp)
+    #             else:
+    #                 self.logger.debug(f"Filtered {opp['symbol']}: MTF={opp.get('mtf_status')}, "
+    #                                 f"Conf={opp['confidence']}, Flags={quality_flags}")
+            
+    #         return filtered_opportunities[:self.config.charts_per_batch]
+
+    #     except Exception as e:
+    #         self.logger.error(f"MTF-priority ranking error: {e}")
+    #         return signals
+
     def rank_opportunities_with_mtf(self, signals: List[Dict], dfs: Optional[Dict[str, pd.DataFrame]] = None) -> List[Dict]:
-        """MTF-Priority Ranking System - Fixed to prioritize confirmed signals"""
+        """
+        MTF-Priority Ranking System - Enhanced to prioritize higher timeframe confirmation
+        
+        Key Principles:
+        1. Higher timeframes (2h, 4h, 6h) carry exponentially more weight
+        2. Signals without higher timeframe confirmation are heavily penalized
+        3. Lower timeframe-only signals are considered high-risk/low-probability
+        4. Quality over quantity - better to have fewer high-conviction trades
+        """
         try:
             opportunities = []
             
+            # Define timeframe hierarchy with exponential importance weights
+            timeframe_weights = {
+                '15m': 1.0,    # Base weight
+                '30m': 1.5,    # Primary timeframe gets moderate boost
+                '2h': 4.0,     # Higher timeframes get exponential weight
+                '4h': 6.0,
+                '6h': 8.0,
+                '1d': 10.0     # Daily gets maximum weight
+            }
+            
+            # Define minimum higher timeframe requirements
+            higher_timeframes = ['2h', '4h', '6h', '1d']
+            lower_timeframes = ['15m', '30m']
+            
             for signal in signals:
-                # === MTF CONFIRMATION ANALYSIS (HIGHEST PRIORITY) ===
+                # === MTF ANALYSIS WITH TIMEFRAME HIERARCHY ===
                 mtf_analysis = signal.get('mtf_analysis', {})
                 mtf_status = signal.get('mtf_status', 'NONE')
+                confirmed_timeframes = mtf_analysis.get('confirmed_timeframes', [])
+                neutral_timeframes = mtf_analysis.get('neutral_timeframes', [])
+                opposing_timeframes = mtf_analysis.get('opposing_timeframes', [])
                 
-                # MTF Score and Multiplier (MOST IMPORTANT)
-                if mtf_status == 'STRONG':
-                    mtf_score = 1.0
-                    mtf_priority_tier = 3000  # Top tier
-                    mtf_multiplier = 1.5      # 50% boost
-                elif mtf_status == 'PARTIAL':
-                    confirmed_timeframes = mtf_analysis.get('confirmed_timeframes', [])
-                    mtf_score = len(confirmed_timeframes) / 3.0  # Assuming 3 timeframes
-                    mtf_priority_tier = 2000  # Second tier
-                    mtf_multiplier = 1.0 + (mtf_score * 0.3)  # Up to 30% boost
-                else:  # NONE
-                    mtf_score = 0.0
-                    mtf_priority_tier = 1000  # Third tier
-                    mtf_multiplier = 0.7      # 30% PENALTY for no confirmation
+                # Calculate weighted MTF score based on timeframe importance
+                total_weight = sum(timeframe_weights.get(tf, 1.0) for tf in timeframe_weights.keys())
+                confirmed_weight = sum(timeframe_weights.get(tf, 1.0) for tf in confirmed_timeframes)
+                opposing_weight = sum(timeframe_weights.get(tf, 1.0) for tf in opposing_timeframes)
+                
+                # MTF Quality Score (0-1)
+                mtf_quality_score = confirmed_weight / total_weight if total_weight > 0 else 0
+                
+                # === HIGHER TIMEFRAME CONVICTION ANALYSIS ===
+                higher_tf_confirmed = [tf for tf in confirmed_timeframes if tf in higher_timeframes]
+                higher_tf_opposing = [tf for tf in opposing_timeframes if tf in higher_timeframes]
+                lower_tf_confirmed = [tf for tf in confirmed_timeframes if tf in lower_timeframes]
+                
+                # Calculate higher timeframe conviction
+                higher_tf_conviction = len(higher_tf_confirmed) / len(higher_timeframes)
+                lower_tf_only = len(confirmed_timeframes) > 0 and len(higher_tf_confirmed) == 0
+                
+                # === MTF CLASSIFICATION AND TIER ASSIGNMENT ===
+                if len(higher_tf_confirmed) >= 2:  # At least 2 higher TFs confirmed
+                    mtf_tier = 'PREMIUM'
+                    base_priority = 5000
+                    mtf_multiplier = 2.0
+                    conviction_level = 'VERY_HIGH'
+                elif len(higher_tf_confirmed) >= 1:  # At least 1 higher TF confirmed
+                    mtf_tier = 'HIGH_QUALITY'
+                    base_priority = 3500
+                    mtf_multiplier = 1.6
+                    conviction_level = 'HIGH'
+                elif len(higher_tf_confirmed) == 0 and len(higher_tf_opposing) == 0:  # Higher TFs neutral
+                    if len(lower_tf_confirmed) >= 2:
+                        mtf_tier = 'SPECULATIVE'
+                        base_priority = 1500
+                        mtf_multiplier = 0.8
+                        conviction_level = 'MEDIUM'
+                    else:
+                        mtf_tier = 'LOW_CONVICTION'
+                        base_priority = 800
+                        mtf_multiplier = 0.5
+                        conviction_level = 'LOW'
+                else:  # Higher TFs opposing
+                    mtf_tier = 'COUNTER_TREND'
+                    base_priority = 200
+                    mtf_multiplier = 0.3
+                    conviction_level = 'VERY_LOW'
+                
+                # === SPECIAL PENALTIES FOR PROBLEMATIC PATTERNS ===
+                quality_penalties = []
+                
+                # Heavy penalty for lower timeframe only signals
+                if lower_tf_only:
+                    mtf_multiplier *= 0.4  # 60% penalty
+                    quality_penalties.append('lower_tf_only')
+                
+                # Penalty for opposing higher timeframes
+                if len(higher_tf_opposing) > 0:
+                    penalty = 0.7 ** len(higher_tf_opposing)  # Exponential penalty
+                    mtf_multiplier *= penalty
+                    quality_penalties.append(f'opposing_higher_tf_{len(higher_tf_opposing)}')
+                
+                # Bonus for higher timeframe alignment
+                if len(higher_tf_confirmed) >= 2:
+                    mtf_multiplier *= 1.3  # 30% bonus for strong alignment
                 
                 # === CORE SIGNAL METRICS ===
                 confidence = signal['confidence']
@@ -1432,42 +1701,84 @@ class SignalGenerator:
                 rr_ratio = signal.get('risk_reward_ratio', 1)
                 rr_score = min(1.0, rr_ratio / 3.0)
                 
-                # === SIGNAL STRENGTH ===
+                # === SIGNAL STRENGTH WITH MTF CONTEXT ===
                 analysis_details = signal.get('analysis_details', {})
                 signal_strength = analysis_details.get('signal_strength', 'weak')
                 
+                # Adjust signal strength based on MTF context
+                if mtf_tier in ['PREMIUM', 'HIGH_QUALITY']:
+                    if signal_strength == 'weak':
+                        signal_strength = 'moderate'  # Upgrade weak signals with good MTF
+                    elif signal_strength == 'moderate':
+                        signal_strength = 'strong'  # Upgrade moderate signals
+                elif mtf_tier in ['COUNTER_TREND', 'LOW_CONVICTION']:
+                    if signal_strength == 'strong':
+                        signal_strength = 'moderate'  # Downgrade strong signals with poor MTF
+                    elif signal_strength == 'moderate':
+                        signal_strength = 'weak'  # Downgrade moderate signals
+                
                 strength_multipliers = {
-                    'strong': 1.3,
+                    'strong': 1.4,
                     'moderate': 1.1,
-                    'weak': 0.9
+                    'weak': 0.8
                 }
                 strength_multiplier = strength_multipliers[signal_strength]
                 
                 # === MARKET QUALITY FACTORS ===
                 volume_24h = signal.get('volume_24h', 0)
                 
-                # Volume scoring (liquidity is crucial)
-                if volume_24h >= 10_000_000:
+                # Volume scoring with higher standards for lower MTF tiers
+                if mtf_tier in ['PREMIUM', 'HIGH_QUALITY']:
+                    volume_thresholds = [5_000_000, 2_000_000, 1_000_000]
+                else:
+                    volume_thresholds = [15_000_000, 8_000_000, 3_000_000]  # Higher requirements
+                
+                if volume_24h >= volume_thresholds[0]:
                     volume_score = 1.0
-                    volume_bonus = 200  # Priority bonus
-                elif volume_24h >= 5_000_000:
+                    volume_priority_bonus = 300
+                elif volume_24h >= volume_thresholds[1]:
                     volume_score = 0.8
-                    volume_bonus = 100
-                elif volume_24h >= 1_000_000:
+                    volume_priority_bonus = 150
+                elif volume_24h >= volume_thresholds[2]:
                     volume_score = 0.6
-                    volume_bonus = 50
+                    volume_priority_bonus = 50
                 else:
                     volume_score = 0.3
-                    volume_bonus = -100  # Priority penalty
+                    volume_priority_bonus = -200
+                    if mtf_tier in ['SPECULATIVE', 'LOW_CONVICTION', 'COUNTER_TREND']:
+                        volume_priority_bonus = -500  # Heavy penalty for low MTF + low volume
                 
-                # === ENTRY STRATEGY QUALITY ===
+                # === RISK ASSESSMENT WITH MTF CONTEXT ===
+                risk_penalty = 1.0
+                
+                # Risk penalties based on MTF tier
+                if mtf_tier == 'COUNTER_TREND':
+                    risk_penalty = 0.2  # 80% penalty - very dangerous
+                elif mtf_tier == 'LOW_CONVICTION':
+                    risk_penalty = 0.4  # 60% penalty
+                elif mtf_tier == 'SPECULATIVE':
+                    risk_penalty = 0.7  # 30% penalty
+                elif lower_tf_only and confidence < 65:
+                    risk_penalty = 0.5  # 50% penalty for weak lower TF only signals
+                
+                # Additional risk factors
+                if len(quality_penalties) >= 2:
+                    risk_penalty *= 0.6  # Multiple quality issues
+                
+                # === ENTRY STRATEGY EVALUATION ===
                 entry_strategy = signal.get('entry_strategy', 'immediate')
                 strategy_scores = {
-                    'wait_for_pullback': 0.9,  # Best entries
+                    'wait_for_pullback': 0.9,
                     'limit_order': 0.8,
                     'immediate': 0.7
                 }
                 strategy_score = strategy_scores.get(entry_strategy, 0.7)
+                
+                # Strategy adjustments based on MTF
+                if mtf_tier in ['PREMIUM', 'HIGH_QUALITY'] and entry_strategy == 'immediate':
+                    strategy_score += 0.1  # Immediate entry OK for high conviction
+                elif mtf_tier in ['SPECULATIVE', 'LOW_CONVICTION'] and entry_strategy != 'wait_for_pullback':
+                    strategy_score -= 0.15  # Require patience for low conviction
                 
                 # === TECHNICAL COMPONENT SCORING ===
                 component_scores = analysis_details.get('component_scores', {})
@@ -1475,88 +1786,85 @@ class SignalGenerator:
                 structure_score = component_scores.get('structure', 0.5)
                 trend_score = component_scores.get('trend', 0.5)
                 
-                # === RISK PENALTIES ===
-                risk_penalty = 1.0
-                
-                # Heavy penalty for weak signals without MTF confirmation
-                if mtf_status == 'NONE' and signal_strength == 'weak':
-                    risk_penalty = 0.5  # 50% penalty
-                elif mtf_status == 'NONE' and confidence < 60:
-                    risk_penalty = 0.6  # 40% penalty
-                elif mtf_status == 'PARTIAL' and confidence < 50:
-                    risk_penalty = 0.8  # 20% penalty
-                
                 # === CALCULATE BASE SCORE ===
                 base_score = (
-                    confidence_score * 0.25 +
-                    rr_score * 0.20 +
+                    confidence_score * 0.20 +    # Reduced weight, MTF is more important
+                    rr_score * 0.15 +
                     technical_score * 0.18 +
                     structure_score * 0.15 +
                     trend_score * 0.12 +
-                    strategy_score * 0.10
+                    strategy_score * 0.10 +
+                    mtf_quality_score * 0.10     # Direct MTF contribution
                 )
                 
                 # === APPLY ALL MULTIPLIERS ===
                 final_score = (
                     base_score *
-                    mtf_multiplier *      # MOST IMPORTANT
+                    mtf_multiplier *      # MOST IMPORTANT FACTOR
                     strength_multiplier *
                     risk_penalty
-                ) + (volume_score * 0.05)  # Small volume bonus to final score
+                ) + (volume_score * 0.03)  # Small volume bonus
                 
                 # Cap the score
                 final_score = max(0, min(1.0, final_score))
                 
-                # === PRIORITY CALCULATION (MTF-FIRST) ===
-                # Start with MTF tier, then add other factors
-                base_priority = mtf_priority_tier
+                # === PRIORITY CALCULATION WITH MTF HIERARCHY ===
+                # Start with MTF tier priority
+                priority_adjustments = 0
                 
-                # Add confidence-based priority within tier
-                confidence_priority = int(confidence * 8)  # 0-800 range
+                # Confidence adjustment (smaller range for MTF-focused ranking)
+                priority_adjustments += int(confidence * 4)  # 0-400 range
                 
-                # Add R/R priority
-                rr_priority = int(min(rr_ratio, 4.0) * 50)  # 0-200 range
+                # R/R adjustment
+                priority_adjustments += int(min(rr_ratio, 4.0) * 30)  # 0-120 range
                 
-                # Add volume bonus/penalty
-                priority_adjustment = volume_bonus + confidence_priority + rr_priority
+                # Volume adjustment
+                priority_adjustments += volume_priority_bonus
                 
-                final_priority = base_priority + priority_adjustment
+                # Higher timeframe conviction bonus
+                if len(higher_tf_confirmed) >= 2:
+                    priority_adjustments += 500
+                elif len(higher_tf_confirmed) == 1:
+                    priority_adjustments += 200
                 
-                # === SPECIAL CASES ===
-                # Boost for exceptional non-MTF signals (rare cases)
-                if (mtf_status == 'NONE' and confidence >= 85 and 
-                    rr_ratio >= 3.0 and signal_strength == 'strong'):
-                    final_priority += 500  # Still lower than PARTIAL, but competitive
-                    final_score *= 1.1
+                # Final priority
+                final_priority = base_priority + priority_adjustments
                 
                 # === QUALITY GATES ===
-                quality_flags = []
+                quality_flags = list(quality_penalties)
                 
-                # Critical quality issues
-                if mtf_status == 'NONE' and confidence < 55:
-                    quality_flags.append('low_confidence_no_mtf')
-                if volume_24h < 500_000:
-                    quality_flags.append('low_liquidity')
-                if rr_ratio < 1.5:
+                # Add quality flags
+                if confidence < 50:
+                    quality_flags.append('low_confidence')
+                if rr_ratio < 1.8:
                     quality_flags.append('poor_risk_reward')
+                if volume_24h < 500_000:
+                    quality_flags.append('very_low_liquidity')
+                if mtf_tier in ['COUNTER_TREND', 'LOW_CONVICTION']:
+                    quality_flags.append('poor_mtf_structure')
                 
-                # === STORE DETAILED RANKING INFO ===
+                # === STORE ENHANCED RANKING INFO ===
                 ranking_details = {
-                    'mtf_status': mtf_status,
-                    'mtf_score': mtf_score,
-                    'mtf_priority_tier': mtf_priority_tier,
-                    'mtf_multiplier': mtf_multiplier,
+                    'mtf_tier': mtf_tier,
+                    'conviction_level': conviction_level,
+                    'mtf_quality_score': mtf_quality_score,
+                    'higher_tf_confirmed': higher_tf_confirmed,
+                    'higher_tf_opposing': higher_tf_opposing,
+                    'lower_tf_only': lower_tf_only,
+                    'higher_tf_conviction': higher_tf_conviction,
                     'base_score': base_score,
                     'final_score': final_score,
+                    'mtf_multiplier': mtf_multiplier,
                     'strength_multiplier': strength_multiplier,
                     'risk_penalty': risk_penalty,
                     'volume_score': volume_score,
                     'quality_flags': quality_flags,
                     'priority_breakdown': {
-                        'mtf_tier': mtf_priority_tier,
-                        'confidence_bonus': confidence_priority,
-                        'rr_bonus': rr_priority,
-                        'volume_bonus': volume_bonus
+                        'mtf_base': base_priority,
+                        'confidence_bonus': int(confidence * 4),
+                        'rr_bonus': int(min(rr_ratio, 4.0) * 30),
+                        'volume_bonus': volume_priority_bonus,
+                        'higher_tf_bonus': 500 if len(higher_tf_confirmed) >= 2 else (200 if len(higher_tf_confirmed) == 1 else 0)
                     }
                 }
                 
@@ -1565,37 +1873,156 @@ class SignalGenerator:
                     'score': final_score,
                     'priority': final_priority,
                     'ranking_details': ranking_details,
-                    'quality_grade': self._calculate_quality_grade(signal, ranking_details)
+                    'quality_grade': self._calculate_enhanced_quality_grade(signal, ranking_details)
                 })
 
-            # === SORT BY MTF-PRIORITY RANKING ===
+            # === SORT BY MTF-PRIORITY HIERARCHY ===
             opportunities.sort(key=lambda x: (x['priority'], x['score']), reverse=True)
             
-            # === APPLY QUALITY FILTERS ===
+            # === APPLY STRICT QUALITY FILTERS ===
             filtered_opportunities = []
-            for opp in opportunities:
-                quality_flags = opp['ranking_details']['quality_flags']
-                
-                # Allow high-quality signals regardless of MTF
-                if (opp['confidence'] >= 80 and opp['risk_reward_ratio'] >= 2.5 and 
-                    opp['volume_24h'] >= 1_000_000):
-                    filtered_opportunities.append(opp)
-                # Require MTF for medium-quality signals
-                elif opp.get('mtf_status') in ['STRONG', 'PARTIAL']:
-                    filtered_opportunities.append(opp)
-                # Very strict criteria for no-MTF signals
-                elif (opp.get('mtf_status') == 'NONE' and opp['confidence'] >= 75 and 
-                    opp['risk_reward_ratio'] >= 2.8 and len(quality_flags) == 0):
-                    filtered_opportunities.append(opp)
-                else:
-                    self.logger.debug(f"Filtered {opp['symbol']}: MTF={opp.get('mtf_status')}, "
-                                    f"Conf={opp['confidence']}, Flags={quality_flags}")
+            premium_count = 0
+            high_quality_count = 0
             
-            return filtered_opportunities[:self.config.charts_per_batch]
+            for opp in opportunities:
+                mtf_tier = opp['ranking_details']['mtf_tier']
+                quality_flags = opp['ranking_details']['quality_flags']
+                conviction_level = opp['ranking_details']['conviction_level']
+                
+                # Always accept PREMIUM signals (unless critical flaws)
+                if mtf_tier == 'PREMIUM':
+                    if len(quality_flags) <= 1:  # Allow minor flaws
+                        filtered_opportunities.append(opp)
+                        premium_count += 1
+                        continue
+                
+                # Accept HIGH_QUALITY signals with good metrics
+                elif mtf_tier == 'HIGH_QUALITY':
+                    if (opp['confidence'] >= 55 and opp['risk_reward_ratio'] >= 2.0 and 
+                        len(quality_flags) <= 2):
+                        filtered_opportunities.append(opp)
+                        high_quality_count += 1
+                        continue
+                
+                # Very strict criteria for SPECULATIVE signals
+                elif mtf_tier == 'SPECULATIVE':
+                    if (opp['confidence'] >= 70 and opp['risk_reward_ratio'] >= 2.5 and 
+                        opp['volume_24h'] >= 2_000_000 and len(quality_flags) == 0):
+                        filtered_opportunities.append(opp)
+                        continue
+                
+                # Almost never accept LOW_CONVICTION or COUNTER_TREND
+                elif mtf_tier == 'LOW_CONVICTION':
+                    if (opp['confidence'] >= 80 and opp['risk_reward_ratio'] >= 3.0 and 
+                        opp['volume_24h'] >= 5_000_000 and len(quality_flags) == 0):
+                        filtered_opportunities.append(opp)
+                        continue
+                
+                # Log filtered signals for debugging
+                self.logger.debug(f"Filtered {opp['symbol']}: MTF_Tier={mtf_tier}, "
+                                f"Conviction={conviction_level}, Conf={opp['confidence']}, "
+                                f"Flags={quality_flags}")
+            
+            # === FINAL PORTFOLIO BALANCING ===
+            # Ensure we don't have too many speculative trades
+            final_list = []
+            speculative_count = 0
+            max_speculative = 2  # Maximum speculative trades allowed
+            
+            for opp in filtered_opportunities:
+                mtf_tier = opp['ranking_details']['mtf_tier']
+                
+                if mtf_tier in ['PREMIUM', 'HIGH_QUALITY']:
+                    final_list.append(opp)
+                elif mtf_tier == 'SPECULATIVE' and speculative_count < max_speculative:
+                    final_list.append(opp)
+                    speculative_count += 1
+                elif mtf_tier in ['LOW_CONVICTION', 'COUNTER_TREND']:
+                    # Only allow if we have very few other opportunities
+                    if len(final_list) < 2:
+                        final_list.append(opp)
+            
+            # Log ranking summary
+            self.logger.info(f"MTF Ranking Summary: {len(final_list)} signals selected - "
+                            f"Premium: {premium_count}, High Quality: {high_quality_count}, "
+                            f"Speculative: {speculative_count}")
+            
+            return final_list[:self.config.charts_per_batch]
 
         except Exception as e:
-            self.logger.error(f"MTF-priority ranking error: {e}")
+            self.logger.error(f"Enhanced MTF ranking error: {e}")
             return signals
+
+    def _calculate_enhanced_quality_grade(self, signal: Dict, ranking_details: Dict) -> str:
+        """Calculate enhanced quality grade with MTF focus"""
+        mtf_tier = ranking_details['mtf_tier']
+        conviction_level = ranking_details['conviction_level']
+        confidence = signal['confidence']
+        rr_ratio = signal.get('risk_reward_ratio', 0)
+        volume_24h = signal.get('volume_24h', 0)
+        quality_flags = ranking_details['quality_flags']
+        higher_tf_confirmed = len(ranking_details['higher_tf_confirmed'])
+        
+        # Start with MTF tier base grade
+        tier_grades = {
+            'PREMIUM': 95,
+            'HIGH_QUALITY': 85,
+            'SPECULATIVE': 65,
+            'LOW_CONVICTION': 45,
+            'COUNTER_TREND': 25
+        }
+        base_grade = tier_grades.get(mtf_tier, 50)
+        
+        # Higher timeframe confirmation bonus
+        base_grade += higher_tf_confirmed * 5
+        
+        # Traditional metrics adjustments (smaller impact)
+        if confidence >= 75:
+            base_grade += 5
+        elif confidence <= 50:
+            base_grade -= 8
+        
+        if rr_ratio >= 2.8:
+            base_grade += 4
+        elif rr_ratio <= 1.8:
+            base_grade -= 6
+        
+        if volume_24h >= 5_000_000:
+            base_grade += 3
+        elif volume_24h <= 500_000:
+            base_grade -= 8
+        
+        # Quality flags penalty
+        base_grade -= len(quality_flags) * 6
+        
+        # Ensure reasonable bounds
+        base_grade = max(15, min(100, base_grade))
+        
+        # Convert to letter grade
+        if base_grade >= 95:
+            return 'A+'
+        elif base_grade >= 90:
+            return 'A'
+        elif base_grade >= 85:
+            return 'A-'
+        elif base_grade >= 80:
+            return 'B+'
+        elif base_grade >= 75:
+            return 'B'
+        elif base_grade >= 70:
+            return 'B-'
+        elif base_grade >= 65:
+            return 'C+'
+        elif base_grade >= 60:
+            return 'C'
+        elif base_grade >= 55:
+            return 'C-'
+        elif base_grade >= 50:
+            return 'D+'
+        elif base_grade >= 45:
+            return 'D'
+        else:
+            return 'F'
 
     def _calculate_quality_grade(self, signal: Dict, ranking_details: Dict) -> str:
         """Calculate overall quality grade A-F"""
