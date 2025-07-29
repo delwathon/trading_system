@@ -133,15 +133,15 @@ class EnhancedSystemConfig:
                 api_secret=None,
                 demo_api_key=None,
                 demo_api_secret=None,
-                sandbox_mode=False,
+                sandbox_mode=True,
                 
                 # Market Scanning
                 min_volume_24h=5_000_000,
                 max_symbols_scan=500,
-                timeframe='30m',
+                timeframe='1h',
                 
                 # Multi-Timeframe Configuration
-                confirmation_timeframes=['1h', '4h', '6h'],
+                confirmation_timeframes=['2h', '4h', '6h'],
                 mtf_confirmation_required=True,
                 mtf_weight_multiplier=1.5,
                 
@@ -155,7 +155,7 @@ class EnhancedSystemConfig:
                 max_single_position_risk=0.005,
                 
                 # Threading
-                max_workers=None,
+                max_workers=15,
                 
                 # Caching
                 cache_ttl_seconds=60,
@@ -182,9 +182,9 @@ class EnhancedSystemConfig:
                 ichimoku_window3=52,
                 
                 # OHLCV Data Limits
-                ohlcv_limit_primary=500,      # Primary timeframe analysis
-                ohlcv_limit_mtf=200,          # MTF confirmation (faster)
-                ohlcv_limit_analysis=500,      # General analysis operations
+                ohlcv_limit_primary=300,      # Primary timeframe analysis
+                ohlcv_limit_mtf=300,          # MTF confirmation (faster)
+                ohlcv_limit_analysis=300,      # General analysis operations
 
                 # Telegram & Trading Configuration
                 telegram_id='6708641837',
@@ -242,11 +242,11 @@ class EnhancedSystemConfig:
         self.api_secret = None
         self.demo_api_key = None
         self.demo_api_secret = None
-        self.sandbox_mode = False
+        self.sandbox_mode = True
         self.min_volume_24h = 5_000_000
-        self.max_symbols_scan = 100
-        self.timeframe = '30m'
-        self.confirmation_timeframes = ['1h', '4h', '6h']
+        self.max_symbols_scan = 500
+        self.timeframe = '1h'
+        self.confirmation_timeframes = ['2h', '4h', '6h']
         self.mtf_confirmation_required = True
         self.mtf_weight_multiplier = 1.5
         self.max_requests_per_second = 6.0  # Reduced for connection pool optimization
@@ -254,7 +254,7 @@ class EnhancedSystemConfig:
         self.max_portfolio_risk = 0.02
         self.max_daily_trades = 20
         self.max_single_position_risk = 0.005
-        self.max_workers = None
+        self.max_workers = 15
         self.cache_ttl_seconds = 60
         self.max_cache_size = 1000
         self.ml_training_samples = 400
@@ -273,9 +273,9 @@ class EnhancedSystemConfig:
         self.ichimoku_window3 = 52
         
         # OHLCV Data Limits Fallback
-        self.ohlcv_limit_primary = 500      # Primary timeframe fallback
-        self.ohlcv_limit_mtf = 200          # MTF confirmation fallback  
-        self.ohlcv_limit_analysis = 500     # General analysis fallback
+        self.ohlcv_limit_primary = 300      # Primary timeframe fallback
+        self.ohlcv_limit_mtf = 300          # MTF confirmation fallback  
+        self.ohlcv_limit_analysis = 300     # General analysis fallback
 
         # Telegram & Trading Configuration Fallback
         self.telegram_id = '6708641837'
@@ -311,7 +311,7 @@ class EnhancedSystemConfig:
         
         # Set default confirmation timeframes if None
         if self.confirmation_timeframes is None:
-            self.confirmation_timeframes = ['1h', '4h']
+            self.confirmation_timeframes = ['2h', '4h', '6h']
         
         # Validate ranges with connection pool optimization
         self.max_requests_per_second = max(1.0, min(8.0, self.max_requests_per_second))
@@ -524,9 +524,9 @@ class EnhancedSystemConfig:
             'demo_api_secret': getattr(self, 'demo_api_secret', None),
             'sandbox_mode': getattr(self, 'sandbox_mode', False),
             'min_volume_24h': getattr(self, 'min_volume_24h', 5_000_000),
-            'max_symbols_scan': getattr(self, 'max_symbols_scan', 100),
-            'timeframe': getattr(self, 'timeframe', '30m'),
-            'confirmation_timeframes': getattr(self, 'confirmation_timeframes', ['1h', '4h', '6h']),
+            'max_symbols_scan': getattr(self, 'max_symbols_scan', 500),
+            'timeframe': getattr(self, 'timeframe', '1h'),
+            'confirmation_timeframes': getattr(self, 'confirmation_timeframes', ['2h', '4h', '6h']),
             'mtf_confirmation_required': getattr(self, 'mtf_confirmation_required', True),
             'mtf_weight_multiplier': getattr(self, 'mtf_weight_multiplier', 1.5),
             'max_requests_per_second': getattr(self, 'max_requests_per_second', 6.0),
@@ -534,7 +534,7 @@ class EnhancedSystemConfig:
             'max_portfolio_risk': getattr(self, 'max_portfolio_risk', 0.02),
             'max_daily_trades': getattr(self, 'max_daily_trades', 20),
             'max_single_position_risk': getattr(self, 'max_single_position_risk', 0.005),
-            'max_workers': getattr(self, 'max_workers', None),
+            'max_workers': getattr(self, 'max_workers', 15),
             'cache_ttl_seconds': getattr(self, 'cache_ttl_seconds', 60),
             'max_cache_size': getattr(self, 'max_cache_size', 1000),
             'ml_training_samples': getattr(self, 'ml_training_samples', 400),

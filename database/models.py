@@ -32,11 +32,11 @@ class SystemConfig(Base):
     
     # Market Scanning
     min_volume_24h = Column(Float, default=5_000_000)
-    max_symbols_scan = Column(Integer, default=100)
-    timeframe = Column(String(10), default='30m')
+    max_symbols_scan = Column(Integer, default=500)
+    timeframe = Column(String(10), default='1h')
     
     # Multi-Timeframe Configuration
-    confirmation_timeframes = Column(JSON, default=['1h', '4h'])
+    confirmation_timeframes = Column(JSON, default=['2h', '4h', '6h'])
     mtf_confirmation_required = Column(Boolean, default=True)
     mtf_weight_multiplier = Column(Float, default=1.5)
     
@@ -50,7 +50,7 @@ class SystemConfig(Base):
     max_single_position_risk = Column(Float, default=0.005)
     
     # Threading
-    max_workers = Column(Integer, nullable=True)
+    max_workers = Column(Integer, default=15)
     
     # Caching
     cache_ttl_seconds = Column(Integer, default=60)
@@ -119,7 +119,7 @@ class SystemConfig(Base):
             'min_volume_24h': self.min_volume_24h,
             'max_symbols_scan': self.max_symbols_scan,
             'timeframe': self.timeframe,
-            'confirmation_timeframes': self.confirmation_timeframes or ['1h', '4h', '6h'],
+            'confirmation_timeframes': self.confirmation_timeframes or ['2h', '4h', '6h'],
             'mtf_confirmation_required': self.mtf_confirmation_required,
             'mtf_weight_multiplier': self.mtf_weight_multiplier,
             'max_requests_per_second': self.max_requests_per_second,
