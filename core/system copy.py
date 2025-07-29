@@ -18,7 +18,7 @@ from core.exchange import ExchangeManager
 from analysis.technical import EnhancedTechnicalAnalysis
 from analysis.volume_profile import VolumeProfileAnalyzer
 from analysis.fibonacci import FibonacciConfluenceAnalyzer
-from analysis.multi_timeframe import NewMultiTimeframeAnalyzer, OldMultiTimeframeAnalyzer
+from analysis.multi_timeframe import MultiTimeframeAnalyzer
 from signals.generator import SignalGenerator
 from visualization.charts import InteractiveChartGenerator
 from utils.database_manager import EnhancedDatabaseManager
@@ -56,10 +56,7 @@ class CompleteEnhancedBybitSystem:
         
         # Initialize multi-timeframe analyzer
         if self.exchange_manager.exchange:
-            if self.config.use_old_analysis:
-                self.mtf_analyzer = OldMultiTimeframeAnalyzer(self.exchange_manager.exchange, config)
-            else:
-                self.mtf_analyzer = NewMultiTimeframeAnalyzer(self.exchange_manager.exchange, config)
+            self.mtf_analyzer = MultiTimeframeAnalyzer(self.exchange_manager.exchange, config)
         else:
             self.mtf_analyzer = None
         
@@ -81,230 +78,113 @@ class CompleteEnhancedBybitSystem:
         self.logger.debug(f"✅ Database: {self.config.db_config.database} @ {self.config.db_config.host}")
     
     def analyze_symbol_complete_with_mtf(self, symbol_data: Dict) -> Optional[Dict]:
-        """Your existing method - works unchanged with enhanced MTF"""
-        if self.config.use_old_analysis:
-            try:
-                symbol = symbol_data['symbol']
-                self.logger.debug(f"📊 Analyzing {symbol} ({self.config.timeframe} → {'/'.join(self.config.confirmation_timeframes)} MTF)... [USING OLD ANALYSIS METHOD]")
-                
-                # Fetch primary timeframe data (configurable)
-                df = self.exchange_manager.fetch_ohlcv_data(symbol, self.config.timeframe)
-                if df.empty or len(df) < 50:
-                    self.logger.debug(f"Insufficient {self.config.timeframe} data for {symbol}")
-                    return None
-                
-                # APPROACH 1: Enhanced Technical Analysis
-                df = self.enhanced_ta.calculate_all_indicators(df, self.config)
-                
-                # APPROACH 2: Volume Profile Analysis
-                volume_profile = self.volume_analyzer.calculate_volume_profile(df)
-                volume_entry = self.volume_analyzer.find_optimal_entry_from_volume(
-                    df, symbol_data['current_price'], 'buy'
-                )
-                
-                # APPROACH 3: Fibonacci & Confluence Analysis
-                fibonacci_data = self.fibonacci_analyzer.calculate_fibonacci_levels(df)
-                confluence_zones = self.fibonacci_analyzer.find_confluence_zones(
-                    df, volume_profile, symbol_data['current_price']
-                )
-                
-                primary_signal = self.signal_generator.analyze_symbol_comprehensive(
-                    df, symbol_data, volume_entry, fibonacci_data, confluence_zones, self.config.timeframe
-                )            
-                
-                if primary_signal:
-                    # Store original confidence before MTF boost
-                    primary_signal['original_confidence'] = primary_signal['confidence']
-                    
-                    # MULTI-TIMEFRAME CONFIRMATION (configurable timeframes)
-                    if self.config.mtf_confirmation_required and self.mtf_analyzer:
-                        confirmation_tfs = ', '.join(self.config.confirmation_timeframes)
-                        self.logger.debug(f"🔍 Running {confirmation_tfs} confirmation for {symbol}...")
-                        mtf_analysis = self.mtf_analyzer.analyze_symbol_multi_timeframe(symbol_data, primary_signal)
-                        
-                        # Add MTF data to signal
-                        primary_signal['mtf_analysis'] = mtf_analysis
-                        
-                        # Boost confidence based on MTF confirmation
-                        if mtf_analysis['mtf_confidence_boost'] > 0:
-                            new_confidence = min(95, primary_signal['confidence'] + mtf_analysis['mtf_confidence_boost'])
-                            self.logger.debug(f"   📈 Confidence boosted: {primary_signal['confidence']:.1f}% → {new_confidence:.1f}%")
-                            primary_signal['confidence'] = new_confidence
-                        
-                        # Mark MTF status
-                        confirmed_count = len(mtf_analysis['confirmed_timeframes'])
-                        total_timeframes = len(self.config.confirmation_timeframes)
-
-                        if confirmed_count == total_timeframes:
-                            primary_signal['mtf_status'] = 'STRONG'
-                            primary_signal['priority_boost'] = 100
-                        elif confirmed_count >= 1:
-                            primary_signal['mtf_status'] = 'PARTIAL'
-                            primary_signal['priority_boost'] = 50
-                        else:
-                            primary_signal['mtf_status'] = 'NONE'
-                            primary_signal['priority_boost'] = 0
-                        
-                        self.logger.debug(f"   📊 MTF Status: {primary_signal['mtf_status']} ({confirmed_count}/{total_timeframes})")
-                    else:
-                        # No MTF analysis
-                        primary_signal['mtf_analysis'] = {
-                            'confirmed_timeframes': [],
-                            'conflicting_timeframes': [],
-                            'neutral_timeframes': [],
-                            'confirmation_strength': 0.0,
-                            'mtf_confidence_boost': 0.0,
-                            'timeframe_signals': {}
-                        }
-                        primary_signal['mtf_status'] = 'DISABLED'
-                        primary_signal['priority_boost'] = 0
-                    
-                    # Chart will be generated later only for top signals
-                    primary_signal['chart_file'] = None  # Will be populated later for top signals
-                    
-                    # Add comprehensive analysis data (needed for chart generation later)
-                    primary_signal['analysis'] = {
-                        'volume_profile': volume_profile,
-                        'fibonacci_data': fibonacci_data,
-                        'confluence_zones': confluence_zones,
-                        'technical_summary': self.signal_generator.create_technical_summary(df),
-                        'risk_assessment': self.signal_generator.assess_signal_risk(primary_signal, df)
-                    }
-                    
-                    # Store raw data for later chart generation (for top signals only)
-                    primary_signal['_chart_data'] = {
-                        'df': df,  # Store processed dataframe
-                        'symbol_data': symbol_data
-                    }
-                    
-                    self.logger.debug(f"✅ {symbol} - {primary_signal['side'].upper()} signal generated ({self.config.timeframe} base) - Chart: Pending")
-                    return primary_signal
-                
-                # else:
-                #     self.logger.info(f"No valid signal generated for {symbol} on {self.config.timeframe}")
-                
-                return None
-                
-            except Exception as e:
-                self.logger.error(f"MTF analysis failed for {symbol_data.get('symbol', 'unknown')}: {e}")
-                return None
-        else: 
-            try:
-                symbol = symbol_data['symbol']
-                self.logger.debug(f"📊 Analyzing {symbol} ({self.config.timeframe} → {'/'.join(self.config.confirmation_timeframes)} MTF)... [USING NEW ANALYSIS METHOD]")
-                
-                # Your existing code remains the same...
-                df = self.exchange_manager.fetch_ohlcv_data(symbol, self.config.timeframe)
-                if df.empty or len(df) < 50:
-                    self.logger.debug(f"Insufficient {self.config.timeframe} data for {symbol}")
-                    return None
-                
-                # Existing analysis...
-                df = self.enhanced_ta.calculate_all_indicators(df, self.config)
-                volume_profile = self.volume_analyzer.calculate_volume_profile(df)
-                volume_entry = self.volume_analyzer.find_optimal_entry_from_volume(
-                    df, symbol_data['current_price'], 'buy'
-                )
-                fibonacci_data = self.fibonacci_analyzer.calculate_fibonacci_levels(df)
-                confluence_zones = self.fibonacci_analyzer.find_confluence_zones(
-                    df, volume_profile, symbol_data['current_price']
-                )
-                
-                primary_signal = self.signal_generator.analyze_symbol_comprehensive(
-                    df, symbol_data, volume_entry, fibonacci_data, confluence_zones, self.config.timeframe
-                )            
-                
-                if primary_signal:
-                    primary_signal['original_confidence'] = primary_signal['confidence']
-                    
-                    # ENHANCED MTF WITH LEVEL OPTIMIZATION (same interface, better results)
-                    if self.config.mtf_confirmation_required and self.mtf_analyzer:
-                        mtf_analysis = self.mtf_analyzer.analyze_symbol_multi_timeframe_with_level_optimization(symbol_data, primary_signal)
-
-                        mtf_analysis['mtf_confidence_boost']
-
-                        # Your existing MTF processing code works unchanged...
-                        primary_signal['mtf_analysis'] = mtf_analysis
-                        
-                        if mtf_analysis['mtf_confidence_boost'] > 0:
-                            new_confidence = min(95, primary_signal['confidence'] + mtf_analysis['mtf_confidence_boost'])
-                            primary_signal['confidence'] = new_confidence
-                        
-                        # NEW: Check if level optimization was applied
-                        if mtf_analysis.get('level_optimization_applied'):
-                            self.logger.debug(f"   🎯 Level optimization applied for {symbol} - Boosted confidence by {mtf_analysis['mtf_confidence_boost']:.1f}%")
-                            optimization_details = mtf_analysis.get('optimization_details', {})
-                            timeframes_used = optimization_details.get('timeframes_used', [])
-                            
-                            self.logger.debug(f"   🎯 Level optimization: SUCCESS using {timeframes_used}")
-                            
-                            # Optional: Log improvement details
-                            if 'improvements' in primary_signal.get('level_optimization', {}):
-                                improvements = primary_signal['level_optimization']['improvements']
-                                rr_improvement = improvements.get('rr_improvement', 0)
-                                if rr_improvement > 0:
-                                    self.logger.debug(f"   📈 R/R improved by: +{rr_improvement:.2f}")
-                        else:
-                            self.logger.debug(f"   🎯 Level optimization NOT applied for {symbol} - No significant MTF boost")
-                        
-                        # Existing MTF status logic works unchanged...
-                        confirmed_count = len(mtf_analysis['confirmed_timeframes'])
-                        total_timeframes = len(self.config.confirmation_timeframes)
-
-                        if confirmed_count == total_timeframes:
-                            primary_signal['mtf_status'] = 'STRONG'
-                            primary_signal['priority_boost'] = 100
-                        elif confirmed_count >= 1:
-                            primary_signal['mtf_status'] = 'PARTIAL'
-                            primary_signal['priority_boost'] = 50
-                        else:
-                            primary_signal['mtf_status'] = 'NONE'
-                            primary_signal['priority_boost'] = 0
-                        
-                        self.logger.debug(f"   📊 MTF Status: {primary_signal['mtf_status']} ({confirmed_count}/{total_timeframes})")
-                    else:
-                        # No MTF analysis
-                        primary_signal['mtf_analysis'] = {
-                            'confirmed_timeframes': [],
-                            'conflicting_timeframes': [],
-                            'neutral_timeframes': [],
-                            'confirmation_strength': 0.0,
-                            'mtf_confidence_boost': 0.0,
-                            'timeframe_signals': {}
-                        }
-                        primary_signal['mtf_status'] = 'DISABLED'
-                        primary_signal['priority_boost'] = 0
-                    
-                    # Chart will be generated later only for top signals
-                    primary_signal['chart_file'] = None  # Will be populated later for top signals
-                    
-                    # Add comprehensive analysis data (needed for chart generation later)
-                    primary_signal['analysis'] = {
-                        'volume_profile': volume_profile,
-                        'fibonacci_data': fibonacci_data,
-                        'confluence_zones': confluence_zones,
-                        'technical_summary': self.signal_generator.create_technical_summary(df),
-                        'risk_assessment': self.signal_generator.assess_signal_risk(primary_signal, df)
-                    }
-                    
-                    # Store raw data for later chart generation (for top signals only)
-                    primary_signal['_chart_data'] = {
-                        'df': df,  # Store processed dataframe
-                        'symbol_data': symbol_data
-                    }
-                    
-                    self.logger.debug(f"✅ {symbol} - {primary_signal['side'].upper()} signal generated ({self.config.timeframe} base) - Chart: Pending")
-                    return primary_signal
-                
-                # else:
-                #     self.logger.info(f"No valid signal generated for {symbol} on {self.config.timeframe}")
-                
-                return None
-                
-            except Exception as e:
-                self.logger.error(f"MTF analysis failed for {symbol_data.get('symbol', 'unknown')}: {e}")
+        """Complete analysis with multi-timeframe confirmation - Generate comprehensive signal"""
+        try:
+            symbol = symbol_data['symbol']
+            self.logger.debug(f"📊 Analyzing {symbol} (30m → 1h/4h/6h MTF)...")
+            
+            # Fetch primary timeframe data (configurable)
+            df = self.exchange_manager.fetch_ohlcv_data(symbol, self.config.timeframe)
+            if df.empty or len(df) < 50:
+                self.logger.debug(f"Insufficient {self.config.timeframe} data for {symbol}")
                 return None
             
+            # APPROACH 1: Enhanced Technical Analysis
+            df = self.enhanced_ta.calculate_all_indicators(df, self.config)
+            
+            # APPROACH 2: Volume Profile Analysis
+            volume_profile = self.volume_analyzer.calculate_volume_profile(df)
+            volume_entry = self.volume_analyzer.find_optimal_entry_from_volume(
+                df, symbol_data['current_price'], 'buy'
+            )
+            
+            # APPROACH 3: Fibonacci & Confluence Analysis
+            fibonacci_data = self.fibonacci_analyzer.calculate_fibonacci_levels(df)
+            confluence_zones = self.fibonacci_analyzer.find_confluence_zones(
+                df, volume_profile, symbol_data['current_price']
+            )
+            
+            primary_signal = self.signal_generator.analyze_symbol_comprehensive(
+                df, symbol_data, volume_entry, fibonacci_data, confluence_zones
+            )            
+            
+            if primary_signal:
+                # Store original confidence before MTF boost
+                primary_signal['original_confidence'] = primary_signal['confidence']
+                
+                # MULTI-TIMEFRAME CONFIRMATION (configurable timeframes)
+                if self.config.mtf_confirmation_required and self.mtf_analyzer:
+                    confirmation_tfs = ', '.join(self.config.confirmation_timeframes)
+                    self.logger.debug(f"🔍 Running {confirmation_tfs} confirmation for {symbol}...")
+                    mtf_analysis = self.mtf_analyzer.analyze_symbol_multi_timeframe(symbol_data, primary_signal)
+                    
+                    # Add MTF data to signal
+                    primary_signal['mtf_analysis'] = mtf_analysis
+                    
+                    # Boost confidence based on MTF confirmation
+                    if mtf_analysis['mtf_confidence_boost'] > 0:
+                        new_confidence = min(95, primary_signal['confidence'] + mtf_analysis['mtf_confidence_boost'])
+                        self.logger.debug(f"   📈 Confidence boosted: {primary_signal['confidence']:.1f}% → {new_confidence:.1f}%")
+                        primary_signal['confidence'] = new_confidence
+                    
+                    # Mark MTF status
+                    confirmed_count = len(mtf_analysis['confirmed_timeframes'])
+                    total_timeframes = len(self.config.confirmation_timeframes)
+
+                    if confirmed_count == total_timeframes:
+                        primary_signal['mtf_status'] = 'STRONG'
+                        primary_signal['priority_boost'] = 100
+                    elif confirmed_count >= 1:
+                        primary_signal['mtf_status'] = 'PARTIAL'
+                        primary_signal['priority_boost'] = 50
+                    else:
+                        primary_signal['mtf_status'] = 'NONE'
+                        primary_signal['priority_boost'] = 0
+                    
+                    self.logger.debug(f"   📊 MTF Status: {primary_signal['mtf_status']} ({confirmed_count}/{total_timeframes})")
+                else:
+                    # No MTF analysis
+                    primary_signal['mtf_analysis'] = {
+                        'confirmed_timeframes': [],
+                        'conflicting_timeframes': [],
+                        'neutral_timeframes': [],
+                        'confirmation_strength': 0.0,
+                        'mtf_confidence_boost': 0.0,
+                        'timeframe_signals': {}
+                    }
+                    primary_signal['mtf_status'] = 'DISABLED'
+                    primary_signal['priority_boost'] = 0
+                
+                # Chart will be generated later only for top signals
+                primary_signal['chart_file'] = None  # Will be populated later for top signals
+                
+                # Add comprehensive analysis data (needed for chart generation later)
+                primary_signal['analysis'] = {
+                    'volume_profile': volume_profile,
+                    'fibonacci_data': fibonacci_data,
+                    'confluence_zones': confluence_zones,
+                    'technical_summary': self.signal_generator.create_technical_summary(df),
+                    'risk_assessment': self.signal_generator.assess_signal_risk(primary_signal, df)
+                }
+                
+                # Store raw data for later chart generation (for top signals only)
+                primary_signal['_chart_data'] = {
+                    'df': df,  # Store processed dataframe
+                    'symbol_data': symbol_data
+                }
+                
+                self.logger.debug(f"✅ {symbol} - {primary_signal['side'].upper()} signal generated ({self.config.timeframe} base) - Chart: Pending")
+                return primary_signal
+            
+            # else:
+            #     self.logger.info(f"No valid signal generated for {symbol} on {self.config.timeframe}")
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"MTF analysis failed for {symbol_data.get('symbol', 'unknown')}: {e}")
+            return None
+
     def generate_charts_for_top_signals(self, top_signals: List[Dict]) -> int:
         """Generate charts (HTML + Screenshot) for top-ranked signals only"""
         charts_generated = 0
@@ -395,18 +275,9 @@ class CompleteEnhancedBybitSystem:
     
     def run_complete_analysis_parallel_mtf(self) -> Dict:
         """Parallel analysis with multi-timeframe confirmation and optimized chart generation - FIXED"""
-
-        if self.congig.monitor_mode: 
-            self.logger.info("🔍 Running in MONITOR MODE - No analysis performed")
-            return {}
-
         start_time = time.time()
         
         timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"
-        if self.config.use_old_analysis:
-            timeframe_display += " (OLD ANALYSIS)"
-        else:
-            timeframe_display += " (NEW ANALYSIS)"
         self.logger.info(f"🚀 STARTING OPTIMIZED ANALYSIS WITH {timeframe_display} MTF CONFIRMATION")
         self.logger.debug("   📊 Charts generated ONLY for top-ranked signals (after analysis complete)")
         self.logger.info("=" * 90)
@@ -508,12 +379,11 @@ class CompleteEnhancedBybitSystem:
         # ===== PHASE 3: OPTIMIZED CHART GENERATION =====
         charts_generated = 0
 
-        if self.config.generate_chart:
-            if ranked_signals:
-                self.logger.info(f"📊 PHASE 3: Chart Generation (Top {len(ranked_signals)} signals only)")
-                charts_generated = self.generate_charts_for_top_signals(ranked_signals)
-            else:
-                self.logger.info("📊 PHASE 3: No signals found for chart generation")
+        if ranked_signals:
+            self.logger.info(f"📊 PHASE 3: Chart Generation (Top {len(ranked_signals)} signals only)")
+            charts_generated = self.generate_charts_for_top_signals(ranked_signals)
+        else:
+            self.logger.info("📊 PHASE 3: No signals found for chart generation")
         
         execution_time = time.time() - start_time
         
@@ -775,132 +645,53 @@ class CompleteEnhancedBybitSystem:
             return 1.0
     
     def print_comprehensive_results_with_mtf(self, results: Dict):
-        """Enhanced display showing level optimization results"""
-
-        if self.config.use_old_analysis:
-            if not results:
-                print("❌ No results to display")
-                return
+        """Print ONLY TOP OPPORTUNITIES (not all signals) - FIXED TP display"""
+        if not results:
+            print("❌ No results to display")
+            return
+        
+        scan_info = results['scan_info']
+        opportunities = results['top_opportunities']
+        
+        # Show summary first
+        total_signals = scan_info.get('signals_generated', 0)
+        charts_generated = scan_info.get('charts_generated', 0)
+        
+        # Enhanced Top Opportunities Table
+        timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"
+        print("=" * 150)
+        print(f"\n🏆 📊 SCAN RESULTS - TOP {len(opportunities)} TRADING OPPORTUNITIES ({timeframe_display} MTF CONFIRMATION):")
+        print("=" * 150)
+        
+        if opportunities:
+            # Show only top opportunities that would be executed
+            max_display = max(self.config.charts_per_batch, 5)  # Show at least 5, or charts_per_batch
+            display_opportunities = opportunities[:max_display]            
             
-            scan_info = results['scan_info']
-            opportunities = results['top_opportunities']
+            header = (
+                f"{'#':<3} | {'Symbol':<20} | {'Side':<7} | {'Type':<7} | "
+                f"{'Entry':<12} | {'Stop':<12} | {'TP1 ✅':<12} | {'TP2':<12} | "
+                # f"{'Prof-Like':<8} | "
+                f"{'Conf':<8} | {'MTF':<12} | "
+                f"{'Satisfied TF':<12} | "
+                f"{'Opposing TF':<12} | "
+                f"{'Neutral TF':<12} | "
+                f"{'R/R':<5} | {'Volume':<8} | {'Status':<12}"
+            )
+            print(header)
+            print("-" * 150)
             
-            # Enhanced Top Opportunities Table
-            timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"
-            print("=" * 150)
-            print(f"\n🏆 📊 SCAN RESULTS - TOP {len(opportunities)} TRADING OPPORTUNITIES ({timeframe_display} MTF CONFIRMATION):")
-            print("=" * 150)
-            
-            if opportunities:
-                # Show only top opportunities that would be executed
-                max_display = max(self.config.charts_per_batch, 5)  # Show at least 5, or charts_per_batch
-                display_opportunities = opportunities#[:max_display]
-
-                tp1 = "TP1 ✅" if self.config.default_tp_level == 'take_profit_1' else "TP1"
-                tp2 = "TP2 ✅" if self.config.default_tp_level != 'take_profit_1' else "TP2"         
-                
-                header = (
-                    f"{'#':<3} | {'Symbol':<20} | {'Side':<7} | {'Type':<7} | "
-                    f"{'Entry':<12} | {'SL':<12} | {tp1:<12} | {tp2:<12} | "
-                    f"{'Conf':<8} | {'MTF':<12} | "
-                    f"{'Satisfied TF':<12} | "
-                    f"{'Opposing TF':<12} | "
-                    f"{'Neutral TF':<12} | "
-                    f"{'R/R':<5} | {'Volume':<8} | {'Execute':<12}"
-                )
-                print(header)
-                print("-" * 150)
-                
-                for i, opp in enumerate(display_opportunities):
-                    try:
-                        # Will this be executed?
-                        will_execute = i < self.config.max_execution_per_trade
-                        status = "🎯 EXECUTE" if will_execute else "⏭️ SKIP"
-                        
-                        side_emoji = "🟢 LONG" if opp['side'] == 'buy' else "🔴 SHORT"
-                        order_type = "Limit" if opp['order_type'] == 'limit' else "Market"
-                        volume_str = f"${opp['volume_24h']/1e6:.0f}M"
-                        
-                        # MTF status with emojis
-                        mtf_status = opp.get('mtf_status', 'UNKNOWN')
-                        if mtf_status == 'STRONG':
-                            mtf_display = "⭐ STRONG"
-                        elif mtf_status == 'PARTIAL':
-                            mtf_display = "🔸 PARTIAL"
-                        elif mtf_status == 'NONE':
-                            mtf_display = "⚪ NONE"
-                        else:
-                            mtf_display = "❌ DISABLED"
-                        
-                        # Show MTF boost in confidence
-                        conf_display = f"{opp['confidence']:.0f}%"
-                        if opp.get('mtf_boost', 0) > 0:
-                            conf_display += f" (+{opp['mtf_boost']:.0f})"
-                        
-                        row = (
-                            f"{i+1:<3} | {opp['symbol']:<20} | {side_emoji:<7} | {order_type:<7} | "
-                            f"{opp['entry_price']:<12.6f} | {opp['stop_loss']:<12.6f} | "
-                            f"{opp['take_profit_1']:<12.6f} | {opp['take_profit_2']:<12.6f} | "
-                            f"{conf_display:<8} | {mtf_display:<12} | "
-                            f"{', '.join(opp.get('mtf_analysis', {}).get('confirmed_timeframes', [])):<12} | "
-                            f"{', '.join(opp.get('mtf_analysis', {}).get('conflicting_timeframes', [])):<12} | "
-                            f"{', '.join(opp.get('mtf_analysis', {}).get('neutral_timeframes', [])):<12} | "
-                            f"{opp.get('risk_reward_ratio', 'N/A'):<5.1f} | {volume_str:<8} | {status:<12}"
-                        )
-                        print(f"{row}")
-                        
-                    except Exception as e:
-                        print(f"Error displaying opportunity: {e}")
-                
-                print("-" * 150)
-                
-                # Execution Summary
-                execution_count = min(len(opportunities), self.config.max_execution_per_trade)
-                print(f"\n🎯 EXECUTION PLAN:")
-                print(f"   Will Execute: {execution_count} trades")
-                print(f"   Will Skip: {max(0, len(opportunities) - execution_count)} opportunities")
-                print(f"   Max Per Scan: {self.config.max_execution_per_trade}")
-                
-            else:
-                print("   No trading opportunities found")
-        else:
-            if not results:
-                print("❌ No results to display")
-                return
-            
-            scan_info = results['scan_info']
-            opportunities = results['top_opportunities']
-            
-            # Enhanced Top Opportunities Table
-            timeframe_display = f"{self.config.timeframe}→{'/'.join(self.config.confirmation_timeframes)}"
-            print("=" * 150)
-            print(f"\n🏆 📊 SCAN RESULTS - TOP {len(opportunities)} TRADING OPPORTUNITIES ({timeframe_display} MTF CONFIRMATION):")
-            print("=" * 150)
-
-            tp1 = "TP1 ✅" if self.config.default_tp_level == 'take_profit_1' else "TP1"
-            tp2 = "TP2 ✅" if self.config.default_tp_level != 'take_profit_1' else "TP2"  
-
-            if opportunities:
-                # Enhanced header showing optimization status
-                header = (
-                    f"{'#':<3} | {'Symbol':<20} | {'Side':<7} | {'Type':<7} | "
-                    f"{'Entry':<12} | {'SL':<12} | {tp1:<12} | {tp2:<12} | "
-                    f"{'Conf':<8} | {'MTF':<12} | "
-                    f"{'Satisfied TF':<12} | "
-                    f"{'Opposing TF':<12} | "
-                    f"{'Neutral TF':<12} | "
-                    f"{'R/R':<5} | {'Status':<8} | {'Execute':<12}"
-                )
-                print(header)
-                print("-" * 120)
-                
-                for i, opp in enumerate(opportunities):
+            for i, opp in enumerate(display_opportunities):
+                try:
                     # Will this be executed?
                     will_execute = i < self.config.max_execution_per_trade
                     status = "🎯 EXECUTE" if will_execute else "⏭️ SKIP"
-
+                    
                     side_emoji = "🟢 LONG" if opp['side'] == 'buy' else "🔴 SHORT"
                     order_type = "Limit" if opp['order_type'] == 'limit' else "Market"
+                    volume_str = f"${opp['volume_24h']/1e6:.0f}M"
+                    
+                    # MTF status with emojis
                     mtf_status = opp.get('mtf_status', 'UNKNOWN')
                     if mtf_status == 'STRONG':
                         mtf_display = "⭐ STRONG"
@@ -910,41 +701,40 @@ class CompleteEnhancedBybitSystem:
                         mtf_display = "⚪ NONE"
                     else:
                         mtf_display = "❌ DISABLED"
-
-                    # Check if level optimization was applied
-                    level_opt = opp.get('level_optimization', {})
-                    opt_status = "✅" if level_opt.get('enabled') else "❌"
-
+                    
+                    # Show MTF boost in confidence
+                    conf_display = f"{opp['confidence']:.0f}%"
+                    if opp.get('mtf_boost', 0) > 0:
+                        conf_display += f" (+{opp['mtf_boost']:.0f})"
+                    
                     row = (
                         f"{i+1:<3} | {opp['symbol']:<20} | {side_emoji:<7} | {order_type:<7} | "
                         f"{opp['entry_price']:<12.6f} | {opp['stop_loss']:<12.6f} | "
                         f"{opp['take_profit_1']:<12.6f} | {opp['take_profit_2']:<12.6f} | "
-                        f"{opp['confidence']:<6.0f} | {mtf_display:<12} | "
+                        # f"{opp['profit_likelihood']*100:<7.1f}% | "
+                        f"{conf_display:<8} | {mtf_display:<12} | "
                         f"{', '.join(opp.get('mtf_analysis', {}).get('confirmed_timeframes', [])):<12} | "
                         f"{', '.join(opp.get('mtf_analysis', {}).get('conflicting_timeframes', [])):<12} | "
                         f"{', '.join(opp.get('mtf_analysis', {}).get('neutral_timeframes', [])):<12} | "
-                        f"{opp.get('risk_reward_ratio', 'N/A'):<5.1f} | {opt_status:<8} | {status:<12}"
+                        f"{opp.get('risk_reward_ratio', 'N/A'):<5.1f} | {volume_str:<8} | {status:<12}"
                     )
-                    print(row)
-                
-                print("-" * 120)
-                
-                # Summary of optimization results
-                optimized_count = len([o for o in opportunities if o.get('level_optimization', {}).get('enabled')])
-                avg_rr_improvement = 0
-                
-                if optimized_count > 0:
-                    rr_improvements = [
-                        o.get('level_optimization', {}).get('improvements', {}).get('rr_improvement', 0)
-                        for o in opportunities if o.get('level_optimization', {}).get('enabled')
-                    ]
-                    avg_rr_improvement = sum(rr_improvements) / len(rr_improvements)
-                
-                print(f"\n🎯 LEVEL OPTIMIZATION SUMMARY:")
-                print(f"   Signals Optimized: {optimized_count}/{len(opportunities)}")
-                print(f"   Average R/R Improvement: +{avg_rr_improvement:.2f}")
-                print(f"   Configuration: {opportunities[0].get('mtf_analysis', {}).get('timeframe_configuration', {}).get('primary_timeframe')} → {opportunities[0].get('mtf_analysis', {}).get('timeframe_configuration', {}).get('confirmation_timeframes', [])}")
-
+                    print(f"{row}")
+                    
+                except Exception as e:
+                    print(f"Error displaying opportunity: {e}")
+            
+            print("-" * 150)
+            
+            # Execution Summary
+            execution_count = min(len(opportunities), self.config.max_execution_per_trade)
+            print(f"\n🎯 EXECUTION PLAN:")
+            print(f"   Will Execute: {execution_count} trades")
+            print(f"   Will Skip: {max(0, len(opportunities) - execution_count)} opportunities")
+            print(f"   Max Per Scan: {self.config.max_execution_per_trade}")
+            
+        else:
+            print("   No trading opportunities found")
+            
     def save_results_to_database(self, results: Dict) -> Dict[str, Any]:
         """Save TOP OPPORTUNITIES to MySQL database (replaces CSV export)"""
         try:

@@ -166,6 +166,7 @@ class EnhancedSystemConfig:
                 ml_profitable_rate=0.45,
                 
                 # Chart Settings
+                generate_chart=True,
                 show_charts=True,
                 save_charts=False,
                 charts_per_batch=5,
@@ -203,8 +204,11 @@ class EnhancedSystemConfig:
                 scan_interval=3600,  # 3 hours in seconds
                 auto_execute_trades=True,
                 auto_close_enabled=True,
-                auto_close_profit_at=20.0,  # 20% profit target
-                auto_close_loss_at=100.0  # 100% profit target
+                auto_close_profit_at=75.0,  # 75% profit target
+                auto_close_loss_at=100.0,  # 100% profit target
+                default_tp_level='take_profit_1',  # Default take profit level to use
+                use_old_analysis=True,  # Use old analysis method
+                monitor_mode=False  # Monitor mode only, no analysis
             )
             
             session.add(default_config)
@@ -255,6 +259,7 @@ class EnhancedSystemConfig:
         self.max_cache_size = 1000
         self.ml_training_samples = 400
         self.ml_profitable_rate = 0.45
+        self.generate_chart = True
         self.show_charts = True
         self.save_charts = False
         self.charts_per_batch = 5
@@ -290,8 +295,11 @@ class EnhancedSystemConfig:
         self.scan_interval = 3600  # 3 hours
         self.auto_execute_trades = True
         self.auto_close_enabled=True
-        self.auto_close_profit_at = 20.0  # 20% profit
+        self.auto_close_profit_at = 75.0  # 75% profit
         self.auto_close_loss_at = 100.0  # 100% profit
+        self.default_tp_level = 'take_profit_1'
+        self.use_old_analysis = True  # Use old analysis method
+        self.monitor_mode = False  # Monitor mode only, no analysis
         
         self._post_init()
 
@@ -461,6 +469,7 @@ class EnhancedSystemConfig:
                 'max_cache_size': self.max_cache_size,
                 'ml_training_samples': self.ml_training_samples,
                 'ml_profitable_rate': self.ml_profitable_rate,
+                'generate_chart': self.generate_chart,
                 'show_charts': self.show_charts,
                 'save_charts': self.save_charts,
                 'charts_per_batch': self.charts_per_batch,
@@ -490,7 +499,10 @@ class EnhancedSystemConfig:
                 'auto_execute_trades': self.auto_execute_trades,
                 'auto_close_enabled': self.auto_close_enabled,
                 'auto_close_profit_at': self.auto_close_profit_at,
-                'auto_close_loss_at': self.auto_close_loss_at
+                'auto_close_loss_at': self.auto_close_loss_at,
+                'default_tp_level': self.default_tp_level,
+                'use_old_analysis': self.use_old_analysis,  # Use old analysis method
+                'monitor_mode': self.monitor_mode  # Monitor mode only, no analysis
             }
             
             with open(file_path, 'w') as f:
@@ -527,6 +539,7 @@ class EnhancedSystemConfig:
             'max_cache_size': getattr(self, 'max_cache_size', 1000),
             'ml_training_samples': getattr(self, 'ml_training_samples', 400),
             'ml_profitable_rate': getattr(self, 'ml_profitable_rate', 0.45),
+            'generate_chart': getattr(self, 'generate_chart', True),
             'show_charts': getattr(self, 'show_charts', True),
             'save_charts': getattr(self, 'save_charts', False),
             'charts_per_batch': getattr(self, 'charts_per_batch', 5),
@@ -555,8 +568,11 @@ class EnhancedSystemConfig:
             'scan_interval': getattr(self, 'scan_interval', 3600),
             'auto_execute_trades': getattr(self, 'auto_execute_trades', True),
             'auto_close_enabled': getattr(self, 'auto_close_enabled', True),
-            'auto_close_profit_at': getattr(self, 'auto_close_profit_at', 20.0),
-            'auto_close_loss_at': getattr(self, 'auto_close_loss_at', 100.0)
+            'auto_close_profit_at': getattr(self, 'auto_close_profit_at', 75.0),
+            'auto_close_loss_at': getattr(self, 'auto_close_loss_at', 100.0),
+            'default_tp_level': getattr(self, 'default_tp_level', 'take_profit_1'),
+            'use_old_analysis': getattr(self, 'use_old_analysis', True),  # Use old analysis method
+            'monitor_mode': getattr(self, 'monitor_mode', False)  # Monitor mode only, no analysis
         }
     
     @classmethod

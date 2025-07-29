@@ -23,7 +23,7 @@ class SignalGenerator:
         self.logger = logging.getLogger(__name__)
         
     def generate_enhanced_signal(self, df: pd.DataFrame, symbol_data: Dict, 
-                                volume_entry: Dict, confluence_zones: List[Dict], timeframe: Dict) -> Optional[Dict]:
+                                volume_entry: Dict, confluence_zones: List[Dict]) -> Optional[Dict]:
         """Context-aware signal generation with pullback strategies"""
         try:
             latest = df.iloc[-1]
@@ -61,57 +61,39 @@ class SignalGenerator:
             buy_thresholds = self.calculate_dynamic_buy_thresholds(trend_context, market_structure)
             sell_thresholds = self.calculate_dynamic_sell_thresholds(trend_context, market_structure)
             
-            # ===== ANALYZE BOTH OPPORTUNITIES =====
+            # ===== SIGNAL GENERATION WITH WEIGHTED SCORING =====
+            signal = None
+            
+            # Check for BUY opportunities
             buy_analysis = self.analyze_buy_opportunity(
                 latest, current_price, buy_thresholds, market_structure, 
                 trend_context, pullback_analysis, scenario_analysis
             )
-
-            sell_analysis = self.analyze_sell_opportunity(
-                latest, current_price, sell_thresholds, market_structure, 
-                trend_context, pullback_analysis, scenario_analysis
-            )
-
-            # ===== CHOOSE BEST SIGNAL =====
-            signal = None
-            best_signal_type = self.choose_best_signal(buy_analysis, sell_analysis)
-
-            # Debug logging
-            # if buy_analysis['should_signal'] or sell_analysis['should_signal']:
-            #     self.logger.info(f"Signal analysis for {symbol} - {timeframe} =>"
-            #                       f"BUY: {buy_analysis['total_score']:.3f} | "
-            #                       f"SELL: {sell_analysis['total_score']:.3f} | "
-            #                       f"Chosen: {best_signal_type.upper()}")
-
-            # Generate the chosen signal
-            if best_signal_type == 'buy':
+            
+            if buy_analysis['should_signal']:
                 signal = self.create_context_aware_buy_signal(
                     symbol_data, current_price, latest, volume_entry, 
                     confluence_zones, buy_analysis, pullback_analysis, scenario_analysis
                 )
-            elif best_signal_type == 'sell':
-                signal = self.create_context_aware_sell_signal(
-                    symbol_data, current_price, latest, volume_entry, 
-                    confluence_zones, sell_analysis, pullback_analysis, scenario_analysis
+            
+            # Check for SELL opportunities (only if no BUY signal)
+            if not signal:
+                sell_analysis = self.analyze_sell_opportunity(
+                    latest, current_price, sell_thresholds, market_structure, 
+                    trend_context, pullback_analysis, scenario_analysis
                 )
-            # If best_signal_type == 'none', signal remains None
-
+                
+                if sell_analysis['should_signal']:
+                    signal = self.create_context_aware_sell_signal(
+                        symbol_data, current_price, latest, volume_entry, 
+                        confluence_zones, sell_analysis, pullback_analysis, scenario_analysis
+                    )
+            
             return signal
             
         except Exception as e:
             self.logger.error(f"Signal generation error for {symbol_data.get('symbol', 'unknown')}: {e}")
             return None
-    
-    def choose_best_signal(self, buy_analysis: Dict, sell_analysis: Dict) -> str:
-        """Choose between BUY and SELL based on strength"""
-        buy_strength = buy_analysis['total_score'] if buy_analysis['should_signal'] else 0
-        sell_strength = sell_analysis['total_score'] if sell_analysis['should_signal'] else 0
-        
-        # Require significant difference to override
-        if abs(buy_strength - sell_strength) < 0.1:
-            return 'none'  # Too close to call
-        
-        return 'buy' if buy_strength > sell_strength else 'sell'
 
     def analyze_trend_context(self, df: pd.DataFrame, latest: pd.Series) -> Dict:
         """Analyze the current trend context for dynamic threshold adjustment"""
@@ -402,34 +384,34 @@ class SignalGenerator:
 
     def calculate_dynamic_sell_thresholds(self, trend_context: Dict, market_structure: Dict) -> Dict:
         """Calculate dynamic RSI and other thresholds for SELL signals based on context"""
-        base_rsi_threshold = 65  # More aggressive base (was 70)
-        base_stoch_threshold = 70  # More aggressive base (was 75)
+        base_rsi_threshold = 70
+        base_stoch_threshold = 75
         
         # Adjust based on trend strength
         if trend_context['strength'] == 'very_strong' and trend_context['direction'] == 'bearish':
             # In very strong downtrends, can sell at lower RSI levels
-            rsi_threshold = max(45, base_rsi_threshold - 20)  # More aggressive (was -25)
-            stoch_threshold = max(50, base_stoch_threshold - 20)  # More aggressive (was -25)
+            rsi_threshold = max(45, base_rsi_threshold - 25)
+            stoch_threshold = max(50, base_stoch_threshold - 25)
         elif trend_context['strength'] == 'strong' and trend_context['direction'] == 'bearish':
-            rsi_threshold = max(55, base_rsi_threshold - 10)  # More aggressive
-            stoch_threshold = max(60, base_stoch_threshold - 10)  # More aggressive
+            rsi_threshold = max(60, base_rsi_threshold - 10)
+            stoch_threshold = max(65, base_stoch_threshold - 10)
         elif trend_context['direction'] == 'bullish':
-            # In bullish trends, still allow sells but require higher levels
-            rsi_threshold = min(75, base_rsi_threshold + 10)  # Less restrictive (was +10)
-            stoch_threshold = min(80, base_stoch_threshold + 10)  # Less restrictive (was +10)
+            # In bullish trends, need deeper overbought conditions
+            rsi_threshold = min(80, base_rsi_threshold + 10)
+            stoch_threshold = min(85, base_stoch_threshold + 10)
         else:
             rsi_threshold = base_rsi_threshold
             stoch_threshold = base_stoch_threshold
         
         # Adjust based on market structure
         if market_structure.get('near_resistance', False):
-            rsi_threshold -= 8  # More aggressive near resistance (was -5)
-            stoch_threshold -= 8  # More aggressive near resistance (was -5)
+            rsi_threshold -= 5
+            stoch_threshold -= 5
         
         return {
             'rsi_threshold': rsi_threshold,
             'stoch_threshold': stoch_threshold,
-            'volume_threshold': 1.2 if trend_context['strength'] == 'very_strong' else 1.4,  # Less restrictive volume (was 1.5/1.8)
+            'volume_threshold': 1.5 if trend_context['strength'] == 'very_strong' else 1.8,
             'trend_alignment_required': trend_context['strength'] in ['strong', 'very_strong']
         }
 
@@ -2027,7 +2009,7 @@ class SignalGenerator:
     # Keep all remaining methods unchanged for backward compatibility
     def analyze_symbol_comprehensive(self, df: pd.DataFrame, symbol_data: Dict, 
                                    volume_profile: Dict, fibonacci_data: Dict, 
-                                   confluence_zones: List[Dict], timeframe: Dict) -> Optional[Dict]:
+                                   confluence_zones: List[Dict]) -> Optional[Dict]:
         """Comprehensive symbol analysis - MAIN INTERFACE METHOD"""
         try:
             if df.empty or len(df) < 15:
@@ -2039,7 +2021,7 @@ class SignalGenerator:
             
             # Generate enhanced signal with context awareness
             volume_entry = volume_profile.get('optimal_entry', {})
-            signal = self.generate_enhanced_signal(df, symbol_data, volume_entry, confluence_zones, timeframe)
+            signal = self.generate_enhanced_signal(df, symbol_data, volume_entry, confluence_zones)
             
             if not signal:
                 return None

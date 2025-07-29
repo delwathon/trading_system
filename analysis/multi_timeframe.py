@@ -1,13 +1,10 @@
-"""
-Multi-Timeframe Signal Analyzer for the Enhanced Bybit Trading System.
-"""
-
 import pandas as pd
 import numpy as np
 import ta
 import time
 import logging
 from typing import Dict, List, Optional
+from enum import Enum
 
 from config.config import EnhancedSystemConfig
 from core.exchange import ExchangeManager
@@ -16,8 +13,32 @@ from analysis.volume_profile import VolumeProfileAnalyzer
 from analysis.fibonacci import FibonacciConfluenceAnalyzer
 from signals.generator import SignalGenerator
 
+# Import the new configurable optimizer
+from analysis.configurable_mtf_optimizer import EnhancedMultiTimeframeAnalyzer
 
-class MultiTimeframeAnalyzer:
+# Your existing MultiTimeframeAnalyzer becomes a wrapper:
+class NewMultiTimeframeAnalyzer:
+    """Multi-timeframe signal confirmation analyzer with configurable optimization"""
+    
+    def __init__(self, exchange, config):
+        self.exchange = exchange
+        self.config = config
+        self.logger = logging.getLogger(__name__)
+        
+        # Initialize the enhanced analyzer with configurable optimization
+        self.enhanced_analyzer = EnhancedMultiTimeframeAnalyzer(exchange, config)
+        
+        self.logger.info("✅ MTF Analyzer with Configurable Level Optimization initialized")
+        self.logger.info(f"   Primary: {config.timeframe}")
+        self.logger.info(f"   Confirmations: {getattr(config, 'confirmation_timeframes', [])}")
+        self.logger.info("   🎯 Level optimization: ENABLED and ADAPTIVE")
+        
+    def analyze_symbol_multi_timeframe_with_level_optimization(self, symbol_data: Dict, primary_signal: Dict) -> Dict:
+        """Main interface - now with enhanced level optimization"""
+        return self.enhanced_analyzer.analyze_symbol_multi_timeframe(symbol_data, primary_signal)
+    
+
+class OldMultiTimeframeAnalyzer:
     """Multi-timeframe signal confirmation analyzer"""
     
     def __init__(self, exchange, config: EnhancedSystemConfig):
@@ -76,7 +97,7 @@ class MultiTimeframeAnalyzer:
                     )
                     
                     timeframe_signal = self.signal_generator.analyze_symbol_comprehensive(
-                        df, symbol_data, volume_entry, fibonacci_data, confluence_zones
+                        df, symbol_data, volume_entry, fibonacci_data, confluence_zones, timeframe
                     )
 
                     if timeframe_signal:
@@ -131,3 +152,4 @@ class MultiTimeframeAnalyzer:
                 'mtf_confidence_boost': 0.0,
                 'timeframe_signals': {}
             }      
+    

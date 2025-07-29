@@ -61,6 +61,7 @@ class SystemConfig(Base):
     ml_profitable_rate = Column(Float, default=0.45)
     
     # Chart Settings
+    generate_chart = Column(Boolean, default=True)
     show_charts = Column(Boolean, default=True)
     save_charts = Column(Boolean, default=False)
     charts_per_batch = Column(Integer, default=5)
@@ -95,8 +96,11 @@ class SystemConfig(Base):
     scan_interval = Column(Integer, default=3600)  # 3 hours in seconds
     auto_execute_trades = Column(Boolean, default=True)  # Enable auto-trading execution
     auto_close_enabled = Column(Boolean, default=True)  # Enable auto-close feature
-    auto_close_profit_at = Column(Float, default=20.0)  # 20% profit target
+    auto_close_profit_at = Column(Float, default=75.0)  # 20% profit target
     auto_close_loss_at = Column(Float, default=100.0)  # 100% profit target
+    default_tp_level = Column(String(10), default='take_profit_1')  # Default take profit level to use
+    use_old_analysis = Column(Boolean, default=True)  # Use old analysis method
+    monitor_mode = Column(Boolean, default=False)  # Monitor mode only, no analysis
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -128,6 +132,7 @@ class SystemConfig(Base):
             'max_cache_size': self.max_cache_size,
             'ml_training_samples': self.ml_training_samples,
             'ml_profitable_rate': self.ml_profitable_rate,
+            'generate_chart': self.generate_chart,
             'show_charts': self.show_charts,
             'save_charts': self.save_charts,
             'charts_per_batch': self.charts_per_batch,
@@ -155,7 +160,10 @@ class SystemConfig(Base):
             'auto_execute_trades': self.auto_execute_trades,  # Enable auto-trading execution
             'auto_close_enabled': self.auto_close_enabled,  # Enable auto-close feature
             'auto_close_profit_at': self.auto_close_profit_at,
-            'auto_close_loss_at': self.auto_close_loss_at  # 100% profit target
+            'auto_close_loss_at': self.auto_close_loss_at,  # 100% profit target
+            'default_tp_level': self.default_tp_level,  # Default take profit level to use
+            'use_old_analysis': self.use_old_analysis,  # Use old analysis method
+            'monitor_mode': self.monitor_mode,  # Monitor mode only, no analysis
         }
 
 

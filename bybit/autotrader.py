@@ -156,9 +156,35 @@ class PositionSizer:
             self.logger.error(f"Error calculating position size: {e}")
             return 0.0
     
-    def validate_position_size(self, symbol: str, size: float) -> Tuple[bool, float]:
-        """Validate position size against exchange limits"""
+    # def validate_position_size(self, symbol: str, size: float) -> Tuple[bool, float]:
+    #     """Validate position size against exchange limits"""
+    #     try:
+    #         market_info = self.exchange.market(symbol)
+    #         limits = market_info.get('limits', {})
+    #         amount_limits = limits.get('amount', {})
+            
+    #         min_size = amount_limits.get('min', 0.001)
+    #         max_size = amount_limits.get('max', 1000000)
+            
+    #         if size < min_size:
+    #             self.logger.warning(f"Position size {size} below minimum {min_size} for {symbol}")
+    #             return False, min_size
+            
+    #         if size > max_size:
+    #             self.logger.warning(f"Position size {size} above maximum {max_size} for {symbol}")
+    #             return False, max_size
+            
+    #         return True, size
+    #     except Exception as e:
+    #         self.logger.error(f"Error validating position size for {symbol}: {e}")
+    #         return False, 0.0
+    
+    def validate_position_size(self, symbol: str, size: float, leverage: float = None, current_price: float = None) -> Tuple[bool, float]:
+        """Validate position size against exchange limits and risk limits"""
         try:
+            self.logger.info(f"🔍 Validating position size for {symbol}: {size}")
+            
+            # Get market info for basic validation
             market_info = self.exchange.market(symbol)
             limits = market_info.get('limits', {})
             amount_limits = limits.get('amount', {})
@@ -166,6 +192,7 @@ class PositionSizer:
             min_size = amount_limits.get('min', 0.001)
             max_size = amount_limits.get('max', 1000000)
             
+            # Basic size validation
             if size < min_size:
                 self.logger.warning(f"Position size {size} below minimum {min_size} for {symbol}")
                 return False, min_size
@@ -174,11 +201,144 @@ class PositionSizer:
                 self.logger.warning(f"Position size {size} above maximum {max_size} for {symbol}")
                 return False, max_size
             
+            # Get current price if not provided
+            if current_price is None:
+                try:
+                    ticker = self.exchange.fetch_ticker(symbol)
+                    current_price = ticker['last']
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Could not get current price for {symbol}: {e}")
+                    return True, size  # Continue without risk limit check
+            
+            # Risk limit validation to prevent the 110090 error
+            try:
+                # Get current positions for this symbol
+                current_value = 0
+                current_leverage = leverage or 25  # Use passed leverage or default
+                
+                positions = self.exchange.fetch_positions([symbol])
+                for pos in positions:
+                    if pos['symbol'] == symbol and pos['contracts'] > 0:
+                        current_value = float(pos['notional'] or 0)
+                        if leverage is None:  # Only override if not explicitly passed
+                            current_leverage = float(pos.get('leverage', 25))
+                        break
+                
+                # Calculate new order value
+                new_order_value = size * current_price
+                total_value = current_value + new_order_value
+                
+                # Try to get actual risk limits from Bybit API
+                try:
+                    # Use ccxt unified API to get risk limits
+                    risk_limits = self.exchange.fetch_trading_limits([symbol])
+                    max_value = None
+                    
+                    if risk_limits and symbol in risk_limits:
+                        limits = risk_limits[symbol]
+                        # Look for position limit or notional limit
+                        if 'position' in limits and limits['position'].get('max'):
+                            max_position_size = limits['position']['max']
+                            max_value = max_position_size * current_price
+                        elif 'amount' in limits and limits['amount'].get('max'):
+                            max_amount = limits['amount']['max']
+                            max_value = max_amount * current_price
+                    
+                    if not max_value:
+                        raise Exception("Could not get risk limits from API")
+                        
+                except Exception as api_error:
+                    self.logger.debug(f"Could not get risk limits from API: {api_error}")
+                    
+                    # Symbol-specific conservative limits based on typical Bybit restrictions
+                    # Some symbols have much stricter limits than others
+                    symbol_base = symbol.replace('/USDT:USDT', '').replace('USDT', '')
+                    
+                    # Ultra-conservative limits for newer/volatile tokens
+                    high_risk_symbols = ['HYPE', 'MEME', 'DOGE', 'SHIB', 'PEPE', 'FLOKI', 'BONK', 'AUCTION', 'LAUNCHCOIN']
+                    medium_risk_symbols = ['BNB', 'SOL', 'ADA', 'DOT', 'MATIC', 'LINK', 'UNI', 'AR', 'CRO']
+                    
+                    if any(risky in symbol_base.upper() for risky in high_risk_symbols):
+                        # Very strict limits for high-risk tokens
+                        if current_leverage > 20:
+                            max_value = 150_000  # 150K for high leverage on risky tokens
+                        elif current_leverage > 10:
+                            max_value = 300_000  # 300K for medium leverage
+                        else:
+                            max_value = 600_000  # 600K for low leverage
+                    elif any(medium in symbol_base.upper() for medium in medium_risk_symbols):
+                        # Moderate limits for established alts
+                        if current_leverage > 20:
+                            max_value = 400_000  # 400K for high leverage
+                        elif current_leverage > 10:
+                            max_value = 800_000  # 800K for medium leverage
+                        else:
+                            max_value = 1_600_000  # 1.6M for low leverage
+                    else:
+                        # Default ultra-conservative limits for unknown symbols
+                        if current_leverage > 20:
+                            max_value = 100_000  # 100K for high leverage (ultra-conservative)
+                        elif current_leverage > 10:
+                            max_value = 200_000  # 200K for medium leverage
+                        else:
+                            max_value = 400_000  # 400K for low leverage
+                
+                self.logger.info(f"🔍 Risk limit check for {symbol}:")
+                self.logger.info(f"  Current position value: ${current_value:,.2f}")
+                self.logger.info(f"  New order value: ${new_order_value:,.2f}")
+                self.logger.info(f"  Total value: ${total_value:,.2f}")
+                self.logger.info(f"  Max allowed: ${max_value:,.2f}")
+                self.logger.info(f"  Current leverage: {current_leverage}x")
+                self.logger.info(f"  Current price: ${current_price:.6f}")
+                self.logger.info(f"  Position size: {size:.6f}")
+                self.logger.info(f"  Symbol category: {symbol_base.upper()}")
+                
+                if total_value > max_value:
+                    # Calculate maximum allowed position size
+                    available_value = max_value - current_value
+                    if available_value <= 0:
+                        self.logger.error(f"❌ No available position capacity for {symbol}")
+                        return False, 0
+                    
+                    max_allowed_size = (available_value / current_price) * 0.85  # 15% safety margin
+                    
+                    if max_allowed_size < min_size:
+                        self.logger.error(f"❌ Required position size adjustment below minimum for {symbol}")
+                        return False, 0
+                    
+                    self.logger.warning(f"⚠️ Position size {size} exceeds risk limit")
+                    self.logger.warning(f"🔧 Adjusted to: {max_allowed_size:.6f}")
+                    self.logger.warning(f"💰 Value reduced from ${total_value:,.2f} to ${(current_value + max_allowed_size * current_price):,.2f}")
+                    return True, max_allowed_size
+                
+                # IMPORTANT: Even if validation passes, check if we're close to the limit
+                utilization = (total_value / max_value) * 100
+                if utilization > 80:  # If using more than 80% of limit
+                    self.logger.warning(f"⚠️ High risk limit utilization: {utilization:.1f}% of max capacity")
+                    # Reduce size proactively to avoid edge cases
+                    safe_size = size * 0.75  # Use 75% of calculated size
+                    self.logger.warning(f"🔧 Proactively reducing size from {size:.6f} to {safe_size:.6f}")
+                    return True, safe_size
+            
+            except Exception as e:
+                self.logger.error(f"⚠️ Risk limit check failed for {symbol}: {e}")
+                # If risk limit check fails, apply ultra-conservative fallback
+                # Based on your risk amount of ~$380, assume AUCTION price ~$0.44
+                # This means position value would be 870 * $0.44 = ~$380
+                # At 25x leverage, this is very small, so the issue might be elsewhere
+                
+                # Ultra-conservative fallback - reduce size by 50%
+                fallback_size = size * 0.5
+                self.logger.warning(f"🔧 Applying ultra-conservative fallback: {size:.6f} → {fallback_size:.6f}")
+                return True, fallback_size
+            
+            self.logger.info(f"✅ Position size {size} is valid for {symbol}")
             return True, size
+            
         except Exception as e:
-            self.logger.error(f"Error validating position size for {symbol}: {e}")
-            return False, 0.0
-    
+            self.logger.error(f"❌ Error validating position size for {symbol}: {e}")
+            return False, 0
+               
     def get_available_balance(self) -> float:
         """Get available USDT balance"""
         try:
@@ -248,32 +408,70 @@ class ScheduleManager:
             next_scan = self.calculate_next_scan_time()
             now = datetime.now()
             
-            # Check if we're within 1 minute of scan time
+            # Check if we're within 5 minute of scan time
             time_diff = abs((next_scan - now).total_seconds())
-            return time_diff <= 60
+            return time_diff <= 300
         except Exception as e:
             self.logger.error(f"Error checking scan time: {e}")
             return False
     
-    def wait_for_next_scan(self) -> datetime:
-        """Wait until next scheduled scan time"""
+    # def wait_for_next_scan(self) -> datetime:
+        """
+        Wait until next scheduled scan time, accounting for 5-minute scan window
+        
+        Only waits if next scan is more than 5 minutes (300 seconds) away.
+        If within 5 minutes of scan time, returns immediately to allow scan execution.
+        """
         try:
             next_scan = self.calculate_next_scan_time()
             now = datetime.now()
             
-            if next_scan > now:
+            # Create 5-minute buffer - only wait if scan is more than 5 minutes away
+            buffer_time = now + timedelta(seconds=300)
+            
+            if next_scan > buffer_time:
                 wait_seconds = (next_scan - now).total_seconds()
                 self.logger.info(f"⏰ Next scan scheduled for: {next_scan}")
                 self.logger.info(f"⏳ Waiting {wait_seconds / 60:.1f} minutes...")
+                self.logger.debug(f"   Scan window opens at: {next_scan - timedelta(seconds=300)}")
                 
-                time.sleep(wait_seconds)
+                # Wait until 5 minutes before scan time
+                actual_wait_seconds = wait_seconds - 300
+                if actual_wait_seconds > 0:
+                    time.sleep(actual_wait_seconds)
+            else:
+                # We're within 5 minutes of scan time - don't wait
+                minutes_until_scan = (next_scan - now).total_seconds() / 60
+                if minutes_until_scan >= 0:
+                    self.logger.info(f"📅 Within scan window! Next scan in {minutes_until_scan:.1f} minutes")
+                else:
+                    self.logger.info(f"📅 Scan time reached! {abs(minutes_until_scan):.1f} minutes past scheduled time")
             
             return next_scan
+            
         except Exception as e:
             self.logger.error(f"Error waiting for next scan: {e}")
             time.sleep(3600)  # Wait 1 hour on error
             return datetime.now()
 
+    def wait_for_next_scan(self) -> datetime:
+        """Wait until next scheduled scan time"""
+        try:
+            next_scan = self.calculate_next_scan_time()
+            now = datetime.now()
+
+            if next_scan > now:
+                wait_seconds = (next_scan - now).total_seconds()
+                self.logger.info(f"⏰ Next scan scheduled for: {next_scan}")
+                self.logger.info(f"⏳ Waiting {wait_seconds / 60:.1f} minutes...")
+
+                time.sleep(wait_seconds)
+
+            return next_scan
+        except Exception as e:
+            self.logger.error(f"Error waiting for next scan: {e}")
+            time.sleep(3600)  # Wait 1 hour on error
+            return datetime.now()
 
 class LeveragedProfitMonitor:
     """Monitor leveraged profits/losses and auto-close positions"""
@@ -507,8 +705,7 @@ class OrderExecutor:
             side = signal['side']
             entry_price = signal['entry_price']
             stop_loss = signal['stop_loss']
-            take_profit = signal.get('take_profit_1', signal.get('take_profit', 0))
-            
+            take_profit = signal.get('take_profit_1', signal.get('take_profit', 0)) if self.config.default_tp_level == 'take_profit_1' else signal.get('take_profit_2', signal.get('take_profit', 0))
             self.logger.info(f"🚀 Placing {side.upper()} order for {symbol}")
             
             # Convert leverage to float
@@ -522,7 +719,7 @@ class OrderExecutor:
             position_size = self.position_sizer.calculate_position_size(risk_amount_pct, leverage, entry_price)
             
             # Validate position size
-            is_valid, adjusted_size = self.position_sizer.validate_position_size(symbol, position_size)
+            is_valid, adjusted_size = self.position_sizer.validate_position_size(symbol, position_size, leverage, entry_price)
             if not is_valid:
                 return False, f"Invalid position size: {position_size}", {}
             
@@ -884,6 +1081,7 @@ class AutoTrader:
             # Get signals that match the top opportunities (for chart generation)
             top_filtered_symbols = set(opp['symbol'] for opp in signals_left_after_filter_out_existing_orders)
             top_filtered_signals = [signal for signal in filtered_signals if signal['symbol'] in top_filtered_symbols]
+            
             
             # ===== UPDATE RESULTS WITH TOP FILTERED DATA =====
             results['top_opportunities'] = signals_left_after_filter_out_existing_orders  # Only top N for display

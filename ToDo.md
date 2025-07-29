@@ -7,6 +7,7 @@
 - Ensure to update db at every closed trade, be it manual or tp, or auto-close at profit level... So that active positions and orders state can be updated
 - Among the top generated signal, only place order for top max_execution_per_trade the ones that has the potential of hitting auto_close_profit_at 
 - Store only the top selected signals in database.... Not the entire signals generated.
+- If at any point in time, all confirmation timeframes are satisfactory, place order immediately even before the next symbol analysis
 
 
 
