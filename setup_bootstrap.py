@@ -295,7 +295,7 @@ def check_api_credentials_status():
     """Check current API credentials status"""
     try:
         from config.config import DatabaseConfig, EnhancedSystemConfig
-        from notifier.telegram import TelegramBootstrapManager
+        from telegram_bot_and_notification.bootstrap_manager import TelegramBootstrapManager
         
         # Load config from YAML and database
         config_path = 'enhanced_config.yaml'
@@ -631,7 +631,7 @@ def run_comprehensive_test():
         try:
             from config.config import DatabaseConfig, EnhancedSystemConfig
             from database.models import DatabaseManager
-            from notifier.telegram import TelegramBootstrapManager
+            from telegram_bot_and_notification.bootstrap_manager import TelegramBootstrapManager
             from bybit.autotrader import AutoTrader
             print("   ✅ All modules import successfully")
         except Exception as e:

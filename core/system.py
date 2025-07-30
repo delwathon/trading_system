@@ -396,7 +396,7 @@ class CompleteEnhancedBybitSystem:
     def run_complete_analysis_parallel_mtf(self) -> Dict:
         """Parallel analysis with multi-timeframe confirmation and optimized chart generation - FIXED"""
 
-        if self.congig.monitor_mode: 
+        if self.config.monitor_mode: 
             self.logger.info("🔍 Running in MONITOR MODE - No analysis performed")
             return {}
 

@@ -3,7 +3,7 @@ Telegram module for Enhanced Bybit Trading System.
 Note: This module is named to avoid conflicts with python-telegram-bot package.
 """
 
-from .telegram import (
+from .bootstrap_manager import (
     TelegramBootstrapManager,
     run_bootstrap_mode, 
     check_bootstrap_needed,

@@ -27,7 +27,7 @@ from config.config import EnhancedSystemConfig, DatabaseConfig
 from bybit.autotrader import AutoTrader, LeverageManager
 from database.models import DatabaseManager
 from utils.logging import setup_logging
-from notifier.telegram import TelegramBootstrapManager, run_bootstrap_mode, check_bootstrap_needed
+from telegram_bot_and_notification.bootstrap_manager import TelegramBootstrapManager, run_bootstrap_mode, check_bootstrap_needed
 
 
 def validate_auto_trading_config(config: EnhancedSystemConfig, skip_api_check: bool = False) -> bool:

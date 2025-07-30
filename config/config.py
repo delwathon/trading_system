@@ -207,7 +207,7 @@ class EnhancedSystemConfig:
                 auto_close_profit_at=75.0,  # 75% profit target
                 auto_close_loss_at=100.0,  # 100% profit target
                 default_tp_level='take_profit_1',  # Default take profit level to use
-                use_old_analysis=True,  # Use old analysis method
+                use_old_analysis=False,  # Use old analysis method
                 monitor_mode=False  # Monitor mode only, no analysis
             )
             
@@ -298,7 +298,7 @@ class EnhancedSystemConfig:
         self.auto_close_profit_at = 75.0  # 75% profit
         self.auto_close_loss_at = 100.0  # 100% profit
         self.default_tp_level = 'take_profit_1'
-        self.use_old_analysis = True  # Use old analysis method
+        self.use_old_analysis = False  # Use old analysis method
         self.monitor_mode = False  # Monitor mode only, no analysis
         
         self._post_init()
@@ -571,7 +571,7 @@ class EnhancedSystemConfig:
             'auto_close_profit_at': getattr(self, 'auto_close_profit_at', 75.0),
             'auto_close_loss_at': getattr(self, 'auto_close_loss_at', 100.0),
             'default_tp_level': getattr(self, 'default_tp_level', 'take_profit_1'),
-            'use_old_analysis': getattr(self, 'use_old_analysis', True),  # Use old analysis method
+            'use_old_analysis': getattr(self, 'use_old_analysis', False),  # Use old analysis method
             'monitor_mode': getattr(self, 'monitor_mode', False)  # Monitor mode only, no analysis
         }
     

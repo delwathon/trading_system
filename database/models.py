@@ -98,8 +98,8 @@ class SystemConfig(Base):
     auto_close_enabled = Column(Boolean, default=True)  # Enable auto-close feature
     auto_close_profit_at = Column(Float, default=75.0)  # 20% profit target
     auto_close_loss_at = Column(Float, default=100.0)  # 100% profit target
-    default_tp_level = Column(String(10), default='take_profit_1')  # Default take profit level to use
-    use_old_analysis = Column(Boolean, default=True)  # Use old analysis method
+    default_tp_level = Column(String(20), default='take_profit_1')  # Default take profit level to use
+    use_old_analysis = Column(Boolean, default=False)  # Use old analysis method
     monitor_mode = Column(Boolean, default=False)  # Monitor mode only, no analysis
     
     # Metadata
