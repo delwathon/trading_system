@@ -22,184 +22,6 @@ class ExchangeManager:
         self.secret_manager = SecretManager.from_config(config)
         self.exchange = self.setup_exchange()
         
-    # def setup_exchange(self):
-    #     """Setup Bybit exchange connection with Global API endpoint and decrypted API secrets"""
-    #     try:
-    #         exchange_config = {
-    #             'enableRateLimit': True,
-    #             'rateLimit': int(1000 / self.config.max_requests_per_second),  # Dynamic rate limiting
-    #             'timeout': self.config.api_timeout,
-    #             'sandbox': self.config.sandbox_mode,
-                
-    #             # UPDATED: Use Global Bybit API endpoints
-    #             'urls': {
-    #                 'api': {
-    #                     'public': 'https://api.bybitglobal.com',
-    #                     'private': 'https://api.bybitglobal.com',
-    #                 },
-    #                 'test': {
-    #                     'public': 'https://api-demo.bybit.com',
-    #                     'private': 'https://api-demo.bybit.com',
-    #                 }
-    #             },
-                
-    #             # Connection pool optimization
-    #             'options': {
-    #                 'defaultType': 'linear',  # Use linear (USDT) contracts by default
-    #                 'createMarketBuyOrderRequiresPrice': False,
-    #                 # Connection pool settings
-    #                 'maxRetries': 3,
-    #                 'retryDelay': 1000,
-    #                 # Session optimization
-    #                 'keepAlive': True,
-    #                 # ADDED: Force Global API usage
-    #                 'hostname': 'api.bybitglobal.com'
-    #             }
-    #         }
-            
-    #         # Test encryption/decryption first
-    #         if not self.secret_manager.test_encryption_decryption():
-    #             self.logger.error("❌ Encryption/decryption test failed")
-    #             return None
-            
-    #         # Determine which credentials to use
-    #         if self.config.sandbox_mode:
-    #             # Use demo credentials for sandbox mode
-    #             encrypted_api = self.config.demo_api_key
-    #             encrypted_secret = self.config.demo_api_secret
-    #             self.logger.debug("Using demo API credentials for sandbox mode")
-                
-    #             # For demo environment, use demo API URLs
-    #             exchange_config['urls']['api']['public'] = 'https://api-demo.bybit.com'
-    #             exchange_config['urls']['api']['private'] = 'https://api-demo.bybit.com'
-    #             exchange_config['options']['hostname'] = 'api-demo.bybit.com'
-    #         else:
-    #             # Use production credentials with Global API
-    #             encrypted_api = self.config.api_key
-    #             encrypted_secret = self.config.api_secret
-    #             self.logger.debug("Using production API credentials with Global API")
-            
-    #         # Validate credentials exist
-    #         if not encrypted_api or not encrypted_secret:
-    #             self.logger.error("❌ Missing API credentials")
-    #             self.logger.error(f"   API Key: {'Present' if encrypted_api else 'Missing'}")
-    #             self.logger.error(f"   API Secret: {'Present' if encrypted_secret else 'Missing'}")
-    #             return None
-            
-    #         self.logger.debug(f"API Key (first 10 chars): {encrypted_api[:10]}...")
-    #         self.logger.debug(f"Encrypted Secret (length): {len(encrypted_secret)}")
-            
-    #         # Decrypt the API secret
-    #         decrypted_api = self.secret_manager.decrypt_secret(encrypted_api)
-    #         decrypted_secret = self.secret_manager.decrypt_secret(encrypted_secret)
-            
-    #         if not decrypted_secret:
-    #             self.logger.error("❌ Failed to decrypt API secret")
-    #             self.logger.error("   This could be due to:")
-    #             self.logger.error("   - Wrong encryption password")
-    #             self.logger.error("   - Corrupted encrypted data")
-    #             self.logger.error("   - API secret not properly encrypted")
-    #             return None
-            
-    #         self.logger.debug(f"✅ API secret decrypted successfully (length: {len(decrypted_secret)})")
-            
-    #         # Add credentials to exchange config
-    #         exchange_config.update({
-    #             'apiKey': decrypted_api,
-    #             'secret': decrypted_secret
-    #         })
-            
-    #         # Initialize exchange with Global API
-    #         self.logger.debug("Initializing Bybit exchange with Global API endpoint...")
-    #         exchange = ccxt.bybit(exchange_config)
-
-    #         # Enable demo trading if in sandbox mode
-    #         if self.config.sandbox_mode:
-    #             exchange.set_sandbox_mode(True)
-    #             self.logger.info("✅ Bybit demo trading mode enabled (sandbox)")
-            
-    #         # Verify the URLs are set correctly
-    #         api_endpoint = exchange.urls['api']['public']
-    #         self.logger.info(f"🌍 Using API endpoint: {api_endpoint}")
-            
-    #         # Configure connection pool settings if available
-    #         try:
-    #             # Try to configure the underlying requests session if it exists
-    #             if hasattr(exchange, 'session') and exchange.session is not None:
-    #                 import requests.adapters
-                    
-    #                 # Create adapter with larger connection pool
-    #                 adapter = requests.adapters.HTTPAdapter(
-    #                     pool_connections=20,
-    #                     pool_maxsize=20,
-    #                     pool_block=False,
-    #                     max_retries=3
-    #                 )
-                    
-    #                 # Mount adapter for both HTTP and HTTPS
-    #                 exchange.session.mount('http://', adapter)
-    #                 exchange.session.mount('https://', adapter)
-                    
-    #                 self.logger.debug("✅ Enhanced connection pool adapter configured")
-    #             else:
-    #                 self.logger.debug("ℹ️ Exchange session not available for optimization")
-                    
-    #         except Exception as e:
-    #             self.logger.debug(f"Connection pool optimization not available: {e}")
-            
-    #         # Load markets with retry logic
-    #         max_retries = 3
-    #         for attempt in range(max_retries):
-    #             try:
-    #                 self.logger.debug(f"Loading markets from Global API (attempt {attempt + 1}/{max_retries})...")
-    #                 exchange.load_markets()
-    #                 break
-    #             except Exception as e:
-    #                 if attempt == max_retries - 1:
-    #                     raise
-    #                 self.logger.warning(f"Market loading attempt {attempt + 1} failed: {e}")
-    #                 time.sleep(2 ** attempt)  # Exponential backoff
-            
-    #         mode = "DEMO" if self.config.sandbox_mode else "PRODUCTION"
-    #         endpoint = "Demo API" if self.config.sandbox_mode else "Global API"
-    #         self.logger.info(f"✅ Connected to Bybit {mode} via {endpoint}")
-    #         self.logger.info(f"🌍 API Endpoint: {exchange.urls['api']['public']}")
-    #         self.logger.debug(f"   Rate limit: {exchange_config['rateLimit']}ms")
-    #         self.logger.debug(f"   Timeout: {self.config.api_timeout}ms")
-            
-    #         return exchange
-            
-    #     except ccxt.AuthenticationError as e:
-    #         self.logger.error(f"❌ Authentication error with Global API: {e}")
-    #         self.logger.error("   Possible causes:")
-    #         self.logger.error("   - Invalid API key")
-    #         self.logger.error("   - Invalid API secret")
-    #         self.logger.error("   - API credentials not enabled for trading")
-    #         self.logger.error("   - Wrong sandbox mode setting")
-    #         self.logger.error("   - API key not compatible with Global endpoint")
-    #         return None
-    #     except ccxt.PermissionDenied as e:
-    #         self.logger.error(f"❌ Permission denied on Global API: {e}")
-    #         self.logger.error("   Check your API key permissions on Bybit")
-    #         self.logger.error("   Ensure your API key is enabled for the Global endpoint")
-    #         return None
-    #     except ccxt.NetworkError as e:
-    #         self.logger.error(f"❌ Network error connecting to {'Demo API' if self.config.sandbox_mode else 'Global API'}: {e}")
-    #         self.logger.error("   Check your internet connection")
-    #         if self.config.sandbox_mode:
-    #             self.logger.error("   Verify api-demo.bybit.com is accessible from your location")
-    #         else:
-    #             self.logger.error("   Verify api.bybitglobal.com is accessible from your location")
-    #         return None
-    #     except Exception as e:
-    #         self.logger.error(f"❌ Exchange setup failed: {e}")
-            
-    #         # Log additional debug info
-    #         if hasattr(e, 'response'):
-    #             self.logger.error(f"API Response: {e.response}")
-            
-    #         return None
-    
     def setup_exchange(self):
         """Setup Bybit exchange connection with decrypted API secrets and optimized connection pool"""
         try:
@@ -346,7 +168,6 @@ class ExchangeManager:
             
             return None
     
-
     def test_connection(self) -> bool:
         """Test exchange connection with Global API and API credentials"""
         try:
@@ -364,7 +185,7 @@ class ExchangeManager:
             balance = self.exchange.fetch_balance()
             
             self.logger.info("✅ Global API connection test successful")
-            self.logger.info(f"🌍 Connected via: {api_endpoint}")
+            # self.logger.info(f"🌍 Connected via: {api_endpoint}")
             self.logger.debug(f"   Account currencies: {list(balance.keys())[:5]}...")
             
             return True

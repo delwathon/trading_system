@@ -97,7 +97,7 @@ def display_auto_trading_config(config: EnhancedSystemConfig):
     logger = get_logger()
     
     logger.info("🤖 AUTO-TRADING CONFIGURATION:")
-    logger.info("=" * 50)
+    logger.info("=" * 80)
     
     # Trading parameters
     logger.info("📊 Trading Parameters:")
@@ -108,7 +108,10 @@ def display_auto_trading_config(config: EnhancedSystemConfig):
     logger.info("   Auto-Execute Trades: " + ("Enabled" if config.auto_execute_trades else "Disabled"))
     logger.info("   Auto-Close Trades: " + ("Enabled" if config.auto_close_enabled else "Disabled"))
     if config.auto_close_enabled:
-        logger.info(f"   Auto-Close Profit Target: {config.auto_close_profit_at}%")
+        if config.auto_close_profit_at == 1000:
+            logger.info(f"   Auto-Close Profit Target: TP1")
+        else:
+            logger.info(f"   Auto-Close Profit Target: {config.auto_close_profit_at}%")
         logger.info(f"   Auto-Close Loss Target: {config.auto_close_loss_at}%")
     
     # Scheduling parameters
@@ -146,7 +149,7 @@ def display_auto_trading_config(config: EnhancedSystemConfig):
     logger.info(f"   Bot Token: {'Configured' if config.telegram_bot_token else 'Missing'}")
     logger.info(f"   User ID: {config.telegram_id}")
     
-    logger.info("=" * 50)
+    logger.info("=" * 80)
 
 
 def create_default_config_with_autotrading():
@@ -192,75 +195,75 @@ def create_default_config_with_autotrading():
     with open(config_path, 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
     
-    print(f"📄 Created auto-trading configuration file: {config_path}")
-    print("⚠️  Please update the MySQL password!")
-    print("🔑 API credentials will be configured via Telegram bootstrap mode")
+    logger.info(f"📄 Created auto-trading configuration file: {config_path}")
+    logger.info("⚠️  Please update the MySQL password!")
+    logger.info("🔑 API credentials will be configured via Telegram bootstrap mode")
     return config_path
 
 
 def setup_database_with_autotrading(db_config: DatabaseConfig) -> bool:
     """Setup database with auto-trading tables"""
     try:
-        # print("🔗 Testing MySQL database connection...")
+        # logger.info("🔗 Testing MySQL database connection...")
         
         # Test connection
         db_manager = DatabaseManager(db_config.get_database_url())
         if not db_manager.test_connection():
-            print("❌ Database connection failed!")
-            print(f"   Please ensure MySQL is running at {db_config.host}:{db_config.port}")
-            print(f"   Database: {db_config.database}")
-            print(f"   Username: {db_config.username}")
-            print(f"   Password: {'Set' if db_config.password else 'NOT SET'}")
+            logger.info("❌ Database connection failed!")
+            logger.info(f"   Please ensure MySQL is running at {db_config.host}:{db_config.port}")
+            logger.info(f"   Database: {db_config.database}")
+            logger.info(f"   Username: {db_config.username}")
+            logger.info(f"   Password: {'Set' if db_config.password else 'NOT SET'}")
             return False
         
         # Create tables (including new auto-trading tables)
-        # print("📊 Creating database tables (including auto-trading tables)...")
+        # logger.info("📊 Creating database tables (including auto-trading tables)...")
         db_manager.create_tables()
         
-        # print("✅ MySQL database setup complete with auto-trading support!")
+        # logger.info("✅ MySQL database setup complete with auto-trading support!")
         return True
         
     except Exception as e:
-        print(f"❌ Database setup failed: {e}")
+        logger.info(f"❌ Database setup failed: {e}")
         return False
 
 
 async def handle_bootstrap_mode(config: EnhancedSystemConfig) -> bool:
     """Handle Telegram bootstrap mode for API key configuration"""
     try:
-        print("🔄 BOOTSTRAP MODE REQUIRED")
-        print("=" * 50)
-        print("⚠️  API credentials are missing and need to be configured")
-        print("📱 Telegram bootstrap mode will guide you through the setup")
-        print("")
-        print("📋 What will happen:")
-        print("   1. Telegram bot will send you configuration instructions")
-        print("   2. You'll enter your API keys securely via Telegram")
-        print("   3. All keys will be encrypted before storage")
-        print("   4. System will automatically start trading once configured")
-        print("")
-        print("🚀 Starting Telegram bootstrap mode...")
-        print("📱 Check your Telegram for setup instructions!")
-        print("")
+        logger.info("🔄 BOOTSTRAP MODE REQUIRED")
+        logger.info("=" * 50)
+        logger.info("⚠️  API credentials are missing and need to be configured")
+        logger.info("📱 Telegram bootstrap mode will guide you through the setup")
+        logger.info("")
+        logger.info("📋 What will happen:")
+        logger.info("   1. Telegram bot will send you configuration instructions")
+        logger.info("   2. You'll enter your API keys securely via Telegram")
+        logger.info("   3. All keys will be encrypted before storage")
+        logger.info("   4. System will automatically start trading once configured")
+        logger.info("")
+        logger.info("🚀 Starting Telegram bootstrap mode...")
+        logger.info("📱 Check your Telegram for setup instructions!")
+        logger.info("")
         
         # Run bootstrap mode
         bootstrap_success = await run_bootstrap_mode(config)
         
         if bootstrap_success:
-            print("✅ Bootstrap mode completed successfully!")
-            print("🔑 API credentials have been encrypted and saved")
-            print("🚀 System is now ready for auto-trading")
+            logger.info("✅ Bootstrap mode completed successfully!")
+            logger.info("🔑 API credentials have been encrypted and saved")
+            logger.info("🚀 System is now ready for auto-trading")
             return True
         else:
-            print("❌ Bootstrap mode failed")
-            print("   Please check Telegram bot configuration and try again")
+            logger.info("❌ Bootstrap mode failed")
+            logger.info("   Please check Telegram bot configuration and try again")
             return False
             
     except KeyboardInterrupt:
-        print("\n🛑 Bootstrap mode interrupted by user")
+        logger.info("\n🛑 Bootstrap mode interrupted by user")
         return False
     except Exception as e:
-        print(f"❌ Bootstrap mode error: {e}")
+        logger.info(f"❌ Bootstrap mode error: {e}")
         return False
 
 
@@ -297,49 +300,49 @@ def load_configuration(config_path: str = 'enhanced_config.yaml'):
 def main():
     """Main execution function for auto-trading system with Telegram bootstrap"""
     try:
-        print("🤖 ENHANCED BYBIT AUTO-TRADING SYSTEM")
-        print("🚀 Automated Trading with Multi-Timeframe Analysis & Telegram Bootstrap")
-        print("=" * 80)
-        print("   ✅ Scheduled scanning (configurable intervals)")
-        print("   ✅ Automated position management")  
-        print("   ✅ Leverage-aware position sizing")
-        print("   ✅ Profit-based auto-closing")
-        print("   ✅ Multi-timeframe confirmation")
-        print("   ✅ MySQL database storage")
-        print("   ✅ Risk management controls")
-        print("   ✅ Telegram bootstrap mode for API setup")
-        print("")
+        logger.info("🤖 ENHANCED BYBIT AUTO-TRADING SYSTEM")
+        logger.info("🚀 Automated Trading with Multi-Timeframe Analysis & Telegram Bootstrap")
+        logger.info("=" * 80)
+        logger.info("   ✅ Scheduled scanning (configurable intervals)")
+        logger.info("   ✅ Automated position management")  
+        logger.info("   ✅ Leverage-aware position sizing")
+        logger.info("   ✅ Profit-based auto-closing")
+        logger.info("   ✅ Multi-timeframe confirmation")
+        logger.info("   ✅ MySQL database storage")
+        logger.info("   ✅ Risk management controls")
+        logger.info("   ✅ Telegram bootstrap mode for API setup")
+        logger.info("")
         
         # Create or load configuration
         config_path = 'enhanced_config.yaml'
         if not os.path.exists(config_path):
-            print("📄 Creating default configuration...")
+            logger.info("📄 Creating default configuration...")
             create_default_config_with_autotrading()
-            print("⚠️  Please update the MySQL password and run again!")
+            logger.info("⚠️  Please update the MySQL password and run again!")
             return
         
         # Load configuration from YAML and database
         db_config, config = load_configuration(config_path)
         
         if not db_config or not config:
-            print("❌ Failed to load configuration")
-            print(f"   Please ensure {config_path} exists and has valid database settings")
+            logger.info("❌ Failed to load configuration")
+            logger.info(f"   Please ensure {config_path} exists and has valid database settings")
             return
         
-        # print(f"⚙️  Database Configuration:")
-        # print(f"   Host: {db_config.host}:{db_config.port}")
-        # print(f"   Database: {db_config.database}")
-        # print(f"   Username: {db_config.username}")
-        # print("")
+        # logger.info(f"⚙️  Database Configuration:")
+        # logger.info(f"   Host: {db_config.host}:{db_config.port}")
+        # logger.info(f"   Database: {db_config.database}")
+        # logger.info(f"   Username: {db_config.username}")
+        # logger.info("")
         
         # Setup database with auto-trading support
         if not setup_database_with_autotrading(db_config):
-            print("❌ Cannot proceed without database connection")
+            logger.info("❌ Cannot proceed without database connection")
             return
         
         # Check if bootstrap mode is needed
         if check_bootstrap_needed(config):
-            print("🔑 API credentials missing - entering bootstrap mode")
+            logger.info("🔑 API credentials missing - entering bootstrap mode")
             
             # Run bootstrap mode
             loop = asyncio.new_event_loop()
@@ -349,11 +352,11 @@ def main():
                 bootstrap_success = loop.run_until_complete(handle_bootstrap_mode(config))
                 
                 if not bootstrap_success:
-                    print("❌ Bootstrap mode failed - cannot start auto-trading")
+                    logger.info("❌ Bootstrap mode failed - cannot start auto-trading")
                     return
                 
                 # Reload configuration after bootstrap
-                print("🔄 Reloading configuration after bootstrap...")
+                logger.info("🔄 Reloading configuration after bootstrap...")
                 db_config, config = load_configuration(config_path)
                 
             finally:
@@ -364,39 +367,41 @@ def main():
         
         # Validate auto-trading configuration (skip API check since bootstrap completed)
         if not validate_auto_trading_config(config, skip_api_check=False):
-            print("❌ Auto-trading configuration validation failed!")
-            print("   Please fix the configuration issues and try again.")
+            logger.info("❌ Auto-trading configuration validation failed!")
+            logger.info("   Please fix the configuration issues and try again.")
             return
         
-        # print("✅ Auto-trading configuration validated successfully!")
-        print("")
+        # logger.info("✅ Auto-trading configuration validated successfully!")
+        logger.info("")
         
         # Initialize and start auto-trader
-        print("🚀 Initializing Auto-Trading System...")
+        logger.info("🚀 Initializing Auto-Trading System...")
         auto_trader = AutoTrader(config)
         
         # Test exchange connection
         if not auto_trader.trading_system.exchange_manager.test_connection():
-            print("❌ Failed to connect to Bybit exchange")
-            print("   Please check your API credentials and network connection")
+            logger.info("❌ Failed to connect to Bybit exchange")
+            logger.info("   Please check your API credentials and network connection")
             return
         
-        # print("✅ Exchange connection successful!")
-        print("")
+        # logger.info("✅ Exchange connection successful!")
+        logger.info("")
         
         # Start auto-trading
-        print("🤖 Starting Automated Trading Session...")
-        print("   📱 You'll receive Telegram notifications for all trades")
-        print("   Press Ctrl+C to stop the auto-trader")
-        print("=" * 50)
+        logger.info("🤖 Starting Automated Trading Session...")
+        logger.info("   📱 You'll receive Telegram notifications for all trades")
+        logger.info("   Press Ctrl+C to stop the auto-trader")
+        logger.info("")
+        logger.info("=" * 80)
+        logger.info("")
         
         # Run main trading loop
         auto_trader.main_trading_loop()
         
     except KeyboardInterrupt:
-        print("\n🛑 Auto-trader stopped by user")
+        logger.info("\n🛑 Auto-trader stopped by user")
     except Exception as e:
-        print(f"\n❌ Auto-trader failed: {e}")
+        logger.info(f"\n❌ Auto-trader failed: {e}")
         import traceback
         traceback.print_exc()
 
@@ -404,29 +409,29 @@ def main():
 def run_single_scan():
     """Run a single scan without starting the auto-trading loop (for testing)"""
     try:
-        print("🔍 SINGLE SCAN MODE - Testing Auto-Trading System")
-        print("=" * 50)
+        logger.info("🔍 SINGLE SCAN MODE - Testing Auto-Trading System")
+        logger.info("=" * 50)
         
         # Load configuration
         config_path = 'enhanced_config.yaml'
         if not os.path.exists(config_path):
-            print("❌ Configuration file not found. Run main() first.")
+            logger.info("❌ Configuration file not found. Run main() first.")
             return
         
         db_config, config = load_configuration(config_path)
         if not db_config or not config:
-            print("❌ Failed to load configuration")
+            logger.info("❌ Failed to load configuration")
             return
         
         # Check for bootstrap requirement
         if check_bootstrap_needed(config):
-            print("❌ Bootstrap mode required - API credentials missing")
-            print("   Run main() first to configure API keys via Telegram")
+            logger.info("❌ Bootstrap mode required - API credentials missing")
+            logger.info("   Run main() first to configure API keys via Telegram")
             return
         
         # Validate configuration
         if not validate_auto_trading_config(config):
-            print("❌ Configuration validation failed!")
+            logger.info("❌ Configuration validation failed!")
             return
         
         # Initialize auto-trader
@@ -434,10 +439,10 @@ def run_single_scan():
         
         # Test connection
         if not auto_trader.trading_system.exchange_manager.test_connection():
-            print("❌ Exchange connection failed!")
+            logger.info("❌ Exchange connection failed!")
             return
         
-        print("✅ Running single scan and execution test...")
+        logger.info("✅ Running single scan and execution test...")
         
         # FIXED: Run single scan with proper results display
         loop = asyncio.new_event_loop()
@@ -445,47 +450,47 @@ def run_single_scan():
         
         try:
             # Run the complete analysis (same as the auto-trader uses)
-            print("📊 Running complete multi-timeframe analysis...")
+            logger.info("📊 Running complete multi-timeframe analysis...")
             results = auto_trader.trading_system.run_complete_analysis_parallel_mtf()
             
             if results:
                 # Display the comprehensive results table
-                print("\n" + "=" * 110)
+                logger.info("\n" + "=" * 110)
                 auto_trader.trading_system.print_comprehensive_results_with_mtf(results)
-                print("=" * 110)
+                logger.info("=" * 110)
                 
                 # Show execution simulation
                 if results.get('top_opportunities'):
                     signals_count = len(results.get('signals', []))
                     opportunities_count = len(results['top_opportunities'])
                     
-                    print(f"\n📊 SCAN SIMULATION RESULTS:")
-                    print(f"   Total Signals Generated: {signals_count}")
-                    print(f"   Top Opportunities: {opportunities_count}")
-                    print(f"   Would Execute: {min(config.max_execution_per_trade, opportunities_count)} trades")
-                    print(f"   Available Position Slots: {config.max_concurrent_positions}")
-                    print(f"   Risk per Trade: {config.risk_amount}% of account balance")
+                    logger.info(f"\n📊 SCAN SIMULATION RESULTS:")
+                    logger.info(f"   Total Signals Generated: {signals_count}")
+                    logger.info(f"   Top Opportunities: {opportunities_count}")
+                    logger.info(f"   Would Execute: {min(config.max_execution_per_trade, opportunities_count)} trades")
+                    logger.info(f"   Available Position Slots: {config.max_concurrent_positions}")
+                    logger.info(f"   Risk per Trade: {config.risk_amount}% of account balance")
                     
                     # Show top opportunities that would be executed
                     execution_count = min(config.max_execution_per_trade, opportunities_count)
                     if execution_count > 0:
-                        print(f"\n🎯 TRADES THAT WOULD BE EXECUTED:")
+                        logger.info(f"\n🎯 TRADES THAT WOULD BE EXECUTED:")
                         for i, opp in enumerate(results['top_opportunities'][:execution_count]):
-                            print(f"   {i+1}. {opp['symbol']} {opp['side'].upper()} - {opp['confidence']:.1f}% confidence - MTF: {opp.get('mtf_status', 'N/A')}")
+                            logger.info(f"   {i+1}. {opp['symbol']} {opp['side'].upper()} - {opp['confidence']:.1f}% confidence - MTF: {opp.get('mtf_status', 'N/A')}")
                 else:
-                    print(f"\n📊 SCAN RESULTS:")
-                    print(f"   No trading opportunities found in this scan")
+                    logger.info(f"\n📊 SCAN RESULTS:")
+                    logger.info(f"   No trading opportunities found in this scan")
                 
             else:
-                print("❌ No analysis results generated")
+                logger.info("❌ No analysis results generated")
             
         finally:
             loop.close()
         
-        print("✅ Single scan test completed successfully!")
+        logger.info("✅ Single scan test completed successfully!")
         
     except Exception as e:
-        print(f"❌ Single scan failed: {e}")
+        logger.info(f"❌ Single scan failed: {e}")
         import traceback
         traceback.print_exc()
 
@@ -493,36 +498,36 @@ def run_single_scan():
 async def test_bootstrap():
     """Test bootstrap mode functionality"""
     try:
-        print("🧪 BOOTSTRAP MODE TEST")
-        print("=" * 30)
+        logger.info("🧪 BOOTSTRAP MODE TEST")
+        logger.info("=" * 30)
         
         # Load configuration
         config_path = 'enhanced_config.yaml'
         if not os.path.exists(config_path):
-            print("❌ Configuration file not found")
+            logger.info("❌ Configuration file not found")
             return
         
         db_config, config = load_configuration(config_path)
         if not db_config or not config:
-            print("❌ Failed to load configuration")
+            logger.info("❌ Failed to load configuration")
             return
         
         # Test bootstrap functionality
         bootstrap_manager = TelegramBootstrapManager(config)
         
-        print(f"Bootstrap needed: {bootstrap_manager.should_enter_bootstrap_mode()}")
+        logger.info(f"Bootstrap needed: {bootstrap_manager.should_enter_bootstrap_mode()}")
         
         cred_status = bootstrap_manager.check_api_credentials()
-        print(f"Credentials status: {cred_status}")
+        logger.info(f"Credentials status: {cred_status}")
         
         if bootstrap_manager.should_enter_bootstrap_mode():
-            print("🔄 Would enter bootstrap mode...")
-            print("📱 Check Telegram for configuration instructions")
+            logger.info("🔄 Would enter bootstrap mode...")
+            logger.info("📱 Check Telegram for configuration instructions")
         else:
-            print("✅ All credentials configured - no bootstrap needed")
+            logger.info("✅ All credentials configured - no bootstrap needed")
         
     except Exception as e:
-        print(f"❌ Bootstrap test failed: {e}")
+        logger.info(f"❌ Bootstrap test failed: {e}")
 
 
 if __name__ == "__main__":
@@ -543,9 +548,9 @@ if __name__ == "__main__":
                 if config:
                     display_auto_trading_config(config)
                 else:
-                    print("❌ Failed to load configuration")
+                    logger.info("❌ Failed to load configuration")
             except Exception as e:
-                print(f"❌ Error showing configuration: {e}")
+                logger.info(f"❌ Error showing configuration: {e}")
     else:
         # Run full auto-trading system
         main()

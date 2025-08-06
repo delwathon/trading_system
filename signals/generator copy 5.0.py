@@ -1,20 +1,15 @@
 """
 ENHANCED Multi-Timeframe Signal Generation for Bybit Trading System
-VERSION 6.0 - PRODUCTION READY with Fixed Long & Short Signal Logic
+VERSION 5.0 - PRODUCTION READY with Wide Stop Losses for Crypto Volatility
 
 KEY IMPROVEMENTS:
-1. ✅ Fixed short signals in oversold conditions (RSI must be > 50)
-2. ✅ Fixed long signals in overbought conditions (RSI must be < 50)
-3. ✅ Support/Resistance detection to avoid bad entries
-4. ✅ Divergence detection (bullish/bearish)
-5. ✅ Stricter entry conditions for better win rate
-6. ✅ Balanced stop losses (5% - 10% for crypto markets)
-7. ✅ Market-based TP1 (uses support/resistance levels)
-8. ✅ Risk-based TP2 (3.5x multiplier)
-9. ✅ Momentum-aware entry calculation for trending markets
-10. ✅ Entry timing validation to avoid bad entries
-11. ✅ Quality filters (momentum strength, volume divergence, choppiness)
-12. ✅ Fast-moving signal detection for quicker profits
+1. ✅ Wide stop losses (7.5% - 12.5% for volatile crypto markets)
+2. ✅ Momentum-aware entry calculation for trending markets
+3. ✅ Entry timing validation to avoid bad entries
+4. ✅ Quality filters (momentum strength, volume divergence, choppiness)
+5. ✅ Fast-moving signal detection for quicker profits
+6. ✅ Enhanced R/R ratios with 3x and 5x targets
+7. ✅ Better risk management for volatile crypto markets
 """
 
 import pandas as pd
@@ -30,42 +25,31 @@ from config.config import EnhancedSystemConfig
 
 @dataclass
 class SignalConfig:
-    """Enhanced configuration for signal generation with balanced parameters for crypto"""
+    """Enhanced configuration for signal generation with wider parameters for crypto volatility"""
     
-    # Stop loss parameters - BALANCED FOR CRYPTO
-    min_stop_distance_pct: float = 0.05  # Minimum 5% stop distance
-    max_stop_distance_pct: float = 0.10  # Maximum 10% stop distance
-    structure_stop_buffer: float = 0.003  # 0.3% buffer below support/above resistance
+    # Stop loss parameters - MUCH WIDER FOR CRYPTO VOLATILITY
+    min_stop_distance_pct: float = 0.075  # Minimum 7.5% stop distance
+    max_stop_distance_pct: float = 0.125  # Maximum 12.5% stop distance
+    structure_stop_buffer: float = 0.005  # 0.5% buffer below support/above resistance
     
-    # Entry parameters - MORE FLEXIBLE
-    entry_buffer_from_structure: float = 0.002  # 0.2% buffer from key levels
-    entry_limit_distance: float = 0.02    # Max 2% from current price for limit orders
-    momentum_entry_adjustment: float = 0.003  # 0.3% adjustment for trending markets
+    # Entry parameters - MOMENTUM AWARE
+    entry_buffer_from_structure: float = 0.003  # 0.3% buffer from key levels
+    entry_limit_distance: float = 0.015    # Max 1.5% from current price for limit orders
+    momentum_entry_adjustment: float = 0.005  # 0.5% adjustment for trending markets
     
-    # Take profit parameters - REALISTIC TARGETS
-    min_tp_distance_pct: float = 0.015  # Minimum 1.5% profit target
-    max_tp_distance_pct: float = 0.20   # Maximum 20% profit target
-    tp1_multiplier: float = 2.0         # TP1 at 2x risk (NOT USED - market based instead)
-    tp2_multiplier: float = 3.5         # TP2 at 3.5x risk (KEPT AS IS)
-    use_market_based_tp1: bool = True   # Use market structure for TP1 instead of multiplier
+    # Take profit parameters - WIDER TARGETS FOR BIGGER WINS
+    min_tp_distance_pct: float = 0.02     # Minimum 2% profit target
+    max_tp_distance_pct: float = 0.3      # Maximum 30% profit target
+    tp1_multiplier: float = 3.0           # TP1 at 3x risk
+    tp2_multiplier: float = 5.0           # TP2 at 5x risk
     
     # Risk/Reward parameters
-    min_risk_reward: float = 1.8          # Minimum acceptable R/R (slightly below 2 for flexibility)
+    min_risk_reward: float = 2.0          # Minimum acceptable R/R
     max_risk_reward: float = 10.0         # Maximum R/R (cap unrealistic values)
     
-    # Signal quality thresholds - STRICTER FOR BETTER WIN RATE
-    min_confidence_for_signal: float = 55.0  # Higher minimum confidence
+    # Signal quality thresholds
+    min_confidence_for_signal: float = 50.0  # Higher minimum confidence
     mtf_confidence_boost: float = 10.0       # Reduced MTF boost for realism
-    
-    # RSI thresholds - FIXED TO AVOID BAD ENTRIES
-    min_rsi_for_short: float = 50.0  # Don't short below this RSI (avoid oversold)
-    max_rsi_for_short: float = 75.0  # Don't short above this (too overbought)
-    min_rsi_for_long: float = 25.0   # Don't long below this (too oversold)
-    max_rsi_for_long: float = 50.0   # Don't long above this RSI (avoid overbought)
-    
-    # Stochastic thresholds - STRICTER
-    min_stoch_for_short: float = 50.0  # Don't short when stoch is oversold
-    max_stoch_for_long: float = 50.0   # Don't long when stoch is overbought
     
     # Volatility adjustments
     high_volatility_threshold: float = 0.08  # 8% ATR
@@ -81,11 +65,6 @@ class SignalConfig:
     max_choppiness_score: float = 0.6  # Maximum choppiness to accept signal
     volume_surge_multiplier: float = 2.0  # Volume multiplier for surge detection
     fast_signal_bonus_confidence: float = 10.0  # Confidence bonus for fast setups
-    
-    # Support/Resistance parameters
-    support_resistance_lookback: int = 20  # Candles to look back for S/R
-    min_distance_from_support: float = 0.02  # Don't short within 2% of support
-    min_distance_from_resistance: float = 0.02  # Don't long within 2% of resistance
 
 @dataclass
 class MultiTimeframeContext:
@@ -138,17 +117,17 @@ class SignalValidator:
     
     def validate_take_profits(self, entry_price: float, stop_loss: float, 
                             tp1: float, tp2: float, side: str) -> Tuple[float, float]:
-        """Validate and adjust take profits - TP1 market-based, TP2 risk-based"""
+        """Validate and adjust take profits based on risk"""
         if side == 'buy':
             risk = entry_price - stop_loss
-            
-            # For TP1: Just ensure minimum profit distance (market-based)
-            min_tp1_by_pct = entry_price * (1 + self.config.min_tp_distance_pct)
-            validated_tp1 = max(tp1, min_tp1_by_pct)
-            
-            # For TP2: Keep multiplier-based validation
+            min_tp1 = entry_price + (risk * self.config.tp1_multiplier)
             min_tp2 = entry_price + (risk * self.config.tp2_multiplier)
+            
+            # Ensure minimum profit distances
+            min_tp1_by_pct = entry_price * (1 + self.config.min_tp_distance_pct)
             min_tp2_by_pct = entry_price * (1 + self.config.min_tp_distance_pct * 2)
+            
+            validated_tp1 = max(tp1, min_tp1, min_tp1_by_pct)
             validated_tp2 = max(tp2, min_tp2, min_tp2_by_pct, validated_tp1 * 1.01)
             
             # Cap at maximum distance
@@ -158,14 +137,14 @@ class SignalValidator:
             
         else:  # sell
             risk = stop_loss - entry_price
-            
-            # For TP1: Just ensure minimum profit distance (market-based)
-            min_tp1_by_pct = entry_price * (1 - self.config.min_tp_distance_pct)
-            validated_tp1 = min(tp1, min_tp1_by_pct)
-            
-            # For TP2: Keep multiplier-based validation
+            min_tp1 = entry_price - (risk * self.config.tp1_multiplier)
             min_tp2 = entry_price - (risk * self.config.tp2_multiplier)
+            
+            # Ensure minimum profit distances
+            min_tp1_by_pct = entry_price * (1 - self.config.min_tp_distance_pct)
             min_tp2_by_pct = entry_price * (1 - self.config.min_tp_distance_pct * 2)
+            
+            validated_tp1 = min(tp1, min_tp1, min_tp1_by_pct)
             validated_tp2 = min(tp2, min_tp2, min_tp2_by_pct, validated_tp1 * 0.99)
             
             # Cap at maximum distance
@@ -287,112 +266,6 @@ def check_volume_momentum_divergence(df: pd.DataFrame, window: int = 10) -> dict
     except Exception:
         return {'divergence': False, 'type': 'none', 'strength': 0}
 
-def detect_divergence(df: pd.DataFrame, side: str, window: int = 10) -> dict:
-    """Detect bullish or bearish divergence based on price and RSI"""
-    try:
-        if len(df) < window * 2:
-            return {'has_divergence': False, 'type': 'none', 'strength': 0}
-        
-        recent = df.tail(window)
-        older = df.tail(window * 2).head(window)
-        
-        # Price trends
-        recent_low = recent['low'].min()
-        older_low = older['low'].min()
-        recent_high = recent['high'].max()
-        older_high = older['high'].max()
-        
-        # RSI trends
-        recent_rsi_low = recent['rsi'].min()
-        older_rsi_low = older['rsi'].min()
-        recent_rsi_high = recent['rsi'].max()
-        older_rsi_high = older['rsi'].max()
-        
-        # Bullish divergence: price making lower lows, RSI making higher lows
-        if recent_low < older_low and recent_rsi_low > older_rsi_low:
-            strength = abs((recent_rsi_low - older_rsi_low) / older_rsi_low)
-            return {
-                'has_divergence': True,
-                'type': 'bullish_divergence',
-                'strength': min(1.0, strength),
-                'favorable_for': 'buy',
-                'description': 'Price making lower lows, RSI making higher lows'
-            }
-        
-        # Bearish divergence: price making higher highs, RSI making lower highs
-        if recent_high > older_high and recent_rsi_high < older_rsi_high:
-            strength = abs((older_rsi_high - recent_rsi_high) / older_rsi_high)
-            return {
-                'has_divergence': True,
-                'type': 'bearish_divergence',
-                'strength': min(1.0, strength),
-                'favorable_for': 'sell',
-                'description': 'Price making higher highs, RSI making lower highs'
-            }
-        
-        return {'has_divergence': False, 'type': 'none', 'strength': 0}
-        
-    except Exception:
-        return {'has_divergence': False, 'type': 'none', 'strength': 0}
-
-def check_near_support_resistance(df: pd.DataFrame, current_price: float, side: str, window: int = 20) -> dict:
-    """Check if price is near recent support or resistance levels"""
-    try:
-        if len(df) < window:
-            return {'near_level': False, 'level_type': 'none', 'distance_pct': 1.0}
-        
-        recent = df.tail(window)
-        
-        # Find recent support and resistance
-        recent_high = recent['high'].max()
-        recent_low = recent['low'].min()
-        
-        # Calculate distances
-        distance_from_resistance = (recent_high - current_price) / current_price
-        distance_from_support = (current_price - recent_low) / recent_low
-        
-        if side == 'buy':
-            # For long positions, check if we're near support (good) or resistance (bad)
-            if distance_from_support < 0.02:  # Within 2% of support
-                return {
-                    'near_level': True,
-                    'level_type': 'support',
-                    'distance_pct': distance_from_support,
-                    'favorable': True,
-                    'level_price': recent_low
-                }
-            elif distance_from_resistance < 0.02:  # Within 2% of resistance
-                return {
-                    'near_level': True,
-                    'level_type': 'resistance',
-                    'distance_pct': distance_from_resistance,
-                    'favorable': False,
-                    'level_price': recent_high
-                }
-        else:  # sell
-            # For short positions, check if we're near resistance (good) or support (bad)
-            if distance_from_resistance < 0.02:  # Within 2% of resistance
-                return {
-                    'near_level': True,
-                    'level_type': 'resistance',
-                    'distance_pct': distance_from_resistance,
-                    'favorable': True,
-                    'level_price': recent_high
-                }
-            elif distance_from_support < 0.02:  # Within 2% of support
-                return {
-                    'near_level': True,
-                    'level_type': 'support',
-                    'distance_pct': distance_from_support,
-                    'favorable': False,
-                    'level_price': recent_low
-                }
-        
-        return {'near_level': False, 'level_type': 'none', 'distance_pct': 1.0}
-        
-    except Exception:
-        return {'near_level': False, 'level_type': 'none', 'distance_pct': 1.0}
-
 def identify_fast_moving_setup(df: pd.DataFrame, side: str) -> dict:
     """Identify setups likely to move fast in the signal direction"""
     try:
@@ -448,11 +321,11 @@ def identify_fast_moving_setup(df: pd.DataFrame, side: str) -> dict:
         macd_signal = latest.get('macd_signal', 0)
         
         if side == 'buy':
-            if 35 < rsi < 50 and macd > macd_signal:  # Not overbought, momentum building
+            if 40 < rsi < 60 and macd > macd_signal:  # Not overbought, momentum building
                 score += 1
                 factors.append('momentum_building')
         else:
-            if 50 < rsi < 65 and macd < macd_signal:  # Not oversold, momentum building
+            if 40 < rsi < 60 and macd < macd_signal:  # Not oversold, momentum building
                 score += 1
                 factors.append('momentum_building')
         
@@ -566,7 +439,7 @@ def calculate_momentum_adjusted_entry(current_price: float, df: pd.DataFrame,
 
 def calculate_dynamic_stop_loss(entry_price: float, current_price: float, 
                               df: pd.DataFrame, side: str, config: SignalConfig) -> float:
-    """Calculate stop loss with proper distance based on volatility (5% - 10%)"""
+    """Calculate stop loss with proper distance based on volatility (7.5% - 12.5%)"""
     try:
         # Get ATR for volatility-based stop
         if 'atr' in df.columns and len(df) >= 14:
@@ -587,16 +460,16 @@ def calculate_dynamic_stop_loss(entry_price: float, current_price: float,
         # Determine stop distance based on market conditions
         if max_volatility > config.high_volatility_threshold:
             # Extreme volatility: Use maximum stop distance
-            stop_distance_pct = min(config.max_stop_distance_pct, max(atr_pct * 3.5, config.min_stop_distance_pct * 1.5))
+            stop_distance_pct = min(config.max_stop_distance_pct, max(atr_pct * 4.0, config.min_stop_distance_pct * 1.5))
         elif avg_volatility > 0.03:
             # High volatility: Use wide stops
-            stop_distance_pct = min(config.max_stop_distance_pct * 0.9, max(atr_pct * 3.0, config.min_stop_distance_pct * 1.3))
+            stop_distance_pct = min(config.max_stop_distance_pct * 0.9, max(atr_pct * 3.5, config.min_stop_distance_pct * 1.3))
         elif avg_volatility > 0.015:
             # Medium volatility: Standard wide stops
-            stop_distance_pct = min(config.max_stop_distance_pct * 0.8, max(atr_pct * 2.5, config.min_stop_distance_pct * 1.1))
+            stop_distance_pct = min(config.max_stop_distance_pct * 0.8, max(atr_pct * 3.0, config.min_stop_distance_pct * 1.1))
         else:
-            # Low volatility: Can use "tighter" stops (still 5% minimum)
-            stop_distance_pct = max(atr_pct * 2.0, config.min_stop_distance_pct)
+            # Low volatility: Can use "tighter" stops (still 7.5% minimum)
+            stop_distance_pct = max(atr_pct * 2.5, config.min_stop_distance_pct)
         
         # Apply stop loss
         if side == 'buy':
@@ -615,15 +488,14 @@ def calculate_dynamic_stop_loss(entry_price: float, current_price: float,
 
 class SignalGenerator:
     """
-    ENHANCED Multi-Timeframe Signal Generator v6.0
+    ENHANCED Multi-Timeframe Signal Generator v4.0
     
     Key improvements:
-    - Fixed short signals in oversold conditions
-    - Fixed long signals in overbought conditions
-    - Support/Resistance detection
-    - Divergence detection
-    - Stricter entry validation
-    - Better risk management
+    - Dynamic entry calculation based on momentum
+    - Wider stop losses for volatile crypto markets
+    - Quality filters to avoid choppy markets
+    - Fast-moving signal detection
+    - Enhanced risk management
     """
     
     def __init__(self, config: EnhancedSystemConfig, exchange_manager=None):
@@ -652,14 +524,14 @@ class SignalGenerator:
         # Debug mode flag
         self.debug_mode = False  # Set to True for debugging
         
-        self.logger.debug("✅ ENHANCED Signal Generator v6.0 initialized")
-        self.logger.debug(f"   Primary TF: {self.primary_timeframe}")
-        self.logger.debug(f"   Structure TF: {self.structure_timeframe}")
-        self.logger.debug(f"   Confirmation TFs: {self.confirmation_timeframes}")
-        self.logger.debug(f"   Stop Loss Range: {self.signal_config.min_stop_distance_pct*100:.1f}% - {self.signal_config.max_stop_distance_pct*100:.1f}%")
-        self.logger.debug(f"   Take Profit: TP1 Market-based, TP2 {self.signal_config.tp2_multiplier}x")
-        self.logger.debug(f"   RSI Thresholds: Long < {self.signal_config.max_rsi_for_long}, Short > {self.signal_config.min_rsi_for_short}")
-        self.logger.debug(f"   Quality Filters: ✅ Enabled")
+        self.logger.info("✅ ENHANCED Signal Generator v4.0 initialized")
+        self.logger.info(f"   Primary TF: {self.primary_timeframe}")
+        self.logger.info(f"   Structure TF: {self.structure_timeframe}")
+        self.logger.info(f"   Confirmation TFs: {self.confirmation_timeframes}")
+        self.logger.info(f"   Stop Loss Range: {self.signal_config.min_stop_distance_pct*100:.1f}% - {self.signal_config.max_stop_distance_pct*100:.1f}%")
+        self.logger.info(f"   Take Profit Range: up to {self.signal_config.max_tp_distance_pct*100:.0f}%")
+        self.logger.info(f"   R/R Multipliers: {self.signal_config.tp1_multiplier}x / {self.signal_config.tp2_multiplier}x")
+        self.logger.info(f"   Quality Filters: ✅ Enabled")
 
     def analyze_symbol_comprehensive(self, df: pd.DataFrame, symbol_data: Dict, 
                                    volume_entry: Dict, fibonacci_data: Dict, 
@@ -794,7 +666,7 @@ class SignalGenerator:
             # Create simple context
             mtf_context = self._create_fallback_context(symbol_data, 'unknown')
             
-            # Traditional signal conditions with FIXED thresholds
+            # Traditional signal conditions
             rsi = latest.get('rsi', 50)
             macd = latest.get('macd', 0)
             macd_signal = latest.get('macd_signal', 0)
@@ -802,20 +674,16 @@ class SignalGenerator:
             stoch_d = latest.get('stoch_rsi_d', 50)
             volume_ratio = latest.get('volume_ratio', 1)
             
-            # LONG conditions - Fixed to avoid overbought entries
-            if (self.signal_config.min_rsi_for_long < rsi < self.signal_config.max_rsi_for_long and 
-                macd > macd_signal and 
-                stoch_k > stoch_d and stoch_k < self.signal_config.max_stoch_for_long and
-                volume_ratio > 0.8):
+            # LONG conditions
+            if (rsi < 45 and macd > macd_signal and 
+                stoch_k > stoch_d and volume_ratio > 0.8):
                 return self._generate_long_signal(
                     symbol_data, latest, mtf_context, volume_entry, 
                     confluence_zones, df, use_mtf=False
                 )
-            # SHORT conditions - Fixed to avoid oversold entries
-            elif (self.signal_config.min_rsi_for_short < rsi < self.signal_config.max_rsi_for_short and 
-                  macd < macd_signal and 
-                  stoch_k < stoch_d and stoch_k > self.signal_config.min_stoch_for_short and
-                  volume_ratio > 0.8):
+            # SHORT conditions
+            elif (rsi > 55 and macd < macd_signal and 
+                  stoch_k < stoch_d and volume_ratio > 0.8):
                 return self._generate_short_signal(
                     symbol_data, latest, mtf_context, volume_entry, 
                     confluence_zones, df, use_mtf=False
@@ -836,51 +704,28 @@ class SignalGenerator:
             symbol = symbol_data['symbol']
             current_price = symbol_data['current_price']
             
-            # Entry conditions with FIXED RSI thresholds
+            # Entry conditions
             rsi = latest.get('rsi', 50)
             stoch_k = latest.get('stoch_rsi_k', 50)
             stoch_d = latest.get('stoch_rsi_d', 50)
             volume_ratio = latest.get('volume_ratio', 1)
             
-            # CHECK 1: RSI must be in valid range for longs (not overbought)
-            if rsi < self.signal_config.min_rsi_for_long or rsi > self.signal_config.max_rsi_for_long:
-                self.logger.debug(f"   ❌ {symbol} - LONG rejected: RSI {rsi:.1f} out of range ({self.signal_config.min_rsi_for_long}-{self.signal_config.max_rsi_for_long})")
+            # Check basic conditions
+            if not (rsi < 65 and stoch_k < 70 and stoch_k > stoch_d and volume_ratio > 0.8):
                 return None
             
-            # CHECK 2: Stochastic must not be overbought
-            if stoch_k > 70 or stoch_k < stoch_d:
-                self.logger.debug(f"   ❌ {symbol} - LONG rejected: Stoch conditions not met (K:{stoch_k:.1f}, D:{stoch_d:.1f})")
-                return None
-            
-            # CHECK 3: Volume must be sufficient
-            if volume_ratio < 0.8:
-                self.logger.debug(f"   ❌ {symbol} - LONG rejected: Insufficient volume ({volume_ratio:.2f})")
-                return None
-            
-            # CHECK 4: Support/Resistance check
-            sr_check = check_near_support_resistance(df, current_price, 'buy')
-            if sr_check['near_level'] and not sr_check.get('favorable', False):
-                self.logger.debug(f"   ❌ {symbol} - LONG rejected: Too close to resistance")
-                return None
-            
-            # CHECK 5: Divergence check
-            divergence = detect_divergence(df, 'buy')
-            if divergence['has_divergence'] and divergence['favorable_for'] == 'sell':
-                self.logger.debug(f"   ❌ {symbol} - LONG rejected: Bearish divergence detected")
-                return None
-            
-            # CHECK 6: Apply enhanced quality filters
+            # NEW: Apply enhanced quality filters
             should_reject, rejection_reasons, enhancement_factors, quality_score, is_premium = \
                 self.apply_enhanced_filters(df, 'buy', symbol)
             
             if should_reject:
-                self.logger.debug(f"   ❌ {symbol} - LONG rejected: {', '.join(rejection_reasons)}")
+                self.logger.debug(f"   ❌ {symbol} - Signal rejected: {', '.join(rejection_reasons)}")
                 return None
             
             if enhancement_factors:
-                self.logger.debug(f"   ✨ {symbol} - LONG quality factors: {', '.join(enhancement_factors)}")
+                self.logger.debug(f"   ✨ {symbol} - Quality factors: {', '.join(enhancement_factors)}")
             
-            # CHECK 7: Validate entry timing
+            # NEW: Validate entry timing
             timing_check = self._validate_entry_timing(df, 'buy')
             if not timing_check['valid'] and timing_check['score'] < -0.3:
                 self.logger.debug(f"   ❌ {symbol} - Poor entry timing for LONG: {timing_check['reasons']}")
@@ -889,7 +734,7 @@ class SignalGenerator:
             # Calculate entry price with momentum awareness
             entry_price = self._calculate_long_entry(current_price, mtf_context, volume_entry, df)
             
-            # Validate entry price is reasonable
+            # NEW: Validate entry price is reasonable
             entry_distance_pct = abs(entry_price - current_price) / current_price
             if entry_distance_pct > 0.03:  # Entry more than 3% away
                 self.logger.debug(f"   ⚠️ {symbol} - Entry too far from current price: {entry_distance_pct*100:.1f}%")
@@ -911,49 +756,34 @@ class SignalGenerator:
             
             # Check minimum R/R
             if rr_ratio < self.signal_config.min_risk_reward:
-                self.logger.debug(f"   ❌ {symbol} - LONG rejected: R/R too low ({rr_ratio:.2f})")
                 return None
             
-            # Calculate confidence with all factors
-            base_confidence = 55.0
-            
-            # RSI contribution
-            if rsi < 35:
+            # Calculate confidence with timing and quality adjustments
+            base_confidence = 50.0
+            if rsi < 40:
                 base_confidence += 10
-            elif rsi < 40:
+            if volume_ratio > 1.2:
                 base_confidence += 5
-            
-            # Volume contribution
-            if volume_ratio > 1.5:
-                base_confidence += 10
-            elif volume_ratio > 1.2:
-                base_confidence += 5
-            
-            # MTF bonus
             if use_mtf and mtf_context.momentum_alignment:
                 base_confidence += self.signal_config.mtf_confidence_boost
             
-            # Timing adjustment
-            timing_adjustment = timing_check['score'] * 10
+            # Adjust confidence based on timing
+            timing_adjustment = timing_check['score'] * 10  # Convert to percentage
             base_confidence += timing_adjustment
             
-            # Quality score adjustment
+            # Adjust confidence based on quality score
             if is_premium:
                 base_confidence += self.signal_config.fast_signal_bonus_confidence
             else:
                 base_confidence += quality_score * 5
             
-            # Divergence bonus
-            if divergence['has_divergence'] and divergence['favorable_for'] == 'buy':
-                base_confidence += 10
-            
             confidence = min(90, max(self.signal_config.min_confidence_for_signal, base_confidence))
             
-            # Determine order type
+            # Determine order type based on momentum and entry distance
             if entry_distance_pct > 0.01:
-                order_type = 'limit'
+                order_type = 'limit'  # Use limit for entries far from current
             else:
-                order_type = 'market'
+                order_type = 'market'  # Use market for immediate entries
             
             return {
                 'symbol': symbol,
@@ -965,7 +795,7 @@ class SignalGenerator:
                 'take_profit_2': tp2,
                 'risk_reward_ratio': rr_ratio,
                 'confidence': confidence,
-                'signal_type': 'long_signal_v6',
+                'signal_type': 'long_signal_v4',
                 'volume_24h': symbol_data['volume_24h'],
                 'price_change_24h': symbol_data['price_change_24h'],
                 'order_type': order_type,
@@ -976,9 +806,7 @@ class SignalGenerator:
                 'entry_timing': timing_check,
                 'quality_factors': enhancement_factors,
                 'quality_score': quality_score,
-                'is_premium_signal': is_premium,
-                'divergence': divergence,
-                'sr_analysis': sr_check
+                'is_premium_signal': is_premium
             }
             
         except Exception as e:
@@ -994,51 +822,28 @@ class SignalGenerator:
             symbol = symbol_data['symbol']
             current_price = symbol_data['current_price']
             
-            # Entry conditions with FIXED RSI thresholds
+            # Entry conditions
             rsi = latest.get('rsi', 50)
             stoch_k = latest.get('stoch_rsi_k', 50)
             stoch_d = latest.get('stoch_rsi_d', 50)
             volume_ratio = latest.get('volume_ratio', 1)
             
-            # CHECK 1: RSI must be in valid range for shorts (not oversold)
-            if rsi < self.signal_config.min_rsi_for_short or rsi > self.signal_config.max_rsi_for_short:
-                self.logger.debug(f"   ❌ {symbol} - SHORT rejected: RSI {rsi:.1f} out of range ({self.signal_config.min_rsi_for_short}-{self.signal_config.max_rsi_for_short})")
+            # Check basic conditions
+            if not (rsi > 35 and stoch_k > 30 and stoch_k < stoch_d and volume_ratio > 0.8):
                 return None
             
-            # CHECK 2: Stochastic must not be oversold
-            if stoch_k < 30 or stoch_k > stoch_d:
-                self.logger.debug(f"   ❌ {symbol} - SHORT rejected: Stoch conditions not met (K:{stoch_k:.1f}, D:{stoch_d:.1f})")
-                return None
-            
-            # CHECK 3: Volume must be sufficient
-            if volume_ratio < 0.8:
-                self.logger.debug(f"   ❌ {symbol} - SHORT rejected: Insufficient volume ({volume_ratio:.2f})")
-                return None
-            
-            # CHECK 4: Support/Resistance check
-            sr_check = check_near_support_resistance(df, current_price, 'sell')
-            if sr_check['near_level'] and not sr_check.get('favorable', False):
-                self.logger.debug(f"   ❌ {symbol} - SHORT rejected: Too close to support")
-                return None
-            
-            # CHECK 5: Divergence check
-            divergence = detect_divergence(df, 'sell')
-            if divergence['has_divergence'] and divergence['favorable_for'] == 'buy':
-                self.logger.debug(f"   ❌ {symbol} - SHORT rejected: Bullish divergence detected")
-                return None
-            
-            # CHECK 6: Apply enhanced quality filters
+            # NEW: Apply enhanced quality filters
             should_reject, rejection_reasons, enhancement_factors, quality_score, is_premium = \
                 self.apply_enhanced_filters(df, 'sell', symbol)
             
             if should_reject:
-                self.logger.debug(f"   ❌ {symbol} - SHORT rejected: {', '.join(rejection_reasons)}")
+                self.logger.debug(f"   ❌ {symbol} - Signal rejected: {', '.join(rejection_reasons)}")
                 return None
             
             if enhancement_factors:
-                self.logger.debug(f"   ✨ {symbol} - SHORT quality factors: {', '.join(enhancement_factors)}")
+                self.logger.debug(f"   ✨ {symbol} - Quality factors: {', '.join(enhancement_factors)}")
             
-            # CHECK 7: Validate entry timing
+            # NEW: Validate entry timing
             timing_check = self._validate_entry_timing(df, 'sell')
             if not timing_check['valid'] and timing_check['score'] < -0.3:
                 self.logger.debug(f"   ❌ {symbol} - Poor entry timing for SHORT: {timing_check['reasons']}")
@@ -1047,7 +852,7 @@ class SignalGenerator:
             # Calculate entry price with momentum awareness
             entry_price = self._calculate_short_entry(current_price, mtf_context, volume_entry, df)
             
-            # Validate entry price is reasonable
+            # NEW: Validate entry price is reasonable
             entry_distance_pct = abs(entry_price - current_price) / current_price
             if entry_distance_pct > 0.03:  # Entry more than 3% away
                 self.logger.debug(f"   ⚠️ {symbol} - Entry too far from current price: {entry_distance_pct*100:.1f}%")
@@ -1069,49 +874,34 @@ class SignalGenerator:
             
             # Check minimum R/R
             if rr_ratio < self.signal_config.min_risk_reward:
-                self.logger.debug(f"   ❌ {symbol} - SHORT rejected: R/R too low ({rr_ratio:.2f})")
                 return None
             
-            # Calculate confidence with all factors
-            base_confidence = 55.0
-            
-            # RSI contribution
-            if rsi > 65:
+            # Calculate confidence with timing and quality adjustments
+            base_confidence = 50.0
+            if rsi > 60:
                 base_confidence += 10
-            elif rsi > 60:
+            if volume_ratio > 1.2:
                 base_confidence += 5
-            
-            # Volume contribution
-            if volume_ratio > 1.5:
-                base_confidence += 10
-            elif volume_ratio > 1.2:
-                base_confidence += 5
-            
-            # MTF bonus
             if use_mtf and mtf_context.momentum_alignment:
                 base_confidence += self.signal_config.mtf_confidence_boost
             
-            # Timing adjustment
-            timing_adjustment = timing_check['score'] * 10
+            # Adjust confidence based on timing
+            timing_adjustment = timing_check['score'] * 10  # Convert to percentage
             base_confidence += timing_adjustment
             
-            # Quality score adjustment
+            # Adjust confidence based on quality score
             if is_premium:
                 base_confidence += self.signal_config.fast_signal_bonus_confidence
             else:
                 base_confidence += quality_score * 5
             
-            # Divergence bonus
-            if divergence['has_divergence'] and divergence['favorable_for'] == 'sell':
-                base_confidence += 10
-            
             confidence = min(90, max(self.signal_config.min_confidence_for_signal, base_confidence))
             
-            # Determine order type
+            # Determine order type based on momentum and entry distance
             if entry_distance_pct > 0.01:
-                order_type = 'limit'
+                order_type = 'limit'  # Use limit for entries far from current
             else:
-                order_type = 'market'
+                order_type = 'market'  # Use market for immediate entries
             
             return {
                 'symbol': symbol,
@@ -1123,7 +913,7 @@ class SignalGenerator:
                 'take_profit_2': tp2,
                 'risk_reward_ratio': rr_ratio,
                 'confidence': confidence,
-                'signal_type': 'short_signal_v6',
+                'signal_type': 'short_signal_v4',
                 'volume_24h': symbol_data['volume_24h'],
                 'price_change_24h': symbol_data['price_change_24h'],
                 'order_type': order_type,
@@ -1134,9 +924,7 @@ class SignalGenerator:
                 'entry_timing': timing_check,
                 'quality_factors': enhancement_factors,
                 'quality_score': quality_score,
-                'is_premium_signal': is_premium,
-                'divergence': divergence,
-                'sr_analysis': sr_check
+                'is_premium_signal': is_premium
             }
             
         except Exception as e:
@@ -1259,7 +1047,7 @@ class SignalGenerator:
 
     def _calculate_long_stop(self, entry_price: float, mtf_context: MultiTimeframeContext, 
                        df: pd.DataFrame) -> float:
-        """Calculate LONG stop loss with dynamic volatility adjustment (5% - 10%)"""
+        """Calculate LONG stop loss with dynamic volatility adjustment (7.5% - 12.5%)"""
         try:
             stop_candidates = []
             
@@ -1272,15 +1060,15 @@ class SignalGenerator:
                 recent_changes = df['close'].pct_change().tail(20).abs()
                 max_volatility = recent_changes.max()
                 
-                # Adjust multiplier based on volatility
+                # Adjust multiplier based on volatility (wider multipliers for crypto)
                 if max_volatility > self.signal_config.high_volatility_threshold:
-                    atr_multiplier = 3.5  # Wider stop for extreme volatility
+                    atr_multiplier = 4.0  # Much wider stop for extreme volatility
                 elif max_volatility > 0.04:
-                    atr_multiplier = 3.0  # Wide stop for high volatility
+                    atr_multiplier = 3.5  # Wide stop for high volatility
                 elif max_volatility > 0.02:
-                    atr_multiplier = 2.5  # Standard multiplier
+                    atr_multiplier = 3.0  # Standard crypto multiplier
                 else:
-                    atr_multiplier = 2.0  # Tighter stop for low volatility
+                    atr_multiplier = 2.5  # Tighter stop for low volatility (still wide)
                 
                 atr_stop = entry_price - (atr * atr_multiplier)
                 stop_candidates.append(atr_stop)
@@ -1295,11 +1083,11 @@ class SignalGenerator:
                 if (entry_price - structure_stop) / entry_price >= self.signal_config.min_stop_distance_pct:
                     stop_candidates.append(structure_stop)
             
-            # Percentage-based stop with minimum distance (5%)
+            # Percentage-based stop with minimum distance (7.5%)
             min_stop = entry_price * (1 - self.signal_config.min_stop_distance_pct)
             stop_candidates.append(min_stop)
             
-            # Choose the highest stop (closest to entry but respecting minimum 5%)
+            # Choose the highest stop (closest to entry but respecting minimum 7.5%)
             if stop_candidates:
                 chosen_stop = max(stop_candidates)
                 # Ensure it's not closer than minimum distance
@@ -1312,7 +1100,7 @@ class SignalGenerator:
     
     def _calculate_short_stop(self, entry_price: float, mtf_context: MultiTimeframeContext,
                         df: pd.DataFrame) -> float:
-        """Calculate SHORT stop loss with dynamic volatility adjustment (5% - 10%)"""
+        """Calculate SHORT stop loss with dynamic volatility adjustment (7.5% - 12.5%)"""
         try:
             stop_candidates = []
             
@@ -1325,15 +1113,15 @@ class SignalGenerator:
                 recent_changes = df['close'].pct_change().tail(20).abs()
                 max_volatility = recent_changes.max()
                 
-                # Adjust multiplier based on volatility
+                # Adjust multiplier based on volatility (wider multipliers for crypto)
                 if max_volatility > self.signal_config.high_volatility_threshold:
-                    atr_multiplier = 3.5  # Wider stop for extreme volatility
+                    atr_multiplier = 4.0  # Much wider stop for extreme volatility
                 elif max_volatility > 0.04:
-                    atr_multiplier = 3.0  # Wide stop for high volatility
+                    atr_multiplier = 3.5  # Wide stop for high volatility
                 elif max_volatility > 0.02:
-                    atr_multiplier = 2.5  # Standard multiplier
+                    atr_multiplier = 3.0  # Standard crypto multiplier
                 else:
-                    atr_multiplier = 2.0  # Tighter stop for low volatility
+                    atr_multiplier = 2.5  # Tighter stop for low volatility (still wide)
                 
                 atr_stop = entry_price + (atr * atr_multiplier)
                 stop_candidates.append(atr_stop)
@@ -1348,11 +1136,11 @@ class SignalGenerator:
                 if (structure_stop - entry_price) / entry_price >= self.signal_config.min_stop_distance_pct:
                     stop_candidates.append(structure_stop)
             
-            # Percentage-based stop with minimum distance (5%)
+            # Percentage-based stop with minimum distance (7.5%)
             min_stop = entry_price * (1 + self.signal_config.min_stop_distance_pct)
             stop_candidates.append(min_stop)
             
-            # Choose the lowest stop (closest to entry but respecting minimum 5%)
+            # Choose the lowest stop (closest to entry but respecting minimum 7.5%)
             if stop_candidates:
                 chosen_stop = min(stop_candidates)
                 # Ensure it's not closer than minimum distance
@@ -1365,168 +1153,66 @@ class SignalGenerator:
 
     def _calculate_long_targets(self, entry_price: float, stop_loss: float,
                               mtf_context: MultiTimeframeContext, df: pd.DataFrame) -> Tuple[float, float]:
-        """Calculate LONG take profit targets - TP1 based on market structure, TP2 based on multiplier"""
+        """Calculate LONG take profit targets"""
         try:
             risk = entry_price - stop_loss
             
-            # TP1: Market-based (nearest resistance or key level)
-            tp1_candidates = []
+            # Risk-based targets
+            tp1 = entry_price + (risk * self.signal_config.tp1_multiplier)
+            tp2 = entry_price + (risk * self.signal_config.tp2_multiplier)
             
-            # 1. Look for nearest resistance from MTF zones
+            # Adjust based on resistance levels
             resistance_zones = [z for z in mtf_context.higher_tf_zones 
                               if z['type'] == 'resistance' and z['price'] > entry_price]
             
             if resistance_zones:
-                # Use nearest resistance as TP1
-                nearest_resistance = min(resistance_zones, key=lambda x: x['price'])
-                tp1_from_resistance = nearest_resistance['price'] * 0.995  # Just below resistance
-                tp1_candidates.append(tp1_from_resistance)
-            
-            # 2. Look for recent swing highs as potential TP1
-            if len(df) >= 20:
-                recent_high = df['high'].tail(20).max()
-                if recent_high > entry_price:
-                    tp1_from_swing = recent_high * 0.995
-                    tp1_candidates.append(tp1_from_swing)
-            
-            # 3. Use Bollinger Band upper as potential TP1
-            if 'bb_upper' in df.columns:
-                bb_upper = df['bb_upper'].iloc[-1]
-                if bb_upper > entry_price:
-                    tp1_candidates.append(bb_upper * 0.995)
-            
-            # 4. Use key psychological levels (round numbers)
-            # Find next round number above entry
-            if entry_price < 1:
-                round_increment = 0.01  # For prices < $1
-            elif entry_price < 10:
-                round_increment = 0.1   # For prices < $10
-            elif entry_price < 100:
-                round_increment = 1.0   # For prices < $100
-            else:
-                round_increment = 10.0  # For prices >= $100
-            
-            next_round = ((entry_price // round_increment) + 1) * round_increment
-            if next_round > entry_price * 1.005:  # At least 0.5% away
-                tp1_candidates.append(next_round)
-            
-            # Choose TP1: Use the nearest valid target that gives decent profit
-            min_tp1_distance = entry_price * (1 + self.signal_config.min_tp_distance_pct)
-            valid_tp1_candidates = [tp for tp in tp1_candidates if tp >= min_tp1_distance]
-            
-            if valid_tp1_candidates:
-                # Choose the nearest valid target
-                tp1 = min(valid_tp1_candidates)
-            else:
-                # Fallback: Use minimum acceptable distance if no market structure found
-                tp1 = entry_price * (1 + max(self.signal_config.min_tp_distance_pct * 2, 0.03))
-            
-            # Ensure TP1 is not too far (cap at reasonable distance)
-            max_tp1_distance = entry_price * (1 + 0.08)  # Max 8% for TP1
-            tp1 = min(tp1, max_tp1_distance)
-            
-            # TP2: Keep multiplier-based (3.5x risk)
-            tp2 = entry_price + (risk * self.signal_config.tp2_multiplier)
-            
-            # Ensure TP2 is beyond TP1
-            tp2 = max(tp2, tp1 * 1.02)  # At least 2% beyond TP1
-            
-            # Cap at maximum distance
-            max_tp = entry_price * (1 + self.signal_config.max_tp_distance_pct)
-            tp2 = min(tp2, max_tp)
+                # TP1 at first resistance
+                first_resistance = min(resistance_zones, key=lambda x: x['price'])
+                tp1 = min(tp1, first_resistance['price'] * 0.995)
+                
+                # TP2 at second resistance or extended target
+                if len(resistance_zones) > 1:
+                    second_resistance = sorted(resistance_zones, key=lambda x: x['price'])[1]
+                    tp2 = min(tp2, second_resistance['price'] * 0.995)
             
             return tp1, tp2
             
         except Exception:
-            # Fallback to simple calculation
             risk = entry_price - stop_loss
-            tp1 = entry_price * 1.03  # 3% profit for TP1
-            tp2 = entry_price + (risk * 3.5)  # Keep 3.5x for TP2
-            return tp1, tp2
+            return entry_price + (risk * 2.5), entry_price + (risk * 4)
 
     def _calculate_short_targets(self, entry_price: float, stop_loss: float,
                                mtf_context: MultiTimeframeContext, df: pd.DataFrame) -> Tuple[float, float]:
-        """Calculate SHORT take profit targets - TP1 based on market structure, TP2 based on multiplier"""
+        """Calculate SHORT take profit targets"""
         try:
             risk = stop_loss - entry_price
             
-            # TP1: Market-based (nearest support or key level)
-            tp1_candidates = []
+            # Risk-based targets
+            tp1 = entry_price - (risk * self.signal_config.tp1_multiplier)
+            tp2 = entry_price - (risk * self.signal_config.tp2_multiplier)
             
-            # 1. Look for nearest support from MTF zones
+            # Adjust based on support levels
             support_zones = [z for z in mtf_context.higher_tf_zones 
                            if z['type'] == 'support' and z['price'] < entry_price]
             
             if support_zones:
-                # Use nearest support as TP1
-                nearest_support = max(support_zones, key=lambda x: x['price'])
-                tp1_from_support = nearest_support['price'] * 1.005  # Just above support
-                tp1_candidates.append(tp1_from_support)
-            
-            # 2. Look for recent swing lows as potential TP1
-            if len(df) >= 20:
-                recent_low = df['low'].tail(20).min()
-                if recent_low < entry_price:
-                    tp1_from_swing = recent_low * 1.005
-                    tp1_candidates.append(tp1_from_swing)
-            
-            # 3. Use Bollinger Band lower as potential TP1
-            if 'bb_lower' in df.columns:
-                bb_lower = df['bb_lower'].iloc[-1]
-                if bb_lower < entry_price:
-                    tp1_candidates.append(bb_lower * 1.005)
-            
-            # 4. Use key psychological levels (round numbers)
-            # Find next round number below entry
-            if entry_price < 1:
-                round_increment = 0.01  # For prices < $1
-            elif entry_price < 10:
-                round_increment = 0.1   # For prices < $10
-            elif entry_price < 100:
-                round_increment = 1.0   # For prices < $100
-            else:
-                round_increment = 10.0  # For prices >= $100
-            
-            next_round = (entry_price // round_increment) * round_increment
-            if next_round < entry_price * 0.995:  # At least 0.5% away
-                tp1_candidates.append(next_round)
-            
-            # Choose TP1: Use the nearest valid target that gives decent profit
-            min_tp1_distance = entry_price * (1 - self.signal_config.min_tp_distance_pct)
-            valid_tp1_candidates = [tp for tp in tp1_candidates if tp <= min_tp1_distance]
-            
-            if valid_tp1_candidates:
-                # Choose the nearest valid target (highest for shorts)
-                tp1 = max(valid_tp1_candidates)
-            else:
-                # Fallback: Use minimum acceptable distance if no market structure found
-                tp1 = entry_price * (1 - max(self.signal_config.min_tp_distance_pct * 2, 0.03))
-            
-            # Ensure TP1 is not too far (cap at reasonable distance)
-            max_tp1_distance = entry_price * (1 - 0.08)  # Max 8% for TP1
-            tp1 = max(tp1, max_tp1_distance)
-            
-            # TP2: Keep multiplier-based (3.5x risk)
-            tp2 = entry_price - (risk * self.signal_config.tp2_multiplier)
-            
-            # Ensure TP2 is beyond TP1
-            tp2 = min(tp2, tp1 * 0.98)  # At least 2% beyond TP1
-            
-            # Cap at maximum distance
-            max_tp = entry_price * (1 - self.signal_config.max_tp_distance_pct)
-            tp2 = max(tp2, max_tp)
+                # TP1 at first support
+                first_support = max(support_zones, key=lambda x: x['price'])
+                tp1 = max(tp1, first_support['price'] * 1.005)
+                
+                # TP2 at second support or extended target
+                if len(support_zones) > 1:
+                    second_support = sorted(support_zones, key=lambda x: x['price'], reverse=True)[1]
+                    tp2 = max(tp2, second_support['price'] * 1.005)
             
             return tp1, tp2
             
         except Exception:
-            # Fallback to simple calculation
             risk = stop_loss - entry_price
-            tp1 = entry_price * 0.97  # 3% profit for TP1
-            tp2 = entry_price - (risk * 3.5)  # Keep 3.5x for TP2
-            return tp1, tp2
+            return entry_price - (risk * 2.5), entry_price - (risk * 4)
 
     def _validate_entry_timing(self, df: pd.DataFrame, side: str, lookback: int = 5) -> dict:
-        """Validate if current timing is good for entry with stricter checks"""
+        """Validate if current timing is good for entry"""
         try:
             if len(df) < lookback:
                 return {'valid': True, 'reason': 'insufficient_data', 'score': 0.5}
@@ -1543,9 +1229,6 @@ class SignalGenerator:
             # RSI check
             rsi = latest.get('rsi', 50)
             
-            # Stochastic check
-            stoch_k = latest.get('stoch_rsi_k', 50)
-            
             # Volume check
             volume_ratio = latest.get('volume_ratio', 1)
             
@@ -1561,21 +1244,12 @@ class SignalGenerator:
                     timing_score += 0.3
                     reasons.append("price_near_support")
                 
-                # Stricter RSI check for longs
-                if rsi > self.signal_config.max_rsi_for_long:  # Overbought
-                    timing_score -= 0.5
-                    reasons.append("rsi_overbought_avoid_long")
+                if rsi > 70:  # Overbought
+                    timing_score -= 0.2
+                    reasons.append("rsi_overbought")
                 elif rsi < 35:  # Oversold (good for long)
                     timing_score += 0.2
-                    reasons.append("rsi_oversold_good_for_long")
-                
-                # Stochastic check
-                if stoch_k > 70:
-                    timing_score -= 0.3
-                    reasons.append("stoch_overbought")
-                elif stoch_k < 30:
-                    timing_score += 0.2
-                    reasons.append("stoch_oversold_good_for_long")
+                    reasons.append("rsi_oversold")
                     
             else:  # sell
                 # For SHORT entries
@@ -1586,21 +1260,12 @@ class SignalGenerator:
                     timing_score += 0.3
                     reasons.append("price_near_resistance")
                 
-                # Stricter RSI check for shorts
-                if rsi < self.signal_config.min_rsi_for_short:  # Oversold
-                    timing_score -= 0.5
-                    reasons.append("rsi_oversold_avoid_short")
+                if rsi < 30:  # Oversold
+                    timing_score -= 0.2
+                    reasons.append("rsi_oversold")
                 elif rsi > 65:  # Overbought (good for short)
                     timing_score += 0.2
-                    reasons.append("rsi_overbought_good_for_short")
-                
-                # Stochastic check
-                if stoch_k < 30:
-                    timing_score -= 0.3
-                    reasons.append("stoch_oversold_avoid_short")
-                elif stoch_k > 70:
-                    timing_score += 0.2
-                    reasons.append("stoch_overbought_good_for_short")
+                    reasons.append("rsi_overbought")
             
             # Volume confirmation
             if volume_ratio > 1.5:
@@ -1619,7 +1284,6 @@ class SignalGenerator:
                 'reasons': reasons,
                 'price_position': price_position,
                 'rsi': rsi,
-                'stoch_k': stoch_k,
                 'volume_ratio': volume_ratio
             }
             
@@ -1816,17 +1480,17 @@ class SignalGenerator:
             score += 25
         elif confidence >= 60:
             score += 15
-        elif confidence >= 55:
+        elif confidence >= 50:
             score += 5
         
         # R/R scoring
-        if rr_ratio >= 3.5:
+        if rr_ratio >= 4:
             score += 25
-        elif rr_ratio >= 2.5:
+        elif rr_ratio >= 3:
             score += 20
-        elif rr_ratio >= 2:
+        elif rr_ratio >= 2.5:
             score += 15
-        elif rr_ratio >= 1.8:
+        elif rr_ratio >= 2:
             score += 10
         
         # Volume scoring
@@ -2433,6 +2097,7 @@ class SignalGenerator:
             high_low = df['high'] - df['low']
             high_close = np.abs(df['high'] - df['close'].shift())
             low_close = np.abs(df['low'] - df['close'].shift())
+            import pandas as pd
             true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
             df['atr'] = true_range.rolling(window=14).mean()
             
@@ -2504,6 +2169,7 @@ class SignalGenerator:
             high_low = df['high'] - df['low']
             high_close = np.abs(df['high'] - df['close'].shift())
             low_close = np.abs(df['low'] - df['close'].shift())
+            import pandas as pd
             true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
             atr = true_range.rolling(window=14).mean().iloc[-1]
             atr_pct = (atr / df['close'].iloc[-1]) * 100
@@ -3011,13 +2677,8 @@ def debug_signal_conditions(df: pd.DataFrame, symbol: str, generator: SignalGene
         print(f"\nSignal Configuration:")
         print(f"Min Stop Distance: {generator.signal_config.min_stop_distance_pct*100:.1f}%")
         print(f"Max Stop Distance: {generator.signal_config.max_stop_distance_pct*100:.1f}%")
-        print(f"TP1: Market-based (support/resistance)")
-        print(f"TP2: {generator.signal_config.tp2_multiplier}x risk multiplier")
         print(f"Min R/R Ratio: {generator.signal_config.min_risk_reward}")
         print(f"Max R/R Ratio: {generator.signal_config.max_risk_reward}")
-        print(f"RSI Thresholds:")
-        print(f"  Long: {generator.signal_config.min_rsi_for_long} - {generator.signal_config.max_rsi_for_long}")
-        print(f"  Short: {generator.signal_config.min_rsi_for_short} - {generator.signal_config.max_rsi_for_short}")
         
         # Try to get MTF context if exchange_manager available
         if generator.exchange_manager:
@@ -3042,16 +2703,18 @@ def debug_signal_conditions(df: pd.DataFrame, symbol: str, generator: SignalGene
     
     print(f"\nSignal Conditions:")
     print(f"LONG Conditions:")
-    print(f"  RSI in range (25-50): {25 < rsi < 50} (RSI: {rsi:.1f})")
+    print(f"  RSI < 65: {rsi < 65} (RSI: {rsi:.1f})")
     print(f"  Stoch K < 70: {stoch_k < 70} (K: {stoch_k:.1f})")
     print(f"  Stoch K > D: {stoch_k > stoch_d}")
     print(f"  Volume > 0.8: {volume_ratio > 0.8} (Ratio: {volume_ratio:.2f})")
+    print(f"  Traditional LONG: RSI < 45 & MACD > Signal: {rsi < 45 and macd > macd_signal}")
     
     print(f"\nSHORT Conditions:")
-    print(f"  RSI in range (50-75): {50 < rsi < 75} (RSI: {rsi:.1f})")
+    print(f"  RSI > 35: {rsi > 35} (RSI: {rsi:.1f})")
     print(f"  Stoch K > 30: {stoch_k > 30} (K: {stoch_k:.1f})")
     print(f"  Stoch K < D: {stoch_k < stoch_d}")
     print(f"  Volume > 0.8: {volume_ratio > 0.8} (Ratio: {volume_ratio:.2f})")
+    print(f"  Traditional SHORT: RSI > 55 & MACD < Signal: {rsi > 55 and macd < macd_signal}")
     
     print(f"\nAnalysis Complete!")
 
@@ -3062,15 +2725,12 @@ def create_mtf_signal_generator(config: EnhancedSystemConfig, exchange_manager) 
     """
     Factory function to create the enhanced MTF-aware signal generator
     
-    VERSION 6.0 - PRODUCTION READY:
-    ✅ Fixed short signals in oversold conditions
-    ✅ Fixed long signals in overbought conditions
-    ✅ Support/Resistance detection
-    ✅ Divergence detection
-    ✅ Balanced stop losses (5% - 10%)
-    ✅ Market-based TP1 (support/resistance levels)
-    ✅ Risk-based TP2 (3.5x multiplier)
-    ✅ Stricter entry validation
+    VERSION 4.0 - PRODUCTION READY:
+    ✅ Dynamic stop losses (1.5% - 6% based on volatility)
+    ✅ Momentum-aware entry calculation
+    ✅ Entry timing validation
+    ✅ Quality filters (momentum, volume, choppiness)
+    ✅ Fast-moving signal detection
     ✅ Enhanced risk management
     ✅ Premium signal prioritization
     ✅ Debug mode available
@@ -3138,7 +2798,7 @@ class SignalPerformanceTracker:
             
             # Signal type performance
             type_performance = {}
-            for signal_type in ['long_signal_v6', 'short_signal_v6']:
+            for signal_type in ['long_signal_v4', 'short_signal_v4']:
                 type_signals = [s for s in self.signal_history if s['signal_type'] == signal_type]
                 if type_signals:
                     type_wins = len([s for s in type_signals if s['outcome'] == 'profit'])
@@ -3181,27 +2841,22 @@ __all__ = [
     'identify_fast_moving_setup',
     'filter_choppy_markets',
     'calculate_momentum_adjusted_entry',
-    'calculate_dynamic_stop_loss',
-    'detect_divergence',
-    'check_near_support_resistance'
+    'calculate_dynamic_stop_loss'
 ]
 
 # Version and feature information
-__version__ = "6.0.0-PRODUCTION"
+__version__ = "5.0.0-PRODUCTION"
 __features__ = [
-    "✅ Fixed short signals in oversold conditions (RSI > 50 required)",
-    "✅ Fixed long signals in overbought conditions (RSI < 50 required)",
-    "✅ Support/Resistance detection to avoid bad entries",
-    "✅ Divergence detection (bullish/bearish)",
-    "✅ Balanced stop losses (5% - 10%)",
-    "✅ Market-based TP1 (support/resistance levels)",
-    "✅ Risk-based TP2 (3.5x multiplier)",
+    "✅ Minimum 7.5% stop loss distance (wide for crypto)",
+    "✅ Maximum 12.5% stop loss (volatility-based)",
     "✅ Momentum-aware entry calculation",
     "✅ Entry timing validation",
     "✅ Quality filters (momentum, volume, choppiness)",
     "✅ Fast-moving signal detection",
     "✅ Premium signal prioritization",
-    "✅ Production ready for all market conditions"
+    "✅ Enhanced risk/reward ratios (3x/5x)",
+    "✅ Take profits up to 30%",
+    "✅ Production ready for volatile markets"
 ]
 
 # Configuration validation
@@ -3225,36 +2880,28 @@ def validate_generator_config(config: EnhancedSystemConfig) -> bool:
         return False
 
 # Module initialization logging
-# logging.getLogger(__name__).info(f"Enhanced Signal Generator v{__version__} loaded")
-# logging.getLogger(__name__).info(f"Features: {', '.join(__features__)}")
+logging.getLogger(__name__).info(f"Enhanced Signal Generator v{__version__} loaded")
+logging.getLogger(__name__).info(f"Features: {', '.join(__features__)}")
 
-# print("\n" + "="*80)
-# print("🚀 ENHANCED SIGNAL GENERATOR v6.0 - FIXED & PRODUCTION READY")
-# print("="*80)
-# print("✅ KEY IMPROVEMENTS:")
-# print("   1. Fixed short signals in oversold (RSI must be > 50)")
-# print("   2. Fixed long signals in overbought (RSI must be < 50)")
-# print("   3. Support/Resistance detection")
-# print("   4. Divergence detection (bullish/bearish)")
-# print("   5. Quality filters (momentum, volume, choppiness)")
-# print("   6. Fast-moving signal detection")
-# print("   7. Premium signal prioritization")
-# print("   8. Performance tracking included")
-# print("="*80)
-# print("📊 OPTIMIZED PARAMETERS:")
-# print(f"   Stop Loss Range: 5.0% - 10.0%")
-# print(f"   TP1: Market-based (support/resistance levels)")
-# print(f"   TP2: 3.5x risk multiplier")
-# print(f"   RSI Ranges: Long (25-50), Short (50-75)")
-# print(f"   Minimum R/R Ratio: 1.8")
-# print(f"   Quality Filters: ✅ Enabled")
-# print("="*80)
-# print("🎯 TP1 SMART TARGETING:")
-# print("   • Uses nearest resistance (longs) or support (shorts)")
-# print("   • Considers recent swing highs/lows")
-# print("   • Respects Bollinger Bands")
-# print("   • Targets psychological round numbers")
-# print("   • Maximum 8% distance for realistic targets")
-# print("="*80)
-# print("🎯 READY FOR PROFITABLE TRADING IN ALL MARKET CONDITIONS!")
-# print("="*80 + "\n")
+print("\n" + "="*80)
+print("🚀 ENHANCED SIGNAL GENERATOR v4.0 - CRYPTO VOLATILITY EDITION")
+print("="*80)
+print("✅ KEY IMPROVEMENTS:")
+print("   1. Wide stop losses: 7.5% - 12.5% (crypto-optimized)")
+print("   2. Momentum-aware entries (chase trends when strong)")
+print("   3. Entry timing validation (avoid bad setups)")
+print("   4. Quality filters (momentum, volume, choppiness)")
+print("   5. Fast-moving signal detection")
+print("   6. Enhanced R/R ratios: 3x and 5x targets")
+print("   7. Premium signal prioritization")
+print("   8. Performance tracking included")
+print("="*80)
+print("📊 ENHANCED PARAMETERS:")
+print(f"   Stop Loss Range: 7.5% - 12.5%")
+print(f"   Take Profit Range: 2.0% - 30.0%")
+print(f"   Risk/Reward Targets: 3x (TP1) and 5x (TP2)")
+print(f"   Confidence Range: 50% - 90%")
+print(f"   Quality Filters: ✅ Enabled")
+print("="*80)
+print("🎯 OPTIMIZED FOR HIGH VOLATILITY CRYPTO MARKETS!")
+print("="*80)

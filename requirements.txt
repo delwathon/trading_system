@@ -150,6 +150,9 @@ rich>=13.5.0                    # Rich terminal output
 arch>=6.2.0                     # ARCH models for volatility
 pykalman>=0.9.5                 # Kalman filtering
 
+pymysql
+python-dotenv
+
 # =============================================================================
 # MINIMUM VERSIONS FOR COMPATIBILITY
 # =============================================================================
