@@ -1377,12 +1377,126 @@ class AutoTrader:
             self.logger.error(f"Failed to start trading session: {e}")
             raise
     
+    # async def run_scan_and_execute(self) -> Tuple[int, int]:
+    #     """
+    #     Enhanced scan and execute method integrating with the new MTF-aware system
+        
+    #     Maintains compatibility with existing autotrader.py architecture while
+    #     leveraging the improved signal generation from the enhanced system.py
+    #     """
+    #     try:
+    #         # Check if it's optimal trading time
+    #         is_optimal, session = self.schedule_manager.is_optimal_trading_time()
+    #         if session == "low_liquidity":
+    #             self.logger.info("⏰ Low liquidity hours - proceeding with caution")
+            
+    #         self.logger.info("📊 Running enhanced MTF signal analysis...")
+            
+    #         # ===== PHASE 1: ENHANCED SIGNAL ANALYSIS =====
+    #         # The trading_system now uses the enhanced MTF generator internally
+    #         results = self.trading_system.run_complete_analysis_parallel_mtf()
+            
+    #         if not results or not results.get('signals'):
+    #             self.logger.warning("No signals generated in this scan")
+    #             return 0, 0
+            
+    #         signals_count = len(results['signals'])
+    #         self.logger.debug(f"📈 Generated {signals_count} signals")
+            
+    #         # ===== ENHANCED MTF ANALYSIS LOGGING =====
+    #         # Log MTF validation results from the enhanced system
+    #         self._log_mtf_analysis_results(results)
+            
+    #         # ===== PHASE 2: FILTER EXISTING POSITIONS & ORDERS =====
+    #         print("\n🔍 FILTERING OUT EXISTING POSITIONS & ORDERS...")
+            
+    #         already_ranked_signals = results.get('signals', [])
+    #         signals_left_after_filter_out_existing_orders = self.position_manager.filter_signals_by_existing_symbols(already_ranked_signals)
+            
+    #         if not signals_left_after_filter_out_existing_orders:
+    #             # Save original results to database first
+    #             save_result = self.enhanced_db_manager.save_all_results(results)
+                
+    #             self.logger.warning("⚠️ No signals available for execution after filtering existing symbols")
+    #             print("⚠️  ALL SIGNALS FILTERED OUT:")
+    #             print("   Either symbols already have positions/orders")
+    #             print("   or no valid signals generated")
+    #             print("")
+    #             return signals_count, 0
+            
+    #         # ===== PHASE 3: UPDATE RESULTS WITH FILTERED DATA =====
+    #         filtered_results = self._update_results_with_filtering(
+    #             results, already_ranked_signals, signals_left_after_filter_out_existing_orders
+    #         )
+            
+    #         # ===== PHASE 4: SAVE FILTERED RESULTS TO DATABASE =====
+    #         self.logger.debug("💾 Saving filtered results to MySQL database...")
+    #         save_result = self.enhanced_db_manager.save_all_results(filtered_results)
+    #         if save_result.get('error'):
+    #             self.logger.error(f"Failed to save results: {save_result['error']}")
+    #         else:
+    #             self.logger.debug(f"✅ Filtered results saved - Scan ID: {save_result.get('scan_id', 'Unknown')}")
+            
+    #         # ===== PHASE 5: DISPLAY RESULTS TABLE =====
+    #         self.trading_system.print_comprehensive_results_with_mtf(filtered_results)
+    #         print("=" * 150 + "\n")
+            
+    #         # ===== PHASE 6: SEND SIGNAL NOTIFICATIONS =====
+    #         self.logger.info("📢 Sending signal notifications for filtered opportunities...")
+    #         await self._send_enhanced_signal_notifications(signals_left_after_filter_out_existing_orders)
+            
+    #         # ===== PHASE 7: CHECK POSITION AVAILABILITY =====
+    #         can_trade, available_slots = self.position_manager.can_open_new_positions(
+    #             self.config.max_execution_per_trade
+    #         )
+            
+    #         if not can_trade:
+    #             portfolio_heat = self.position_manager.calculate_portfolio_heat()
+    #             self.logger.warning(
+    #                 f"⚠️ Cannot open new positions - at max capacity or portfolio heat too high "
+    #                 f"({self.config.max_concurrent_positions} positions, {portfolio_heat:.1f}% heat)"
+    #             )
+    #             print(f"⚠️  POSITION LIMIT REACHED:")
+    #             print(f"   Max positions: {self.config.max_concurrent_positions}")
+    #             print(f"   Portfolio heat: {portfolio_heat:.1f}%")
+    #             print(f"   No new trades will be executed until positions are closed")
+    #             return signals_count, 0
+            
+    #         # ===== PHASE 8: EXECUTE TRADES =====
+    #         execution_count = min(available_slots, self.config.max_execution_per_trade, len(signals_left_after_filter_out_existing_orders))
+    #         selected_opportunities = signals_left_after_filter_out_existing_orders[:execution_count]
+            
+    #         # Enhanced execution logging
+    #         self._log_enhanced_execution_plan(
+    #             signals_count, 
+    #             len(signals_left_after_filter_out_existing_orders), 
+    #             available_slots, 
+    #             execution_count
+    #         )
+            
+    #         executed_count = 0
+            
+    #         # Execute selected trades
+    #         if self.config.auto_execute_trades:
+    #             executed_count = await self._execute_enhanced_trades(
+    #                 selected_opportunities, save_result.get('scan_session_id')
+    #             )
+    #         else:
+    #             self.logger.info("🔄 Auto-execution disabled - signals ready for manual review")
+            
+    #         # ===== PHASE 9: FINAL SUMMARY =====
+    #         self._log_enhanced_execution_summary(signals_count, len(signals_left_after_filter_out_existing_orders), executed_count)
+            
+    #         return signals_count, executed_count
+            
+    #     except Exception as e:
+    #         self.logger.error(f"Error in enhanced scan and execute: {e}")
+    #         raise
+
     async def run_scan_and_execute(self) -> Tuple[int, int]:
         """
-        Enhanced scan and execute method integrating with the new MTF-aware system
-        
-        Maintains compatibility with existing autotrader.py architecture while
-        leveraging the improved signal generation from the enhanced system.py
+        Enhanced scan and execute with DEFERRED chart generation and notifications
+        Charts and notifications happen AFTER trade execution
         """
         try:
             # Check if it's optimal trading time
@@ -1393,7 +1507,6 @@ class AutoTrader:
             self.logger.info("📊 Running enhanced MTF signal analysis...")
             
             # ===== PHASE 1: ENHANCED SIGNAL ANALYSIS =====
-            # The trading_system now uses the enhanced MTF generator internally
             results = self.trading_system.run_complete_analysis_parallel_mtf()
             
             if not results or not results.get('signals'):
@@ -1403,8 +1516,7 @@ class AutoTrader:
             signals_count = len(results['signals'])
             self.logger.debug(f"📈 Generated {signals_count} signals")
             
-            # ===== ENHANCED MTF ANALYSIS LOGGING =====
-            # Log MTF validation results from the enhanced system
+            # Log MTF analysis results
             self._log_mtf_analysis_results(results)
             
             # ===== PHASE 2: FILTER EXISTING POSITIONS & ORDERS =====
@@ -1441,11 +1553,7 @@ class AutoTrader:
             self.trading_system.print_comprehensive_results_with_mtf(filtered_results)
             print("=" * 150 + "\n")
             
-            # ===== PHASE 6: SEND SIGNAL NOTIFICATIONS =====
-            self.logger.info("📢 Sending signal notifications for filtered opportunities...")
-            await self._send_enhanced_signal_notifications(signals_left_after_filter_out_existing_orders)
-            
-            # ===== PHASE 7: CHECK POSITION AVAILABILITY =====
+            # ===== PHASE 6: CHECK POSITION AVAILABILITY =====
             can_trade, available_slots = self.position_manager.can_open_new_positions(
                 self.config.max_execution_per_trade
             )
@@ -1460,9 +1568,12 @@ class AutoTrader:
                 print(f"   Max positions: {self.config.max_concurrent_positions}")
                 print(f"   Portfolio heat: {portfolio_heat:.1f}%")
                 print(f"   No new trades will be executed until positions are closed")
+                
+                # NOTE: Even if we can't execute, we DON'T send signal notifications here
+                # No charts or notifications without execution
                 return signals_count, 0
             
-            # ===== PHASE 8: EXECUTE TRADES =====
+            # ===== PHASE 7: EXECUTE TRADES =====
             execution_count = min(available_slots, self.config.max_execution_per_trade, len(signals_left_after_filter_out_existing_orders))
             selected_opportunities = signals_left_after_filter_out_existing_orders[:execution_count]
             
@@ -1474,17 +1585,33 @@ class AutoTrader:
                 execution_count
             )
             
+            executed_trades = []  # Track successfully executed trades
             executed_count = 0
             
-            # Execute selected trades
+            # Execute selected trades and track successful ones
             if self.config.auto_execute_trades:
-                executed_count = await self._execute_enhanced_trades(
+                executed_trades, executed_count = await self._execute_enhanced_trades_with_tracking(
                     selected_opportunities, save_result.get('scan_session_id')
                 )
             else:
-                self.logger.info("🔄 Auto-execution disabled - signals ready for manual review")
+                self.logger.info("🔄 Auto-execution disabled - no charts or notifications will be sent")
             
-            # ===== PHASE 9: FINAL SUMMARY =====
+            # ===== PHASE 8: GENERATE CHARTS FOR EXECUTED TRADES ONLY =====
+            if executed_trades:
+                self.logger.info(f"📊 PHASE 8: Generating charts for {len(executed_trades)} executed trades...")
+                charts_generated = self.trading_system.generate_charts_for_top_signals(executed_trades)
+                self.logger.info(f"✅ Generated {charts_generated} charts for executed trades")
+            else:
+                self.logger.info("📊 PHASE 8: No executed trades - skipping chart generation")
+            
+            # ===== PHASE 9: SEND NOTIFICATIONS FOR EXECUTED TRADES ONLY =====
+            if executed_trades:
+                self.logger.info(f"📢 PHASE 9: Sending notifications for {len(executed_trades)} executed trades...")
+                await self._send_executed_trade_notifications(executed_trades)
+            else:
+                self.logger.info("📢 PHASE 9: No executed trades - skipping notifications")
+            
+            # ===== PHASE 10: FINAL SUMMARY =====
             self._log_enhanced_execution_summary(signals_count, len(signals_left_after_filter_out_existing_orders), executed_count)
             
             return signals_count, executed_count
@@ -1492,6 +1619,202 @@ class AutoTrader:
         except Exception as e:
             self.logger.error(f"Error in enhanced scan and execute: {e}")
             raise
+
+    async def _execute_enhanced_trades_with_tracking(self, selected_opportunities: List[Dict], scan_session_id: str) -> Tuple[List[Dict], int]:
+        """
+        NEW METHOD: Execute trades and return list of successfully executed trades
+        Returns: (list_of_executed_trades, count_of_executed_trades)
+        """
+        try:
+            self.logger.info("🚀 Starting enhanced trade execution with tracking...")
+            executed_trades = []
+            executed_count = 0
+            
+            for i, opportunity in enumerate(selected_opportunities):
+                try:
+                    symbol = opportunity['symbol']
+                    mtf_status = opportunity.get('mtf_status', 'UNKNOWN')
+                    entry_strategy = opportunity.get('entry_strategy', 'immediate')
+                    mtf_validated = opportunity.get('mtf_validated', False)
+                    analysis_method = opportunity.get('analysis_method', 'unknown')
+                    
+                    # Enhanced execution logging
+                    validation_emoji = "🎯" if mtf_validated else "⚠️"
+                    self.logger.info(f"📝 {validation_emoji} Executing trade {i+1}/{len(selected_opportunities)}: {symbol}")
+                    self.logger.info(f"     MTF Status: {mtf_status}")
+                    self.logger.info(f"     Entry Strategy: {entry_strategy}")
+                    self.logger.info(f"     Analysis Method: {analysis_method}")
+                    
+                    # Execute trade using enhanced order executor
+                    success, message, position_data = self.order_executor.place_leveraged_order(
+                        opportunity, self.config.risk_amount, self.config.leverage
+                    )
+                    
+                    if success:
+                        # Save position to database
+                        position_id = self.position_manager.save_position_to_database(position_data, scan_session_id)
+                        
+                        if not position_id:
+                            self.logger.error(f"Failed to save position data for {symbol}")
+                            continue
+
+                        executed_count += 1
+                        
+                        # Add execution data to opportunity for later use
+                        opportunity['execution_status'] = 'success'
+                        opportunity['position_id'] = position_id
+                        opportunity['position_data'] = position_data
+                        opportunity['execution_message'] = message
+                        
+                        # Add to executed trades list
+                        executed_trades.append(opportunity)
+                        
+                        # Enhanced success logging
+                        self.logger.info(f"✅ Trade {i+1} executed successfully")
+                        self.logger.info(f"   Position ID: {position_id}")
+                        self.logger.info(f"   Entry: ${opportunity['entry_price']:.6f}")
+                        self.logger.info(f"   Risk: {position_data.get('risk_percentage', self.config.risk_amount):.1f}% (adaptive)")
+                        self.logger.info(f"   MTF Validated: {mtf_validated}")
+                        
+                        # NOTE: We're NOT sending notifications here anymore
+                        # Notifications will be sent in bulk after all executions
+                        
+                    else:
+                        print(f"   ❌ TRADE FAILED!")
+                        print(f"   Error: {message}")
+                        self.logger.error(f"Trade execution failed: {message}")
+                        
+                        # Track failed execution
+                        opportunity['execution_status'] = 'failed'
+                        opportunity['execution_message'] = message
+                        
+                        # We don't add failed trades to executed_trades list
+                        
+                except Exception as e:
+                    error_msg = f"Error executing trade for {opportunity['symbol']}: {e}"
+                    print(f"   ❌ {error_msg}")
+                    self.logger.error(error_msg)
+                    opportunity['execution_status'] = 'error'
+                    opportunity['execution_message'] = str(e)
+            
+            self.logger.info(f"🏁 Enhanced execution completed: {executed_count}/{len(selected_opportunities)} successful")
+            return executed_trades, executed_count
+            
+        except Exception as e:
+            self.logger.error(f"Error in enhanced trade execution with tracking: {e}")
+            return [], 0
+
+    async def _send_executed_trade_notifications(self, executed_trades: List[Dict]):
+        """
+        NEW METHOD: Send notifications ONLY for successfully executed trades
+        Includes both signal notification and trade confirmation
+        """
+        try:
+            notification_count = 0
+            
+            for trade in executed_trades:
+                try:
+                    symbol = trade['symbol']
+                    position_data = trade.get('position_data', {})
+                    
+                    # Send combined notification (signal + execution confirmation)
+                    await self.send_executed_trade_notification(trade, position_data)
+                    notification_count += 1
+                    
+                    self.logger.debug(f"✅ Notification sent for executed trade: {symbol}")
+                    
+                except Exception as e:
+                    self.logger.error(f"Error sending notification for {trade['symbol']}: {e}")
+            
+            self.logger.info(f"📱 Sent {notification_count}/{len(executed_trades)} trade notifications")
+            
+        except Exception as e:
+            self.logger.error(f"Error sending executed trade notifications: {e}")
+
+    async def send_executed_trade_notification(self, trade: Dict, position_data: Dict):
+        """
+        NEW METHOD: Send comprehensive notification for executed trade
+        Combines signal info with execution confirmation
+        """
+        try:
+            symbol = escape_markdown(trade['symbol'])
+            chart_file = trade.get('chart_file', '')
+            side = trade['side'].upper()
+            entry_price = format_price(trade['entry_price'])
+            take_profit_1 = format_price(trade.get('take_profit_1', 0))
+            take_profit_2 = format_price(trade.get('take_profit_2', 0))
+            stop_loss = format_price(trade.get('stop_loss', 0))
+            risk_reward = trade.get('risk_reward_ratio', 0)
+            confidence = trade.get('confidence', 0)
+            mtf_status = escape_markdown(trade.get('mtf_status', 'N/A'))
+            mtf_validated = trade.get('mtf_validated', False)
+            
+            # Execution details
+            position_size = position_data.get('position_size', 0)
+            leverage = position_data.get('leverage', 0)
+            risk_usdt = position_data.get('risk_amount', 0)
+            adaptive_risk = position_data.get('risk_percentage', self.config.risk_amount)
+            position_id = trade.get('position_id', 'unknown')
+            
+            validation_emoji = "🎯" if mtf_validated else "⚠️"
+            
+            # Build comprehensive message
+            message_parts = []
+            message_parts.append(f"🚀 *{validation_emoji} TRADE EXECUTED SUCCESSFULLY*")
+            message_parts.append("")
+            
+            if side == 'BUY':
+                message_parts.append(f"🟢 *LONG {symbol}*")
+            else:
+                message_parts.append(f"🔴 *SHORT {symbol}*")
+            
+            message_parts.append("")
+            message_parts.append(f"📊 *POSITION DETAILS:*")
+            message_parts.append(f"    💰 Entry Price: ${entry_price}")
+            message_parts.append(f"    📈 Position Size: {escape_markdown(f'{position_size:.4f}')} units")
+            message_parts.append(f"    ⚡ Leverage: {escape_markdown(str(leverage))}x")
+            message_parts.append(f"    💵 Risk Amount: {escape_markdown(f'{risk_usdt:.2f}')} USDT")
+            message_parts.append(f"    📊 Risk Percentage: {format_percentage(adaptive_risk)}")
+            message_parts.append("")
+            
+            message_parts.append(f"🎯 *TARGETS & STOPS:*")
+            message_parts.append(f"    🎯 Take Profit 1: ${take_profit_1}")
+            message_parts.append(f"    🎯 Take Profit 2: ${take_profit_2}")
+            message_parts.append(f"    🚫 Stop Loss: ${stop_loss}")
+            message_parts.append(f"    📊 Risk/Reward: {escape_markdown(f'{risk_reward:.2f}')}:1")
+            message_parts.append("")
+            
+            message_parts.append(f"📋 *SIGNAL QUALITY:*")
+            validation_status = "✅" if mtf_validated else "❌"
+            message_parts.append(f"    {validation_status} MTF Validated: {mtf_status}")
+            message_parts.append(f"    🎯 Confidence: {format_percentage(confidence)}")
+            message_parts.append("")
+            
+            message_parts.append(f"🆔 Position ID: {escape_markdown(position_id)}")
+            message_parts.append(f"🕒 {escape_markdown(datetime.now().strftime('%H:%M:%S'))}")
+            
+            # Add chart info if available
+            if chart_file and chart_file != "Chart data unavailable":
+                message_parts.append("")
+                message_parts.append("📊 Chart generated and attached")
+            
+            # Join message parts
+            message = "\n".join(message_parts)
+            
+            # Position management keyboard
+            keyboard = [
+                [{"text": "📊 Check Position", "callback_data": f"check_pos_{symbol}"}],
+                [{"text": "🔴 Close Position", "callback_data": f"close_pos_{symbol}"}]
+            ]
+            
+            # Send notification with chart if available
+            if chart_file and chart_file.endswith('.png') and chart_file.startswith('charts/'):
+                await send_trading_notification(self.config, message, keyboard, image_path=chart_file)
+            else:
+                await send_trading_notification(self.config, message, keyboard)
+            
+        except Exception as e:
+            self.logger.error(f"Failed to send executed trade notification: {e}")
 
     def _log_mtf_analysis_results(self, results: Dict):
         """Log enhanced MTF analysis results"""
@@ -1641,70 +1964,70 @@ class AutoTrader:
         except Exception as e:
             self.logger.error(f"Error logging enhanced execution plan: {e}")
 
-    async def _execute_enhanced_trades(self, selected_opportunities: List[Dict], scan_session_id: str) -> int:
-        """Execute trades with enhanced MTF context logging and risk management"""
-        try:
-            self.logger.info("🚀 Starting enhanced trade execution...")
-            executed_count = 0
+    # async def _execute_enhanced_trades(self, selected_opportunities: List[Dict], scan_session_id: str) -> int:
+    #     """Execute trades with enhanced MTF context logging and risk management"""
+    #     try:
+    #         self.logger.info("🚀 Starting enhanced trade execution...")
+    #         executed_count = 0
             
-            for i, opportunity in enumerate(selected_opportunities):
-                try:
-                    symbol = opportunity['symbol']
-                    mtf_status = opportunity.get('mtf_status', 'UNKNOWN')
-                    entry_strategy = opportunity.get('entry_strategy', 'immediate')
-                    mtf_validated = opportunity.get('mtf_validated', False)
-                    analysis_method = opportunity.get('analysis_method', 'unknown')
+    #         for i, opportunity in enumerate(selected_opportunities):
+    #             try:
+    #                 symbol = opportunity['symbol']
+    #                 mtf_status = opportunity.get('mtf_status', 'UNKNOWN')
+    #                 entry_strategy = opportunity.get('entry_strategy', 'immediate')
+    #                 mtf_validated = opportunity.get('mtf_validated', False)
+    #                 analysis_method = opportunity.get('analysis_method', 'unknown')
                     
-                    # Enhanced execution logging
-                    validation_emoji = "🎯" if mtf_validated else "⚠️"
-                    self.logger.info(f"📝 {validation_emoji} Executing trade {i+1}/{len(selected_opportunities)}: {symbol}")
-                    self.logger.info(f"     MTF Status: {mtf_status}")
-                    self.logger.info(f"     Entry Strategy: {entry_strategy}")
-                    self.logger.info(f"     Analysis Method: {analysis_method}")
+    #                 # Enhanced execution logging
+    #                 validation_emoji = "🎯" if mtf_validated else "⚠️"
+    #                 self.logger.info(f"📝 {validation_emoji} Executing trade {i+1}/{len(selected_opportunities)}: {symbol}")
+    #                 self.logger.info(f"     MTF Status: {mtf_status}")
+    #                 self.logger.info(f"     Entry Strategy: {entry_strategy}")
+    #                 self.logger.info(f"     Analysis Method: {analysis_method}")
                     
-                    # Execute trade using enhanced order executor
-                    success, message, position_data = self.order_executor.place_leveraged_order(
-                        opportunity, self.config.risk_amount, self.config.leverage
-                    )
+    #                 # Execute trade using enhanced order executor
+    #                 success, message, position_data = self.order_executor.place_leveraged_order(
+    #                     opportunity, self.config.risk_amount, self.config.leverage
+    #                 )
                     
-                    if success:
-                        # Save position to database
-                        position_id = self.position_manager.save_position_to_database(position_data, scan_session_id)
+    #                 if success:
+    #                     # Save position to database
+    #                     position_id = self.position_manager.save_position_to_database(position_data, scan_session_id)
                         
-                        if not position_id:
-                            self.logger.error(f"Failed to save position data for {symbol}")
-                            continue
+    #                     if not position_id:
+    #                         self.logger.error(f"Failed to save position data for {symbol}")
+    #                         continue
 
-                        executed_count += 1
+    #                     executed_count += 1
                         
-                        # Enhanced success logging
-                        self.logger.info(f"✅ Trade {i+1} executed successfully")
-                        self.logger.info(f"   Position ID: {position_id}")
-                        self.logger.info(f"   Entry: ${opportunity['entry_price']:.6f}")
-                        self.logger.info(f"   Risk: {position_data.get('risk_percentage', self.config.risk_amount):.1f}% (adaptive)")
-                        self.logger.info(f"   MTF Validated: {mtf_validated}")
+    #                     # Enhanced success logging
+    #                     self.logger.info(f"✅ Trade {i+1} executed successfully")
+    #                     self.logger.info(f"   Position ID: {position_id}")
+    #                     self.logger.info(f"   Entry: ${opportunity['entry_price']:.6f}")
+    #                     self.logger.info(f"   Risk: {position_data.get('risk_percentage', self.config.risk_amount):.1f}% (adaptive)")
+    #                     self.logger.info(f"   MTF Validated: {mtf_validated}")
                         
-                        # Send trade notification using enhanced method
-                        await self.send_trade_notification(opportunity, position_data, success=True)
-                    else:
-                        print(f"   ❌ TRADE FAILED!")
-                        print(f"   Error: {message}")
-                        self.logger.error(f"Trade execution failed: {message}")
+    #                     # Send trade notification using enhanced method
+    #                     await self.send_trade_notification(opportunity, position_data, success=True)
+    #                 else:
+    #                     print(f"   ❌ TRADE FAILED!")
+    #                     print(f"   Error: {message}")
+    #                     self.logger.error(f"Trade execution failed: {message}")
                         
-                        # Send failure notification
-                        await self.send_trade_notification(opportunity, {}, success=False, error_message=message)
+    #                     # Send failure notification
+    #                     await self.send_trade_notification(opportunity, {}, success=False, error_message=message)
                         
-                except Exception as e:
-                    error_msg = f"Error executing trade for {opportunity['symbol']}: {e}"
-                    print(f"   ❌ {error_msg}")
-                    self.logger.error(error_msg)
+    #             except Exception as e:
+    #                 error_msg = f"Error executing trade for {opportunity['symbol']}: {e}"
+    #                 print(f"   ❌ {error_msg}")
+    #                 self.logger.error(error_msg)
             
-            self.logger.info(f"🏁 Enhanced execution completed: {executed_count}/{len(selected_opportunities)} successful")
-            return executed_count
+    #         self.logger.info(f"🏁 Enhanced execution completed: {executed_count}/{len(selected_opportunities)} successful")
+    #         return executed_count
             
-        except Exception as e:
-            self.logger.error(f"Error in enhanced trade execution: {e}")
-            return 0
+    #     except Exception as e:
+    #         self.logger.error(f"Error in enhanced trade execution: {e}")
+    #         return 0
 
     def _log_enhanced_execution_summary(self, original_signals: int, available_signals: int, executed_count: int):
         """Enhanced execution summary with MTF metrics"""
@@ -2062,10 +2385,10 @@ class AutoTrader:
             # Send enhanced scan notification
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(self.send_scan_notification(total_signals, executed_count))
-            finally:
-                loop.close()
+            # try:
+            #     loop.run_until_complete(self.send_scan_notification(total_signals, executed_count))
+            # finally:
+            #     loop.close()
             
         except Exception as e:
             self.logger.error(f"Error updating session stats: {e}")

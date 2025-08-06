@@ -324,7 +324,7 @@ class EnhancedSystemConfig:
         self.max_execution_per_trade = max(1, min(10, self.max_execution_per_trade))
         self.risk_amount = max(0.1, min(50.0, self.risk_amount))  # 0.1% to 50% of account balance
         self.auto_close_profit_at = max(0.5, min(1000.0, self.auto_close_profit_at))  # 0.5% to 100%
-        self.auto_close_loss_at = max(0.5, min(100.0, self.auto_close_loss_at))  # 0.5% to 100%
+        self.auto_close_loss_at = max(0.5, min(1000.0, self.auto_close_loss_at))  # 0.5% to 100%
         self.scan_interval = max(300, self.scan_interval)  # Minimum 5 minutes between scans
         
         # Validate leverage

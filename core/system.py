@@ -339,20 +339,20 @@ class CompleteEnhancedBybitSystem:
         self.logger.info(f"   📈 Average confidence: {avg_confidence:.1f}%")
         
         # ===== PHASE 3: OPTIMIZED CHART GENERATION =====
-        charts_generated = 0
+        # charts_generated = 0
         
-        if self.config.generate_chart and ranked_signals:
-            self.logger.info(f"📊 PHASE 3: Chart Generation (Top {len(ranked_signals)} signals)")
-            charts_generated = self.generate_charts_for_top_signals(ranked_signals)
-        else:
-            self.logger.info("📊 PHASE 3: Chart generation disabled or no signals")
+        # if self.config.generate_chart and ranked_signals:
+        #     self.logger.info(f"📊 PHASE 3: Chart Generation (Top {len(ranked_signals)} signals)")
+        #     charts_generated = self.generate_charts_for_top_signals(ranked_signals)
+        # else:
+        #     self.logger.info("📊 PHASE 3: Chart generation disabled or no signals")
         
         execution_time = time.time() - start_time
         
         # ===== PHASE 4: ENHANCED RESULTS COMPILATION =====
         return self._compile_enhanced_results(
             start_time, execution_time, symbols, ranked_signals, analysis_results, 
-            charts_generated, mtf_validated_count, traditional_count
+            mtf_validated_count, traditional_count
         )
 
     def _create_empty_results(self, start_time: float, symbols_count: int, analysis_results: List[Dict]) -> Dict:
@@ -366,7 +366,7 @@ class CompleteEnhancedBybitSystem:
                 'symbols_analyzed': symbols_count,
                 'signals_generated': 0,
                 'success_rate': 0,
-                'charts_generated': 0,
+                # 'charts_generated': 0,
                 'method': 'enhanced_mtf',
                 'mtf_enabled': True
             },
@@ -383,7 +383,7 @@ class CompleteEnhancedBybitSystem:
 
     def _compile_enhanced_results(self, start_time: float, execution_time: float, symbols: List[Dict], 
                                 ranked_signals: List[Dict], analysis_results: List[Dict], 
-                                charts_generated: int, mtf_validated_count: int, traditional_count: int) -> Dict:
+                                mtf_validated_count: int, traditional_count: int) -> Dict:
         """Compile enhanced results with MTF statistics"""
         
         scan_info = {
@@ -392,7 +392,7 @@ class CompleteEnhancedBybitSystem:
             'symbols_analyzed': len(symbols),
             'signals_generated': len(ranked_signals),
             'success_rate': len(ranked_signals) / len(symbols) * 100 if symbols else 0,
-            'charts_generated': charts_generated,
+            # 'charts_generated': charts_generated,
             'parallel_processing': True,
             'threads_used': self.config.max_workers,
             'method': 'enhanced_mtf_structure_aware',
@@ -423,7 +423,7 @@ class CompleteEnhancedBybitSystem:
                 'order_type_distribution': self.get_order_type_distribution(ranked_signals),
                 'mtf_distribution': self.get_enhanced_mtf_distribution(ranked_signals),
                 'speedup_factor': self.calculate_speedup_factor(execution_time, len(symbols)),
-                'chart_efficiency': f"{charts_generated}/{len(ranked_signals)} signals charted"
+                # 'chart_efficiency': f"{charts_generated}/{len(ranked_signals)} signals charted"
             }
         }
         
@@ -433,7 +433,7 @@ class CompleteEnhancedBybitSystem:
         self.logger.info(f"   📊 Signal Quality: {mtf_validated_count} MTF-validated + {traditional_count} traditional")
         self.logger.info(f"   🎯 MTF Validation Rate: {mtf_validation_rate:.1f}%")
         self.logger.info(f"   📈 Structure Filtering: {((len(symbols) - len(ranked_signals)) / len(symbols) * 100):.1f}% symbols filtered")
-        self.logger.info(f"   📋 Chart Generation: {charts_generated}/{len(ranked_signals)} = {charts_generated/max(1,len(ranked_signals))*100:.1f}% charted")
+        # self.logger.info(f"   📋 Chart Generation: {charts_generated}/{len(ranked_signals)} = {charts_generated/max(1,len(ranked_signals))*100:.1f}% charted")
         
         return results
 
