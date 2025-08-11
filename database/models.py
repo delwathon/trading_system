@@ -99,7 +99,7 @@ class SystemConfig(Base):
     auto_close_profit_at = Column(Float, default=75.0)  # 20% profit target
     auto_close_loss_at = Column(Float, default=100.0)  # 100% profit target
     default_tp_level = Column(String(20), default='take_profit_1')  # Default take profit level to use
-    use_old_analysis = Column(Boolean, default=False)  # Use old analysis method
+    enable_signal_generation_relaxed_mode = Column(Boolean, default=False)  # Use old analysis method
     monitor_mode = Column(Boolean, default=False)  # Monitor mode only, no analysis
     
     # Metadata
@@ -162,7 +162,7 @@ class SystemConfig(Base):
             'auto_close_profit_at': self.auto_close_profit_at,
             'auto_close_loss_at': self.auto_close_loss_at,  # 100% profit target
             'default_tp_level': self.default_tp_level,  # Default take profit level to use
-            'use_old_analysis': self.use_old_analysis,  # Use old analysis method
+            'enable_signal_generation_relaxed_mode': self.enable_signal_generation_relaxed_mode,  # Use old analysis method
             'monitor_mode': self.monitor_mode,  # Monitor mode only, no analysis
         }
 

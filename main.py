@@ -235,16 +235,16 @@ async def handle_bootstrap_mode(config: EnhancedSystemConfig) -> bool:
         logger.info("=" * 50)
         logger.info("⚠️  API credentials are missing and need to be configured")
         logger.info("📱 Telegram bootstrap mode will guide you through the setup")
-        logger.info("")
+        print()
         logger.info("📋 What will happen:")
         logger.info("   1. Telegram bot will send you configuration instructions")
         logger.info("   2. You'll enter your API keys securely via Telegram")
         logger.info("   3. All keys will be encrypted before storage")
         logger.info("   4. System will automatically start trading once configured")
-        logger.info("")
+        print()
         logger.info("🚀 Starting Telegram bootstrap mode...")
         logger.info("📱 Check your Telegram for setup instructions!")
-        logger.info("")
+        print()
         
         # Run bootstrap mode
         bootstrap_success = await run_bootstrap_mode(config)
@@ -311,7 +311,7 @@ def main():
         logger.info("   ✅ MySQL database storage")
         logger.info("   ✅ Risk management controls")
         logger.info("   ✅ Telegram bootstrap mode for API setup")
-        logger.info("")
+        print()
         
         # Create or load configuration
         config_path = 'enhanced_config.yaml'
@@ -333,7 +333,7 @@ def main():
         # logger.info(f"   Host: {db_config.host}:{db_config.port}")
         # logger.info(f"   Database: {db_config.database}")
         # logger.info(f"   Username: {db_config.username}")
-        # logger.info("")
+        # print()
         
         # Setup database with auto-trading support
         if not setup_database_with_autotrading(db_config):
@@ -372,7 +372,7 @@ def main():
             return
         
         # logger.info("✅ Auto-trading configuration validated successfully!")
-        logger.info("")
+        print()
         
         # Initialize and start auto-trader
         logger.info("🚀 Initializing Auto-Trading System...")
@@ -385,15 +385,15 @@ def main():
             return
         
         # logger.info("✅ Exchange connection successful!")
-        logger.info("")
+        print()
         
         # Start auto-trading
         logger.info("🤖 Starting Automated Trading Session...")
         logger.info("   📱 You'll receive Telegram notifications for all trades")
         logger.info("   Press Ctrl+C to stop the auto-trader")
-        logger.info("")
+        print()
         logger.info("=" * 80)
-        logger.info("")
+        print()
         
         # Run main trading loop
         auto_trader.main_trading_loop()

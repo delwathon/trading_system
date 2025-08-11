@@ -534,40 +534,23 @@ class LeveragedProfitMonitor:
     def check_partial_profit_taking(self, position: PositionData, current_price: float) -> Optional[Dict]:
         """
         ENHANCED: Check for partial profit taking opportunities based on LEVERAGED profit
-        Fixed to ensure proper stop loss tracking initialization
+        Takes 50% of remaining position at 100%, 200%, 300% leveraged profit milestones
         """
         try:
             symbol = position.symbol
             
             # Initialize partial profit tracking if not exists
             if symbol not in self.position_tracker:
-                # Get the actual stop loss from the position or exchange
-                actual_stop_loss = position.stop_loss
-                if actual_stop_loss == 0:
-                    # Try to get from exchange
-                    try:
-                        positions = self.exchange.fetch_positions([symbol])
-                        for pos in positions:
-                            if pos['symbol'] == symbol:
-                                actual_stop_loss = pos.get('stopLoss', 0)
-                                break
-                    except Exception as e:
-                        self.logger.debug(f"Could not fetch stop loss from exchange: {e}")
-                
                 self.position_tracker[symbol] = {
                     'milestone_reached': 'none',
-                    'original_stop': actual_stop_loss,
-                    'current_stop': actual_stop_loss,
+                    'original_stop': position.stop_loss,
+                    'current_stop': position.stop_loss,
                     'last_check_price': current_price,
-                    'partial_100_taken': False,
-                    'partial_200_taken': False,
-                    'partial_300_taken': False,
-                    'original_size': position.size,
-                    'manual_stop_needed': False,  # Track if manual intervention is needed
-                    'manual_stop_price': 0  # Price for manual stop if needed
+                    'partial_100_taken': False,  # Track 100% leveraged profit partial
+                    'partial_200_taken': False,  # Track 200% leveraged profit partial
+                    'partial_300_taken': False,  # Track 300% leveraged profit partial
+                    'original_size': position.size
                 }
-                
-                self.logger.debug(f"Initialized tracker for {symbol} with stop loss: ${actual_stop_loss:.6f}")
             
             tracker = self.position_tracker[symbol]
             
@@ -578,29 +561,15 @@ class LeveragedProfitMonitor:
             if leveraged_profit_pct <= 0:
                 return None
             
-            # Check if manual stop monitoring is needed
-            if tracker.get('manual_stop_needed', False):
-                manual_stop = tracker.get('manual_stop_price', 0)
-                if manual_stop > 0:
-                    # Check if price hit manual stop
-                    if (position.side.lower() == 'buy' and current_price <= manual_stop) or \
-                    (position.side.lower() == 'sell' and current_price >= manual_stop):
-                        self.logger.warning(f"🚨 MANUAL STOP HIT for {symbol} at ${current_price:.6f} (stop: ${manual_stop:.6f})")
-                        # Return a special action to close the position
-                        return {
-                            'action': 'close_full',
-                            'reason': 'manual_stop_hit',
-                            'stop_price': manual_stop,
-                            'current_price': current_price
-                        }
+            # Check partial profit levels based on LEVERAGED profit
+            # Each takes 50% of REMAINING position size
             
-            # Check partial profit levels
             if leveraged_profit_pct >= 300.0 and not tracker.get('partial_300_taken', False):
                 self.logger.info(f"🎯 300% leveraged profit reached for {symbol}!")
                 tracker['partial_300_taken'] = True
                 return {
                     'action': 'close_partial',
-                    'percentage': 50,
+                    'percentage': 50,  # 50% of remaining position
                     'level': 'partial_300',
                     'leveraged_profit_pct': leveraged_profit_pct,
                     'milestone': '300% leveraged profit'
@@ -611,7 +580,7 @@ class LeveragedProfitMonitor:
                 tracker['partial_200_taken'] = True
                 return {
                     'action': 'close_partial',
-                    'percentage': 50,
+                    'percentage': 50,  # 50% of remaining position
                     'level': 'partial_200',
                     'leveraged_profit_pct': leveraged_profit_pct,
                     'milestone': '200% leveraged profit'
@@ -622,7 +591,7 @@ class LeveragedProfitMonitor:
                 tracker['partial_100_taken'] = True
                 return {
                     'action': 'close_partial',
-                    'percentage': 50,
+                    'percentage': 50,  # 50% of remaining position
                     'level': 'partial_100',
                     'leveraged_profit_pct': leveraged_profit_pct,
                     'milestone': '100% leveraged profit'
@@ -631,7 +600,7 @@ class LeveragedProfitMonitor:
             return None
             
         except Exception as e:
-            self.logger.error(f"Partial profit check error for {position.symbol}: {str(e)}")
+            self.logger.error(f"Partial profit check error for {position.symbol}: {e}")
             return None
     
     def execute_partial_close(self, position: PositionData, partial_info: Dict) -> bool:
@@ -775,13 +744,20 @@ class LeveragedProfitMonitor:
     def _update_stop_order_on_exchange(self, position: PositionData, new_stop_price: float) -> bool:
         """
         FIXED: Update the stop loss order on the exchange using correct Bybit API parameters
-        Enhanced error logging and handling for cases where no initial stop exists
         """
         try:
             symbol = position.symbol
             side = position.side.lower()
             
             self.logger.debug(f"🔧 Updating stop order for {symbol}: ${new_stop_price:.6f}")
+            
+            # First, cancel existing stop loss order if it exists
+            if position.stop_order_id:
+                try:
+                    self.exchange.cancel_order(position.stop_order_id, symbol)
+                    self.logger.debug(f"Cancelled old stop order {position.stop_order_id}")
+                except Exception as e:
+                    self.logger.debug(f"Could not cancel old stop order: {e}")
             
             # Get current position from exchange to ensure we have the right size
             positions = self.exchange.fetch_positions([symbol])
@@ -799,160 +775,143 @@ class LeveragedProfitMonitor:
             position_size = current_position['contracts']
             current_side = current_position['side'].lower()
             
-            # Determine stop order parameters for Bybit
+            # FIXED: Determine stop order parameters for Bybit
             if current_side == 'long':
-                stop_side = 'sell'
-                trigger_direction = 1  # 1 for rising, 2 for falling
+                stop_side = 'sell'  # Stop loss for long position
+                trigger_direction = 'down'  # Trigger when price goes down
             else:  # short
-                stop_side = 'buy'
-                trigger_direction = 2
+                stop_side = 'buy'   # Stop loss for short position  
+                trigger_direction = 'up'  # Trigger when price goes up
             
-            # First, try to cancel any existing stop orders
+            # FIXED: Try multiple Bybit-specific methods
             try:
-                open_orders = self.exchange.fetch_open_orders(symbol)
-                for order in open_orders:
-                    if order.get('stopPrice') or order.get('triggerPrice') or order.get('type') in ['stop', 'stop_market', 'conditional']:
-                        try:
-                            self.exchange.cancel_order(order['id'], symbol)
-                            self.logger.debug(f"Cancelled existing stop order: {order['id']}")
-                        except Exception as cancel_err:
-                            self.logger.debug(f"Could not cancel order {order['id']}: {cancel_err}")
-            except Exception as fetch_err:
-                self.logger.debug(f"Could not fetch open orders: {fetch_err}")
-            
-            # Try multiple methods with enhanced error logging
-            
-            # Method 1: Use stop_market order (most reliable for Bybit)
-            try:
+                # Method 1: Use stop order with correct Bybit parameters
                 stop_order = self.exchange.create_order(
                     symbol=symbol,
-                    type='stop_market',
+                    type='stop',
                     side=stop_side,
                     amount=position_size,
-                    stopPrice=new_stop_price,
                     params={
                         'triggerPrice': new_stop_price,
+                        'orderType': 'Market',
+                        'timeInForce': 'IOC',
                         'reduceOnly': True,
                         'closeOnTrigger': True,
                         'triggerBy': 'LastPrice'
                     }
                 )
                 
+                # Update position with new stop order ID
                 position.stop_order_id = stop_order['id']
-                self.logger.info(f"✅ Stop market order placed (Method 1): {stop_order['id']} at ${new_stop_price:.6f}")
+                
+                self.logger.debug(f"✅ Stop order placed (Method 1): {stop_order['id']} at ${new_stop_price:.6f}")
                 return True
                 
-            except Exception as e1:
-                self.logger.debug(f"Method 1 (stop_market) failed: {str(e1)}")
+            except Exception as e:
+                self.logger.debug(f"Method 1 failed: {e}")
                 
-                # Method 2: Use conditional order with stop_loss parameter
+                # Method 2: Use conditional order
                 try:
                     stop_order = self.exchange.create_order(
                         symbol=symbol,
-                        type='market',
+                        type='conditional',
                         side=stop_side,
                         amount=position_size,
                         params={
-                            'stopLoss': {
-                                'triggerPrice': str(new_stop_price),
-                                'triggerBy': 'LastPrice'
-                            },
-                            'reduceOnly': True
+                            'stopPrice': new_stop_price,
+                            'triggerPrice': new_stop_price,
+                            'orderType': 'Market',
+                            'timeInForce': 'IOC',
+                            'reduceOnly': True,
+                            'closeOnTrigger': True
                         }
                     )
                     
-                    position.stop_order_id = stop_order.get('id', '')
-                    self.logger.info(f"✅ Market order with stopLoss placed (Method 2) at ${new_stop_price:.6f}")
+                    position.stop_order_id = stop_order['id']
+                    self.logger.debug(f"✅ Conditional stop order placed (Method 2): {stop_order['id']}")
                     return True
                     
                 except Exception as e2:
-                    self.logger.debug(f"Method 2 (market with stopLoss) failed: {str(e2)}")
+                    self.logger.debug(f"Method 2 failed: {e2}")
                     
-                    # Method 3: Use Bybit's set-trading-stop endpoint directly
+                    # Method 3: Use market order with stop loss parameter
                     try:
-                        # Use Bybit's position modification endpoint
-                        result = self.exchange.privatePostV5PositionSetTradingStop({
-                            'category': 'linear',
-                            'symbol': symbol.replace('/', '').replace(':USDT', ''),  # Convert symbol format
-                            'stopLoss': str(new_stop_price),
-                            'tpslMode': 'Partial',  # Partial mode for position modification
-                            'slSize': str(position_size)  # Size for the stop loss
-                        })
+                        stop_order = self.exchange.create_order(
+                            symbol=symbol,
+                            type='market',
+                            side=stop_side,
+                            amount=position_size,
+                            params={
+                                'stopLoss': new_stop_price,
+                                'reduceOnly': True
+                            }
+                        )
                         
-                        self.logger.info(f"✅ Trading stop set directly (Method 3) at ${new_stop_price:.6f}")
-                        self.logger.debug(f"API Response: {result}")
+                        position.stop_order_id = stop_order['id']
+                        self.logger.debug(f"✅ Market order with SL placed (Method 3): {stop_order['id']}")
                         return True
                         
                     except Exception as e3:
-                        self.logger.debug(f"Method 3 (set-trading-stop) failed: {str(e3)}")
+                        self.logger.debug(f"Method 3 failed: {e3}")
                         
-                        # Method 4: Try with different API endpoint structure
+                        # Method 4: Try editing position directly via private API
                         try:
-                            # Alternative API call format
-                            result = self.exchange.private_post_v5_position_set_trading_stop({
+                            # Use Bybit's position modification endpoint
+                            result = self.exchange.private_post_v5_position_set_leverage({
                                 'category': 'linear',
-                                'symbol': symbol.replace('/', '').replace(':USDT', ''),
+                                'symbol': symbol,
                                 'stopLoss': str(new_stop_price)
                             })
                             
-                            self.logger.info(f"✅ Trading stop updated (Method 4) at ${new_stop_price:.6f}")
+                            self.logger.debug(f"✅ Position stop loss updated directly (Method 4)")
                             return True
                             
                         except Exception as e4:
-                            self.logger.debug(f"Method 4 (alternative API) failed: {str(e4)}")
+                            self.logger.debug(f"Method 4 failed: {e4}")
                             
-                            # Method 5: Create a conditional stop order
+                            # Method 5: Try using ccxt's built-in method
                             try:
-                                # Bybit conditional order format
-                                stop_order = self.exchange.create_order(
-                                    symbol=symbol,
-                                    type='limit',
-                                    side=stop_side,
-                                    amount=position_size,
-                                    price=new_stop_price * 0.95 if stop_side == 'sell' else new_stop_price * 1.05,  # Slippage protection
-                                    params={
-                                        'stopPrice': new_stop_price,
-                                        'triggerPrice': new_stop_price,
-                                        'triggerDirection': trigger_direction,
-                                        'triggerBy': 'LastPrice',
-                                        'orderType': 'Limit',
-                                        'timeInForce': 'IOC',
-                                        'reduceOnly': True,
-                                        'closeOnTrigger': True
-                                    }
-                                )
-                                
-                                position.stop_order_id = stop_order['id']
-                                self.logger.info(f"✅ Conditional stop order placed (Method 5): {stop_order['id']} at ${new_stop_price:.6f}")
-                                return True
-                                
+                                # Some exchanges have a built-in method for this
+                                if hasattr(self.exchange, 'edit_order'):
+                                    # Try to find existing stop order and edit it
+                                    open_orders = self.exchange.fetch_open_orders(symbol)
+                                    stop_orders = [o for o in open_orders if o['type'] in ['stop', 'stop_market', 'conditional']]
+                                    
+                                    if stop_orders:
+                                        existing_order = stop_orders[0]
+                                        edited_order = self.exchange.edit_order(
+                                            existing_order['id'],
+                                            symbol,
+                                            existing_order['type'],
+                                            existing_order['side'],
+                                            existing_order['amount'],
+                                            new_stop_price
+                                        )
+                                        
+                                        position.stop_order_id = edited_order['id']
+                                        self.logger.debug(f"✅ Edited existing stop order (Method 5)")
+                                        return True
+                                        
                             except Exception as e5:
-                                self.logger.debug(f"Method 5 (conditional order) failed: {str(e5)}")
+                                self.logger.debug(f"Method 5 failed: {e5}")
                                 
-                                # Method 6: Last resort - track internally and alert user
-                                self.logger.warning(f"⚠️ All API methods failed. Tracking stop internally at ${new_stop_price:.6f}")
+                                # Method 6: Manual position tracking (fallback)
+                                # If all API methods fail, at least update our internal tracking
+                                # and log for manual intervention
+                                self.logger.warning(f"⚠️ All API methods failed. Updating internal tracking only.")
                                 self.logger.warning(f"⚠️ MANUAL INTERVENTION NEEDED: Set stop loss for {symbol} at ${new_stop_price:.6f}")
                                 
-                                # Send urgent notification
+                                # Send urgent notification about manual intervention needed
                                 asyncio.run(self._send_manual_intervention_notification(symbol, new_stop_price, current_side))
                                 
-                                # Update internal tracking
+                                # Update internal tracking even if API fails
                                 position.stop_loss = new_stop_price
-                                
-                                # Store in position tracker for manual monitoring
-                                if symbol in self.position_tracker:
-                                    self.position_tracker[symbol]['manual_stop_needed'] = True
-                                    self.position_tracker[symbol]['manual_stop_price'] = new_stop_price
-                                
-                                # Return True to continue monitoring but flag for manual intervention
-                                return True
+                                return True  # Return True so monitoring continues
             
         except Exception as e:
-            self.logger.error(f"Critical error in stop order update: {str(e)}")
-            import traceback
-            self.logger.error(f"Traceback: {traceback.format_exc()}")
+            self.logger.error(f"Critical error in stop order update: {e}")
             return False
-    
+
     async def _send_manual_intervention_notification(self, symbol: str, stop_price: float, side: str):
         """Send urgent notification when manual intervention is needed"""
         try:
@@ -1159,7 +1118,8 @@ class LeveragedProfitMonitor:
     
     def monitor_positions(self):
         """
-        Main monitoring loop - ENHANCED to handle manual stop monitoring
+        Main monitoring loop
+        ENHANCED: Partial profit taking with integrated trailing stops
         """
         try:
             while self.monitoring:
@@ -1182,17 +1142,9 @@ class LeveragedProfitMonitor:
                         partial_taken = False
                         partial_info = self.check_partial_profit_taking(position, current_price)
                         if partial_info:
-                            if partial_info.get('action') == 'close_full':
-                                # Manual stop hit - close full position
-                                self.logger.warning(f"🚨 Closing position due to manual stop hit: {position.symbol}")
-                                if self.close_position(position):
-                                    self.update_position_in_database(position, 'closed', 'manual_stop_hit')
-                                    self.logger.info(f"✅ Position closed due to manual stop: {position.symbol}")
-                                continue
-                            elif partial_info.get('action') == 'close_partial':
-                                if self.execute_partial_close(position, partial_info):
-                                    self.logger.info(f"✅ Partial profit taken for {position.symbol}")
-                                    partial_taken = True
+                            if self.execute_partial_close(position, partial_info):
+                                self.logger.info(f"✅ Partial profit taken for {position.symbol}")
+                                partial_taken = True
                         
                         # PHASE 2: Check auto-close conditions (skip if partial was just taken)
                         if not partial_taken and self.config.auto_close_enabled:
@@ -1218,32 +1170,59 @@ class LeveragedProfitMonitor:
                                     # Update database record
                                     self.update_position_in_database(position, 'closed', close_reason)
                                     
-                                    # Clean up position tracker
-                                    if position.symbol in self.position_tracker:
-                                        del self.position_tracker[position.symbol]
+                                    # Log final close message with partial info
+                                    partial_info = ""
                                     
-                                    self.logger.info(f"✅ Successfully closed position {position.symbol}")
+                                    if position.symbol in self.position_tracker:
+                                        tracker = self.position_tracker[position.symbol]
+                                        partials_taken = []
+                                        if tracker.get('partial_100_taken', False):
+                                            partials_taken.append('100%')
+                                        if tracker.get('partial_200_taken', False):
+                                            partials_taken.append('200%')
+                                        if tracker.get('partial_300_taken', False):
+                                            partials_taken.append('300%')
+                                        if partials_taken:
+                                            partial_info = f" (Partials: {', '.join(partials_taken)})"
+                                    
+                                    if close_reason == 'profit_target':
+                                        self.logger.info(
+                                            f"✅ Successfully closed profitable position {position.symbol}{partial_info}"
+                                        )
+                                    else:
+                                        self.logger.info(
+                                            f"✅ Successfully closed losing position {position.symbol}{partial_info}"
+                                        )
                         
-                        # PHASE 3: Log monitoring status for positions with manual stops
+                        # PHASE 3: Log monitoring status for high-profit positions
                         if position.symbol in self.position_tracker:
                             tracker = self.position_tracker[position.symbol]
                             
-                            if tracker.get('manual_stop_needed', False):
-                                manual_stop = tracker.get('manual_stop_price', 0)
-                                self.logger.debug(
-                                    f"⚠️ Manual stop monitoring for {position.symbol}: "
-                                    f"Stop at ${manual_stop:.6f}, Current: ${current_price:.6f}"
-                                )
+                            # Count partials taken
+                            partials_count = sum([
+                                tracker.get('partial_100_taken', False),
+                                tracker.get('partial_200_taken', False),
+                                tracker.get('partial_300_taken', False)
+                            ])
                             
+                            # Log detailed status for high-profit positions
+                            if leveraged_profit > 50:
+                                self.logger.debug(
+                                    f"📊 High-profit position {position.symbol}: "
+                                    f"Profit={leveraged_profit:.2f}%, "
+                                    f"Partials={partials_count}/3, "
+                                    f"Leverage={position.leverage}x"
+                                )
+                        
                     except Exception as e:
-                        self.logger.error(f"Error monitoring position {position.symbol}: {str(e)}")
+                        self.logger.error(f"Error monitoring position {position.symbol}: {e}")
                 
                 # Sleep between monitoring cycles
                 time.sleep(10)  # Check every 10 seconds
                 
         except Exception as e:
-            self.logger.error(f"Error in monitoring loop: {str(e)}")
-            
+            self.logger.error(f"Error in monitoring loop: {e}")
+    
     def start_monitoring(self):
         """Start position monitoring in background thread"""
         if not self.monitoring:

@@ -2,8 +2,7 @@
 Auto-Trading System for Enhanced Bybit Trading System.
 Handles scheduled scanning, position management, and automated trading with leverage support.
 UPDATED: Enhanced with MILESTONE-BASED TRAILING STOPS that consider leverage dynamically.
-FIXED: Bybit API integration issues and integrated trailing stops with partial profit milestones.
-Version: 2.1
+Version: 2.0
 """
 
 import asyncio
@@ -53,6 +52,8 @@ class PositionData:
     trailing_stop_active: bool = False
     highest_price: float = 0.0
     lowest_price: float = 0.0
+    # Note: Partial profit tracking is now handled in position_tracker dict
+    # to ensure persistence across monitoring cycles
 
 
 @dataclass
@@ -460,7 +461,6 @@ class LeveragedProfitMonitor:
     """
     Monitor leveraged profits/losses and auto-close positions
     ENHANCED: Milestone-based trailing stops with leverage-aware calculations
-    FIXED: Bybit API integration and integrated with partial profit milestones
     """
     
     def __init__(self, exchange, config: EnhancedSystemConfig):
@@ -492,25 +492,374 @@ class LeveragedProfitMonitor:
             self.logger.error(f"Error calculating leveraged profit for {position.symbol}: {e}")
             return 0.0
     
-    def calculate_price_from_leveraged_profit(self, position: PositionData, target_leveraged_profit_pct: float) -> float:
-        """Calculate price level that corresponds to target leveraged profit percentage"""
+    def get_milestone_configuration(self, leverage: float) -> List[TrailingStopMilestone]:
+        """
+        Get milestone configuration based on leverage
+        ENHANCED: Wider milestones to avoid premature triggers from market noise
+        """
         try:
-            if position.entry_price <= 0 or position.leverage <= 0:
-                return position.entry_price
+            # ===== ENHANCED MILESTONE CONFIGURATION WITH MORE BREATHING ROOM =====
+            if leverage <= 10:
+                # Conservative milestones for low leverage - wider spacing
+                milestones = [
+                    TrailingStopMilestone(
+                        name='break_even',
+                        trigger_price_move_pct=1.5,   # 1.5% price move (was 0.5%)
+                        stop_price_move_pct=0.0,       # Move stop to entry
+                        leveraged_profit_pct=15.0,     # 15% leveraged profit at 10x
+                        stop_leveraged_profit_pct=0.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_1',
+                        trigger_price_move_pct=2.5,   # 2.5% price move (was 1.0%)
+                        stop_price_move_pct=0.8,       # Lock 0.8% price move
+                        leveraged_profit_pct=25.0,     # 25% leveraged profit
+                        stop_leveraged_profit_pct=8.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_2',
+                        trigger_price_move_pct=4.0,   # 4% price move (was 1.5%)
+                        stop_price_move_pct=1.8,       # Lock 1.8% price move
+                        leveraged_profit_pct=40.0,     # 40% leveraged profit
+                        stop_leveraged_profit_pct=18.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_3',
+                        trigger_price_move_pct=6.0,   # 6% price move (was 2.5%)
+                        stop_price_move_pct=3.0,       # Lock 3% price move
+                        leveraged_profit_pct=60.0,     # 60% leveraged profit
+                        stop_leveraged_profit_pct=30.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_4',
+                        trigger_price_move_pct=8.0,   # 8% price move (was 3.5%)
+                        stop_price_move_pct=5.0,       # Lock 5% price move
+                        leveraged_profit_pct=80.0,     # 80% leveraged profit
+                        stop_leveraged_profit_pct=50.0
+                    )
+                ]
             
-            # Convert leveraged profit to price change percentage
-            price_change_pct = target_leveraged_profit_pct / position.leverage
+            elif leverage <= 25:
+                # Moderate milestones for medium leverage - balanced spacing
+                milestones = [
+                    TrailingStopMilestone(
+                        name='break_even',
+                        trigger_price_move_pct=0.8,   # 0.8% price move (was 0.3%)
+                        stop_price_move_pct=0.0,
+                        leveraged_profit_pct=20.0,     # 20% leveraged profit at 25x
+                        stop_leveraged_profit_pct=0.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_1',
+                        trigger_price_move_pct=1.5,   # 1.5% price move (was 0.6%)
+                        stop_price_move_pct=0.5,       # Lock 0.5% price move
+                        leveraged_profit_pct=37.5,     # 37.5% leveraged profit
+                        stop_leveraged_profit_pct=12.5
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_2',
+                        trigger_price_move_pct=2.4,   # 2.4% price move (was 1.0%)
+                        stop_price_move_pct=1.0,       # Lock 1.0% price move
+                        leveraged_profit_pct=60.0,     # 60% leveraged profit
+                        stop_leveraged_profit_pct=25.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_3',
+                        trigger_price_move_pct=3.5,   # 3.5% price move (was 1.5%)
+                        stop_price_move_pct=1.8,       # Lock 1.8% price move
+                        leveraged_profit_pct=87.5,     # 87.5% leveraged profit
+                        stop_leveraged_profit_pct=45.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_4',
+                        trigger_price_move_pct=5.0,   # 5.0% price move (was 2.0%)
+                        stop_price_move_pct=3.0,       # Lock 3.0% price move
+                        leveraged_profit_pct=125.0,    # 125% leveraged profit
+                        stop_leveraged_profit_pct=75.0
+                    )
+                ]
             
-            # Consider position side
-            if position.side.lower() == 'buy':
-                target_price = position.entry_price * (1 + price_change_pct / 100)
-            else:  # sell
-                target_price = position.entry_price * (1 - price_change_pct / 100)
+            elif leverage <= 50:
+                # Balanced milestones for high leverage - reasonable spacing
+                milestones = [
+                    TrailingStopMilestone(
+                        name='break_even',
+                        trigger_price_move_pct=0.5,   # 0.5% price move (was 0.2%)
+                        stop_price_move_pct=0.0,
+                        leveraged_profit_pct=25.0,     # 25% leveraged profit at 50x
+                        stop_leveraged_profit_pct=0.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_1',
+                        trigger_price_move_pct=1.0,   # 1.0% price move (was 0.4%)
+                        stop_price_move_pct=0.3,       # Lock 0.3% price move
+                        leveraged_profit_pct=50.0,     # 50% leveraged profit
+                        stop_leveraged_profit_pct=15.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_2',
+                        trigger_price_move_pct=1.6,   # 1.6% price move (was 0.6%)
+                        stop_price_move_pct=0.7,       # Lock 0.7% price move
+                        leveraged_profit_pct=80.0,     # 80% leveraged profit
+                        stop_leveraged_profit_pct=35.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_3',
+                        trigger_price_move_pct=2.5,   # 2.5% price move (was 1.0%)
+                        stop_price_move_pct=1.3,       # Lock 1.3% price move
+                        leveraged_profit_pct=125.0,    # 125% leveraged profit
+                        stop_leveraged_profit_pct=65.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_4',
+                        trigger_price_move_pct=3.5,   # 3.5% price move (was 1.5%)
+                        stop_price_move_pct=2.0,       # Lock 2.0% price move
+                        leveraged_profit_pct=175.0,    # 175% leveraged profit
+                        stop_leveraged_profit_pct=100.0
+                    )
+                ]
             
-            return target_price
+            else:  # leverage > 50 (including 100x and max)
+                # Careful milestones for extreme leverage - still wider than before
+                milestones = [
+                    TrailingStopMilestone(
+                        name='break_even',
+                        trigger_price_move_pct=0.3,   # 0.3% price move (was 0.15%)
+                        stop_price_move_pct=0.0,
+                        leveraged_profit_pct=30.0,     # 30% leveraged profit at 100x
+                        stop_leveraged_profit_pct=0.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_1',
+                        trigger_price_move_pct=0.6,   # 0.6% price move (was 0.25%)
+                        stop_price_move_pct=0.2,       # Lock 0.2% price move
+                        leveraged_profit_pct=60.0,     # 60% leveraged profit
+                        stop_leveraged_profit_pct=20.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_2',
+                        trigger_price_move_pct=1.0,   # 1.0% price move (was 0.4%)
+                        stop_price_move_pct=0.4,       # Lock 0.4% price move
+                        leveraged_profit_pct=100.0,    # 100% leveraged profit
+                        stop_leveraged_profit_pct=40.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_3',
+                        trigger_price_move_pct=1.5,   # 1.5% price move (was 0.6%)
+                        stop_price_move_pct=0.7,       # Lock 0.7% price move
+                        leveraged_profit_pct=150.0,    # 150% leveraged profit
+                        stop_leveraged_profit_pct=70.0
+                    ),
+                    TrailingStopMilestone(
+                        name='profit_lock_4',
+                        trigger_price_move_pct=2.2,   # 2.2% price move (was 1.0%)
+                        stop_price_move_pct=1.2,       # Lock 1.2% price move
+                        leveraged_profit_pct=220.0,    # 220% leveraged profit
+                        stop_leveraged_profit_pct=120.0
+                    )
+                ]
+            
+            return milestones
+            
         except Exception as e:
-            self.logger.error(f"Error calculating price from leveraged profit: {e}")
-            return position.entry_price
+            self.logger.error(f"Error getting milestone configuration: {e}")
+            # Return default safe milestones
+            return [
+                TrailingStopMilestone(
+                    name='break_even',
+                    trigger_price_move_pct=1.0,
+                    stop_price_move_pct=0.0,
+                    leveraged_profit_pct=10.0,
+                    stop_leveraged_profit_pct=0.0
+                )
+            ]
+    
+    def check_and_update_milestone_stop(self, position: PositionData, current_price: float) -> Optional[float]:
+        """
+        Check if position has reached a new milestone and update stop loss accordingly
+        
+        Returns:
+            New stop loss price if milestone reached, None otherwise
+        """
+        try:
+            symbol = position.symbol
+            side = position.side.lower()
+            entry_price = position.entry_price
+            leverage = position.leverage
+            
+            # Initialize position tracking if not exists (includes both milestone and partial profit tracking)
+            if symbol not in self.position_tracker:
+                self.position_tracker[symbol] = {
+                    'milestone_reached': 'none',
+                    'original_stop': position.stop_loss,
+                    'current_stop': position.stop_loss,
+                    'last_check_price': current_price,
+                    'milestones': self.get_milestone_configuration(leverage),
+                    # Partial profit tracking
+                    'partial_100_taken': False,
+                    'partial_200_taken': False,
+                    'partial_300_taken': False,
+                    'original_size': position.size
+                }
+                # Store original stop loss in position data
+                position.original_stop_loss = position.stop_loss
+            
+            tracker = self.position_tracker[symbol]
+            milestones = tracker['milestones']
+            current_milestone = tracker['milestone_reached']
+            
+            # Calculate price movement percentage
+            if side == 'buy':  # LONG position
+                price_move_pct = ((current_price - entry_price) / entry_price) * 100
+            else:  # SHORT position
+                price_move_pct = ((entry_price - current_price) / entry_price) * 100
+            
+            # Check each milestone in order
+            new_milestone_reached = None
+            new_stop_price = None
+            
+            for milestone in milestones:
+                # Skip if we've already reached a higher milestone
+                if self._is_milestone_higher(current_milestone, milestone.name):
+                    continue
+                
+                # Check if we've reached this milestone
+                if price_move_pct >= milestone.trigger_price_move_pct:
+                    # This is a new milestone!
+                    new_milestone_reached = milestone
+                    
+                    # Calculate new stop price
+                    if side == 'buy':
+                        new_stop_price = entry_price * (1 + milestone.stop_price_move_pct / 100)
+                    else:
+                        new_stop_price = entry_price * (1 - milestone.stop_price_move_pct / 100)
+                    
+                    # Don't break - check if we can reach an even higher milestone
+            
+            # If we found a new milestone, update everything
+            if new_milestone_reached:
+                old_milestone = tracker['milestone_reached']
+                old_stop = tracker['current_stop']
+                
+                # Update tracker
+                tracker['milestone_reached'] = new_milestone_reached.name
+                tracker['current_stop'] = new_stop_price
+                tracker['last_check_price'] = current_price
+                
+                # Update position data
+                position.milestone_reached = new_milestone_reached.name
+                position.stop_loss = new_stop_price
+                
+                # Log the milestone achievement
+                self.logger.info(f"🎯 MILESTONE REACHED for {symbol}!")
+                self.logger.info(f"   Milestone: {old_milestone} → {new_milestone_reached.name}")
+                self.logger.info(f"   Price Move: {price_move_pct:.2f}% (trigger: {new_milestone_reached.trigger_price_move_pct}%)")
+                self.logger.info(f"   Leveraged Profit: {new_milestone_reached.leveraged_profit_pct:.1f}%")
+                self.logger.info(f"   Stop Loss: {old_stop:.6f} → {new_stop_price:.6f}")
+                self.logger.info(f"   Profit Locked: {new_milestone_reached.stop_leveraged_profit_pct:.1f}%")
+                
+                # Actually update the stop order on the exchange
+                if self._update_stop_order_on_exchange(position, new_stop_price):
+                    self.logger.info(f"✅ Stop order updated on exchange for {symbol}")
+                    return new_stop_price
+                else:
+                    self.logger.error(f"❌ Failed to update stop order on exchange for {symbol}")
+                    # Revert tracker if exchange update failed
+                    tracker['milestone_reached'] = old_milestone
+                    tracker['current_stop'] = old_stop
+                    position.milestone_reached = old_milestone
+                    position.stop_loss = old_stop
+                    return None
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error checking milestone stop for {position.symbol}: {e}")
+            return None
+    
+    def _is_milestone_higher(self, current: str, new: str) -> bool:
+        """Check if new milestone is higher than current"""
+        milestone_order = ['none', 'break_even', 'profit_lock_1', 'profit_lock_2', 'profit_lock_3', 'profit_lock_4']
+        try:
+            current_idx = milestone_order.index(current)
+            new_idx = milestone_order.index(new)
+            return new_idx <= current_idx
+        except ValueError:
+            return False
+    
+    def _update_stop_order_on_exchange(self, position: PositionData, new_stop_price: float) -> bool:
+        """
+        Update the stop loss order on the exchange
+        This is critical for actually protecting profits
+        """
+        try:
+            symbol = position.symbol
+            side = position.side.lower()
+            
+            # First, cancel existing stop loss order if it exists
+            if position.stop_order_id:
+                try:
+                    self.exchange.cancel_order(position.stop_order_id, symbol)
+                    self.logger.debug(f"Cancelled old stop order {position.stop_order_id}")
+                except Exception as e:
+                    self.logger.debug(f"Could not cancel old stop order: {e}")
+            
+            # Get current position from exchange to ensure we have the right size
+            positions = self.exchange.fetch_positions([symbol])
+            current_position = None
+            
+            for pos in positions:
+                if pos['symbol'] == symbol and pos['contracts'] > 0:
+                    current_position = pos
+                    break
+            
+            if not current_position:
+                self.logger.warning(f"No active position found for {symbol} when updating stop")
+                return False
+            
+            position_size = current_position['contracts']
+            
+            # Determine stop order side
+            if side == 'buy':
+                stop_side = 'Sell'  # Stop loss for long position
+                stop_type = 'stop'
+            else:
+                stop_side = 'Buy'   # Stop loss for short position
+                stop_type = 'stop'
+            
+            # Place new stop loss order
+            stop_order = self.exchange.create_order(
+                symbol=symbol,
+                type=stop_type,
+                side=stop_side,
+                amount=position_size,
+                stopPrice=new_stop_price,
+                params={
+                    'stopLossPrice': new_stop_price,
+                    'reduceOnly': True,
+                    'close': True
+                }
+            )
+            
+            # Update position with new stop order ID
+            position.stop_order_id = stop_order['id']
+            
+            self.logger.debug(f"✅ New stop order placed: {stop_order['id']} at {new_stop_price}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to update stop order on exchange: {e}")
+            
+            # Try alternative method: update position stop loss directly
+            try:
+                # Some exchanges allow updating position stop loss directly
+                self.exchange.set_position_stop_loss(symbol, new_stop_price)
+                self.logger.info(f"✅ Updated position stop loss directly for {symbol}")
+                return True
+            except:
+                pass
+            
+            return False
     
     def should_auto_close(self, position: PositionData, current_price: float) -> tuple[bool, str]:
         """Check if position should be auto-closed based on profit/loss targets"""
@@ -534,40 +883,24 @@ class LeveragedProfitMonitor:
     def check_partial_profit_taking(self, position: PositionData, current_price: float) -> Optional[Dict]:
         """
         ENHANCED: Check for partial profit taking opportunities based on LEVERAGED profit
-        Fixed to ensure proper stop loss tracking initialization
+        Takes 50% of remaining position at 100%, 200%, 300% leveraged profit milestones
         """
         try:
             symbol = position.symbol
             
             # Initialize partial profit tracking if not exists
             if symbol not in self.position_tracker:
-                # Get the actual stop loss from the position or exchange
-                actual_stop_loss = position.stop_loss
-                if actual_stop_loss == 0:
-                    # Try to get from exchange
-                    try:
-                        positions = self.exchange.fetch_positions([symbol])
-                        for pos in positions:
-                            if pos['symbol'] == symbol:
-                                actual_stop_loss = pos.get('stopLoss', 0)
-                                break
-                    except Exception as e:
-                        self.logger.debug(f"Could not fetch stop loss from exchange: {e}")
-                
                 self.position_tracker[symbol] = {
                     'milestone_reached': 'none',
-                    'original_stop': actual_stop_loss,
-                    'current_stop': actual_stop_loss,
+                    'original_stop': position.stop_loss,
+                    'current_stop': position.stop_loss,
                     'last_check_price': current_price,
-                    'partial_100_taken': False,
-                    'partial_200_taken': False,
-                    'partial_300_taken': False,
-                    'original_size': position.size,
-                    'manual_stop_needed': False,  # Track if manual intervention is needed
-                    'manual_stop_price': 0  # Price for manual stop if needed
+                    'milestones': [],
+                    'partial_100_taken': False,  # Track 100% leveraged profit partial
+                    'partial_200_taken': False,  # Track 200% leveraged profit partial
+                    'partial_300_taken': False,  # Track 300% leveraged profit partial
+                    'original_size': position.size
                 }
-                
-                self.logger.debug(f"Initialized tracker for {symbol} with stop loss: ${actual_stop_loss:.6f}")
             
             tracker = self.position_tracker[symbol]
             
@@ -578,29 +911,15 @@ class LeveragedProfitMonitor:
             if leveraged_profit_pct <= 0:
                 return None
             
-            # Check if manual stop monitoring is needed
-            if tracker.get('manual_stop_needed', False):
-                manual_stop = tracker.get('manual_stop_price', 0)
-                if manual_stop > 0:
-                    # Check if price hit manual stop
-                    if (position.side.lower() == 'buy' and current_price <= manual_stop) or \
-                    (position.side.lower() == 'sell' and current_price >= manual_stop):
-                        self.logger.warning(f"🚨 MANUAL STOP HIT for {symbol} at ${current_price:.6f} (stop: ${manual_stop:.6f})")
-                        # Return a special action to close the position
-                        return {
-                            'action': 'close_full',
-                            'reason': 'manual_stop_hit',
-                            'stop_price': manual_stop,
-                            'current_price': current_price
-                        }
+            # Check partial profit levels based on LEVERAGED profit
+            # Each takes 50% of REMAINING position size
             
-            # Check partial profit levels
             if leveraged_profit_pct >= 300.0 and not tracker.get('partial_300_taken', False):
                 self.logger.info(f"🎯 300% leveraged profit reached for {symbol}!")
                 tracker['partial_300_taken'] = True
                 return {
                     'action': 'close_partial',
-                    'percentage': 50,
+                    'percentage': 50,  # 50% of remaining position
                     'level': 'partial_300',
                     'leveraged_profit_pct': leveraged_profit_pct,
                     'milestone': '300% leveraged profit'
@@ -611,7 +930,7 @@ class LeveragedProfitMonitor:
                 tracker['partial_200_taken'] = True
                 return {
                     'action': 'close_partial',
-                    'percentage': 50,
+                    'percentage': 50,  # 50% of remaining position
                     'level': 'partial_200',
                     'leveraged_profit_pct': leveraged_profit_pct,
                     'milestone': '200% leveraged profit'
@@ -622,7 +941,7 @@ class LeveragedProfitMonitor:
                 tracker['partial_100_taken'] = True
                 return {
                     'action': 'close_partial',
-                    'percentage': 50,
+                    'percentage': 50,  # 50% of remaining position
                     'level': 'partial_100',
                     'leveraged_profit_pct': leveraged_profit_pct,
                     'milestone': '100% leveraged profit'
@@ -631,12 +950,13 @@ class LeveragedProfitMonitor:
             return None
             
         except Exception as e:
-            self.logger.error(f"Partial profit check error for {position.symbol}: {str(e)}")
+            self.logger.error(f"Partial profit check error for {position.symbol}: {e}")
             return None
     
     def execute_partial_close(self, position: PositionData, partial_info: Dict) -> bool:
         """
-        ENHANCED: Execute partial position close and update trailing stops based on milestones
+        ENHANCED: Execute partial position close - takes 50% of REMAINING position
+        Properly tracks execution to prevent repeated partial takes
         """
         try:
             symbol = position.symbol
@@ -665,9 +985,9 @@ class LeveragedProfitMonitor:
             # Determine close side
             current_side = current_position['side']
             if current_side.lower() == 'long':
-                close_side = 'sell'
+                close_side = 'Sell'
             elif current_side.lower() == 'short':
-                close_side = 'buy'
+                close_side = 'Buy'
             else:
                 self.logger.error(f"Unknown position side for partial close: {current_side}")
                 return False
@@ -688,9 +1008,6 @@ class LeveragedProfitMonitor:
                 self.logger.info(f"   Leveraged Profit: {leveraged_profit_pct:.1f}%")
                 self.logger.info(f"   Closed: {percentage}% of remaining ({close_size:.4f} units)")
                 self.logger.info(f"   Remaining Position: {current_size - close_size:.4f} units")
-                
-                # ENHANCED: Update trailing stop based on partial profit milestone
-                self.update_trailing_stop_for_partial_milestone(position, level, leveraged_profit_pct)
                 
                 # Send notification about partial profit
                 asyncio.run(self._send_partial_profit_notification(
@@ -717,290 +1034,6 @@ class LeveragedProfitMonitor:
             self.logger.error(f"Partial close execution error for {position.symbol}: {e}")
             return False
     
-    def update_trailing_stop_for_partial_milestone(self, position: PositionData, partial_level: str, leveraged_profit_pct: float):
-        """
-        ENHANCED: Update trailing stop when partial profit is taken
-        - partial_100 → move SL to break even (0% leveraged profit)
-        - partial_200 → move SL to 100% leveraged profit level  
-        - partial_300 → move SL to 200% leveraged profit level
-        """
-        try:
-            symbol = position.symbol
-            
-            # Determine target leveraged profit for stop loss
-            if partial_level == 'partial_100':
-                target_leveraged_profit = 0.0  # Break even
-                stop_description = "Break Even"
-            elif partial_level == 'partial_200':
-                target_leveraged_profit = 100.0  # 100% leveraged profit
-                stop_description = "100% leveraged profit"
-            elif partial_level == 'partial_300':
-                target_leveraged_profit = 200.0  # 200% leveraged profit
-                stop_description = "200% leveraged profit"
-            else:
-                return  # Unknown partial level
-            
-            # Calculate new stop loss price
-            new_stop_price = self.calculate_price_from_leveraged_profit(position, target_leveraged_profit)
-            
-            self.logger.info(f"🎯 UPDATING TRAILING STOP FOR PARTIAL MILESTONE: {symbol}")
-            self.logger.info(f"   Partial Level: {partial_level}")
-            self.logger.info(f"   Target Level: {stop_description}")
-            self.logger.info(f"   New Stop Price: ${new_stop_price:.6f}")
-            
-            # Update position tracking
-            if symbol in self.position_tracker:
-                tracker = self.position_tracker[symbol]
-                old_stop = tracker.get('current_stop', position.stop_loss)
-                tracker['current_stop'] = new_stop_price
-                tracker['milestone_reached'] = f"partial_{partial_level}"
-                
-                self.logger.info(f"   Old Stop: ${old_stop:.6f} → New Stop: ${new_stop_price:.6f}")
-            
-            # Update stop order on exchange
-            if self._update_stop_order_on_exchange(position, new_stop_price):
-                self.logger.info(f"✅ Trailing stop updated for partial milestone: {symbol}")
-                position.stop_loss = new_stop_price
-                
-                # Send notification
-                asyncio.run(self._send_trailing_stop_update_notification(
-                    symbol, stop_description, new_stop_price, leveraged_profit_pct
-                ))
-            else:
-                self.logger.error(f"❌ Failed to update trailing stop for partial milestone: {symbol}")
-                
-        except Exception as e:
-            self.logger.error(f"Error updating trailing stop for partial milestone {position.symbol}: {e}")
-    
-    def _update_stop_order_on_exchange(self, position: PositionData, new_stop_price: float) -> bool:
-        """
-        FIXED: Update the stop loss order on the exchange using correct Bybit API parameters
-        Enhanced error logging and handling for cases where no initial stop exists
-        """
-        try:
-            symbol = position.symbol
-            side = position.side.lower()
-            
-            self.logger.debug(f"🔧 Updating stop order for {symbol}: ${new_stop_price:.6f}")
-            
-            # Get current position from exchange to ensure we have the right size
-            positions = self.exchange.fetch_positions([symbol])
-            current_position = None
-            
-            for pos in positions:
-                if pos['symbol'] == symbol and pos['contracts'] > 0:
-                    current_position = pos
-                    break
-            
-            if not current_position:
-                self.logger.warning(f"No active position found for {symbol} when updating stop")
-                return False
-            
-            position_size = current_position['contracts']
-            current_side = current_position['side'].lower()
-            
-            # Determine stop order parameters for Bybit
-            if current_side == 'long':
-                stop_side = 'sell'
-                trigger_direction = 1  # 1 for rising, 2 for falling
-            else:  # short
-                stop_side = 'buy'
-                trigger_direction = 2
-            
-            # First, try to cancel any existing stop orders
-            try:
-                open_orders = self.exchange.fetch_open_orders(symbol)
-                for order in open_orders:
-                    if order.get('stopPrice') or order.get('triggerPrice') or order.get('type') in ['stop', 'stop_market', 'conditional']:
-                        try:
-                            self.exchange.cancel_order(order['id'], symbol)
-                            self.logger.debug(f"Cancelled existing stop order: {order['id']}")
-                        except Exception as cancel_err:
-                            self.logger.debug(f"Could not cancel order {order['id']}: {cancel_err}")
-            except Exception as fetch_err:
-                self.logger.debug(f"Could not fetch open orders: {fetch_err}")
-            
-            # Try multiple methods with enhanced error logging
-            
-            # Method 1: Use stop_market order (most reliable for Bybit)
-            try:
-                stop_order = self.exchange.create_order(
-                    symbol=symbol,
-                    type='stop_market',
-                    side=stop_side,
-                    amount=position_size,
-                    stopPrice=new_stop_price,
-                    params={
-                        'triggerPrice': new_stop_price,
-                        'reduceOnly': True,
-                        'closeOnTrigger': True,
-                        'triggerBy': 'LastPrice'
-                    }
-                )
-                
-                position.stop_order_id = stop_order['id']
-                self.logger.info(f"✅ Stop market order placed (Method 1): {stop_order['id']} at ${new_stop_price:.6f}")
-                return True
-                
-            except Exception as e1:
-                self.logger.debug(f"Method 1 (stop_market) failed: {str(e1)}")
-                
-                # Method 2: Use conditional order with stop_loss parameter
-                try:
-                    stop_order = self.exchange.create_order(
-                        symbol=symbol,
-                        type='market',
-                        side=stop_side,
-                        amount=position_size,
-                        params={
-                            'stopLoss': {
-                                'triggerPrice': str(new_stop_price),
-                                'triggerBy': 'LastPrice'
-                            },
-                            'reduceOnly': True
-                        }
-                    )
-                    
-                    position.stop_order_id = stop_order.get('id', '')
-                    self.logger.info(f"✅ Market order with stopLoss placed (Method 2) at ${new_stop_price:.6f}")
-                    return True
-                    
-                except Exception as e2:
-                    self.logger.debug(f"Method 2 (market with stopLoss) failed: {str(e2)}")
-                    
-                    # Method 3: Use Bybit's set-trading-stop endpoint directly
-                    try:
-                        # Use Bybit's position modification endpoint
-                        result = self.exchange.privatePostV5PositionSetTradingStop({
-                            'category': 'linear',
-                            'symbol': symbol.replace('/', '').replace(':USDT', ''),  # Convert symbol format
-                            'stopLoss': str(new_stop_price),
-                            'tpslMode': 'Partial',  # Partial mode for position modification
-                            'slSize': str(position_size)  # Size for the stop loss
-                        })
-                        
-                        self.logger.info(f"✅ Trading stop set directly (Method 3) at ${new_stop_price:.6f}")
-                        self.logger.debug(f"API Response: {result}")
-                        return True
-                        
-                    except Exception as e3:
-                        self.logger.debug(f"Method 3 (set-trading-stop) failed: {str(e3)}")
-                        
-                        # Method 4: Try with different API endpoint structure
-                        try:
-                            # Alternative API call format
-                            result = self.exchange.private_post_v5_position_set_trading_stop({
-                                'category': 'linear',
-                                'symbol': symbol.replace('/', '').replace(':USDT', ''),
-                                'stopLoss': str(new_stop_price)
-                            })
-                            
-                            self.logger.info(f"✅ Trading stop updated (Method 4) at ${new_stop_price:.6f}")
-                            return True
-                            
-                        except Exception as e4:
-                            self.logger.debug(f"Method 4 (alternative API) failed: {str(e4)}")
-                            
-                            # Method 5: Create a conditional stop order
-                            try:
-                                # Bybit conditional order format
-                                stop_order = self.exchange.create_order(
-                                    symbol=symbol,
-                                    type='limit',
-                                    side=stop_side,
-                                    amount=position_size,
-                                    price=new_stop_price * 0.95 if stop_side == 'sell' else new_stop_price * 1.05,  # Slippage protection
-                                    params={
-                                        'stopPrice': new_stop_price,
-                                        'triggerPrice': new_stop_price,
-                                        'triggerDirection': trigger_direction,
-                                        'triggerBy': 'LastPrice',
-                                        'orderType': 'Limit',
-                                        'timeInForce': 'IOC',
-                                        'reduceOnly': True,
-                                        'closeOnTrigger': True
-                                    }
-                                )
-                                
-                                position.stop_order_id = stop_order['id']
-                                self.logger.info(f"✅ Conditional stop order placed (Method 5): {stop_order['id']} at ${new_stop_price:.6f}")
-                                return True
-                                
-                            except Exception as e5:
-                                self.logger.debug(f"Method 5 (conditional order) failed: {str(e5)}")
-                                
-                                # Method 6: Last resort - track internally and alert user
-                                self.logger.warning(f"⚠️ All API methods failed. Tracking stop internally at ${new_stop_price:.6f}")
-                                self.logger.warning(f"⚠️ MANUAL INTERVENTION NEEDED: Set stop loss for {symbol} at ${new_stop_price:.6f}")
-                                
-                                # Send urgent notification
-                                asyncio.run(self._send_manual_intervention_notification(symbol, new_stop_price, current_side))
-                                
-                                # Update internal tracking
-                                position.stop_loss = new_stop_price
-                                
-                                # Store in position tracker for manual monitoring
-                                if symbol in self.position_tracker:
-                                    self.position_tracker[symbol]['manual_stop_needed'] = True
-                                    self.position_tracker[symbol]['manual_stop_price'] = new_stop_price
-                                
-                                # Return True to continue monitoring but flag for manual intervention
-                                return True
-            
-        except Exception as e:
-            self.logger.error(f"Critical error in stop order update: {str(e)}")
-            import traceback
-            self.logger.error(f"Traceback: {traceback.format_exc()}")
-            return False
-    
-    async def _send_manual_intervention_notification(self, symbol: str, stop_price: float, side: str):
-        """Send urgent notification when manual intervention is needed"""
-        try:
-            from telegram_bot_and_notification.bootstrap_manager import send_trading_notification
-            
-            message = (
-                f"🚨 *URGENT: MANUAL INTERVENTION NEEDED\\!*\n"
-                f"\n"
-                f"Symbol: {escape_markdown(symbol)}\n"
-                f"Position: {escape_markdown(side.upper())}\n"
-                f"Required Stop Loss: ${escape_markdown(f'{stop_price:.6f}')}\n"
-                f"\n"
-                f"❌ All automated stop update methods failed\\!\n"
-                f"🔧 Please manually set stop loss on exchange\\.\n"
-                f"\n"
-                f"⚠️ Position is NOT protected until stop is set\\!"
-            )
-            
-            await send_trading_notification(self.config, message)
-            
-        except Exception as e:
-            self.logger.error(f"Failed to send manual intervention notification: {e}")
-
-    # Additional helper method to check if stop order was actually placed
-    def _verify_stop_order_placement(self, symbol: str, expected_stop_price: float) -> bool:
-        """Verify that the stop order was actually placed on the exchange"""
-        try:
-            # Check open orders for stop orders
-            open_orders = self.exchange.fetch_open_orders(symbol)
-            stop_orders = [o for o in open_orders if o['type'] in ['stop', 'stop_market', 'conditional']]
-            
-            for order in stop_orders:
-                # Check if any stop order is close to our expected price (within 0.1%)
-                if order.get('triggerPrice') or order.get('stopPrice'):
-                    order_stop_price = order.get('triggerPrice') or order.get('stopPrice')
-                    price_diff_pct = abs(order_stop_price - expected_stop_price) / expected_stop_price
-                    
-                    if price_diff_pct < 0.001:  # Within 0.1%
-                        self.logger.debug(f"✅ Verified stop order exists at ${order_stop_price:.6f}")
-                        return True
-            
-            self.logger.warning(f"⚠️ No matching stop order found for ${expected_stop_price:.6f}")
-            return False
-            
-        except Exception as e:
-            self.logger.error(f"Error verifying stop order placement: {e}")
-            return False
-      
     async def _send_partial_profit_notification(self, symbol: str, milestone: str, 
                                                leveraged_profit: float, closed_size: float, 
                                                remaining_size: float):
@@ -1017,36 +1050,13 @@ class LeveragedProfitMonitor:
                 f"Closed Size: {escape_markdown(f'{closed_size:.4f}')} units\n"
                 f"Remaining: {escape_markdown(f'{remaining_size:.4f}')} units\n"
                 f"\n"
-                f"50% of position secured\\! 💎🙌\n"
-                f"Trailing stop updated automatically\\! 🎯"
+                f"50% of position secured\\! 💎🙌"
             )
             
             await send_trading_notification(self.config, message)
             
         except Exception as e:
             self.logger.error(f"Failed to send partial profit notification: {e}")
-    
-    async def _send_trailing_stop_update_notification(self, symbol: str, stop_description: str, 
-                                                     new_stop_price: float, leveraged_profit: float):
-        """Send notification when trailing stop is updated"""
-        try:
-            from telegram_bot_and_notification.bootstrap_manager import send_trading_notification
-            
-            message = (
-                f"🎯 *TRAILING STOP UPDATED\\!*\n"
-                f"\n"
-                f"Symbol: {escape_markdown(symbol)}\n"
-                f"New Stop Level: *{escape_markdown(stop_description)}*\n"
-                f"Stop Price: ${escape_markdown(f'{new_stop_price:.6f}')}\n"
-                f"Current Profit: {escape_markdown(f'{leveraged_profit:.1f}')}%\n"
-                f"\n"
-                f"Your profits are protected\\! 🛡️"
-            )
-            
-            await send_trading_notification(self.config, message)
-            
-        except Exception as e:
-            self.logger.error(f"Failed to send trailing stop update notification: {e}")
     
     def close_position(self, position: PositionData) -> bool:
         """Close a position on the exchange"""
@@ -1086,11 +1096,11 @@ class LeveragedProfitMonitor:
             current_side = current_position['side']
             position_size = current_position['contracts']
             
-            # Use proper lowercase sides for CCXT
+            # FIXED: Use proper capitalized sides for Bybit API
             if current_side.lower() == 'long':
-                close_side = 'sell'
+                close_side = 'Sell'  # Capitalized
             elif current_side.lower() == 'short':
-                close_side = 'buy'
+                close_side = 'Buy'   # Capitalized
             else:
                 self.logger.error(f"Unknown position side: {current_side}")
                 return False
@@ -1101,7 +1111,7 @@ class LeveragedProfitMonitor:
             order = self.exchange.create_order(
                 symbol=position.symbol,
                 type='market',
-                side=close_side,
+                side=close_side,  # Use capitalized side
                 amount=position_size,
                 params={'reduceOnly': True}  # Ensure this closes the position
             )
@@ -1159,7 +1169,9 @@ class LeveragedProfitMonitor:
     
     def monitor_positions(self):
         """
-        Main monitoring loop - ENHANCED to handle manual stop monitoring
+        Main monitoring loop
+        ENHANCED: Milestone-based trailing stops with leveraged profit-based partial taking
+        FIXED: Both features now work together properly
         """
         try:
             while self.monitoring:
@@ -1171,30 +1183,33 @@ class LeveragedProfitMonitor:
                         ticker = self.exchange.fetch_ticker(position.symbol)
                         current_price = ticker['last']
                         
-                        # Add debug logging for position monitoring
-                        leveraged_profit = self.calculate_leveraged_profit_pct(position, current_price)
-                        
-                        self.logger.debug(f"🔍 Monitoring {position.symbol}:")
-                        self.logger.debug(f"   Price: ${current_price:.6f} | Entry: ${position.entry_price:.6f}")
-                        self.logger.debug(f"   Leverage: {position.leverage}x | Profit: {leveraged_profit:.2f}%")
-                        
-                        # PHASE 1: Check for partial profit taking (with integrated trailing stops)
+                        # ===== PHASE 1: CHECK FOR PARTIAL PROFIT TAKING (50% at 100%, 200%, 300%) =====
+                        # This now properly tracks to prevent repeated executions
                         partial_taken = False
                         partial_info = self.check_partial_profit_taking(position, current_price)
                         if partial_info:
-                            if partial_info.get('action') == 'close_full':
-                                # Manual stop hit - close full position
-                                self.logger.warning(f"🚨 Closing position due to manual stop hit: {position.symbol}")
-                                if self.close_position(position):
-                                    self.update_position_in_database(position, 'closed', 'manual_stop_hit')
-                                    self.logger.info(f"✅ Position closed due to manual stop: {position.symbol}")
-                                continue
-                            elif partial_info.get('action') == 'close_partial':
-                                if self.execute_partial_close(position, partial_info):
-                                    self.logger.info(f"✅ Partial profit taken for {position.symbol}")
-                                    partial_taken = True
+                            if self.execute_partial_close(position, partial_info):
+                                self.logger.info(f"✅ Partial profit taken for {position.symbol}")
+                                partial_taken = True
+                                # DO NOT continue - we still need to check milestone stops!
                         
-                        # PHASE 2: Check auto-close conditions (skip if partial was just taken)
+                        # ===== PHASE 2: CHECK AND UPDATE MILESTONE-BASED TRAILING STOPS =====
+                        # This should ALWAYS run, even if partial was taken
+                        new_stop = self.check_and_update_milestone_stop(position, current_price)
+                        if new_stop:
+                            # Milestone reached and stop updated!
+                            leveraged_profit = self.calculate_leveraged_profit_pct(position, current_price)
+                            self.logger.info(f"📈 Milestone trailing stop updated for {position.symbol}")
+                            self.logger.info(f"   Current leveraged profit: {leveraged_profit:.2f}%")
+                            self.logger.info(f"   New stop loss: ${new_stop:.6f}")
+                            
+                            # Send notification about milestone
+                            if position.symbol in self.position_tracker:
+                                milestone_name = self.position_tracker[position.symbol]['milestone_reached']
+                                asyncio.run(self._send_milestone_notification(position, milestone_name, leveraged_profit, new_stop))
+                        
+                        # ===== PHASE 3: CHECK AUTO-CLOSE CONDITIONS =====
+                        # Skip auto-close check if we just took a partial (to avoid conflicts)
                         if not partial_taken and self.config.auto_close_enabled:
                             should_close, close_reason = self.should_auto_close(position, current_price)
                             
@@ -1218,32 +1233,93 @@ class LeveragedProfitMonitor:
                                     # Update database record
                                     self.update_position_in_database(position, 'closed', close_reason)
                                     
-                                    # Clean up position tracker
-                                    if position.symbol in self.position_tracker:
-                                        del self.position_tracker[position.symbol]
+                                    # Log final close message with milestone and partial info
+                                    milestone_info = ""
+                                    partial_info = ""
                                     
-                                    self.logger.info(f"✅ Successfully closed position {position.symbol}")
+                                    if position.milestone_reached != 'none':
+                                        milestone_info = f" (Best milestone: {position.milestone_reached})"
+                                    
+                                    if position.symbol in self.position_tracker:
+                                        tracker = self.position_tracker[position.symbol]
+                                        partials_taken = []
+                                        if tracker.get('partial_100_taken', False):
+                                            partials_taken.append('100%')
+                                        if tracker.get('partial_200_taken', False):
+                                            partials_taken.append('200%')
+                                        if tracker.get('partial_300_taken', False):
+                                            partials_taken.append('300%')
+                                        if partials_taken:
+                                            partial_info = f" (Partials: {', '.join(partials_taken)})"
+                                    
+                                    if close_reason == 'profit_target':
+                                        self.logger.info(
+                                            f"✅ Successfully closed profitable position {position.symbol}"
+                                            f"{milestone_info}{partial_info}"
+                                        )
+                                    else:
+                                        self.logger.info(
+                                            f"✅ Successfully closed losing position {position.symbol}"
+                                            f"{milestone_info}{partial_info}"
+                                        )
                         
-                        # PHASE 3: Log monitoring status for positions with manual stops
+                        # ===== PHASE 4: LOG MONITORING STATUS (DEBUG) =====
+                        # Always log comprehensive status for high-profit positions
                         if position.symbol in self.position_tracker:
                             tracker = self.position_tracker[position.symbol]
+                            milestone = tracker.get('milestone_reached', 'none')
+                            leveraged_profit = self.calculate_leveraged_profit_pct(position, current_price)
                             
-                            if tracker.get('manual_stop_needed', False):
-                                manual_stop = tracker.get('manual_stop_price', 0)
+                            # Count partials taken
+                            partials_count = sum([
+                                tracker.get('partial_100_taken', False),
+                                tracker.get('partial_200_taken', False),
+                                tracker.get('partial_300_taken', False)
+                            ])
+                            
+                            # Log detailed status for high-profit positions
+                            if leveraged_profit > 50:
                                 self.logger.debug(
-                                    f"⚠️ Manual stop monitoring for {position.symbol}: "
-                                    f"Stop at ${manual_stop:.6f}, Current: ${current_price:.6f}"
+                                    f"📊 High-profit position {position.symbol}: "
+                                    f"Profit={leveraged_profit:.2f}%, "
+                                    f"Milestone={milestone}, "
+                                    f"Partials={partials_count}/3, "
+                                    f"Leverage={position.leverage}x"
                                 )
-                            
+                        
                     except Exception as e:
-                        self.logger.error(f"Error monitoring position {position.symbol}: {str(e)}")
+                        self.logger.error(f"Error monitoring position {position.symbol}: {e}")
                 
                 # Sleep between monitoring cycles
                 time.sleep(10)  # Check every 10 seconds
                 
         except Exception as e:
-            self.logger.error(f"Error in monitoring loop: {str(e)}")
+            self.logger.error(f"Error in monitoring loop: {e}")
+    
+    async def _send_milestone_notification(self, position: PositionData, milestone_name: str, 
+                                          leveraged_profit: float, new_stop: float):
+        """Send notification when milestone is reached"""
+        try:
+            from telegram_bot_and_notification.bootstrap_manager import send_trading_notification
             
+            milestone_display = milestone_name.replace('_', ' ').title()
+            
+            message = (
+                f"🎯 *MILESTONE REACHED\\!*\n"
+                f"\n"
+                f"Symbol: {escape_markdown(position.symbol)}\n"
+                f"Milestone: *{escape_markdown(milestone_display)}*\n"
+                f"Leveraged Profit: {escape_markdown(f'{leveraged_profit:.2f}')}%\n"
+                f"New Stop Loss: ${escape_markdown(f'{new_stop:.6f}')}\n"
+                f"\n"
+                f"Your profits are now protected\\! 🛡️"
+            )
+            
+            await send_trading_notification(self.config, message)
+            
+        except Exception as e:
+            self.logger.error(f"Failed to send milestone notification: {e}")
+    
     def start_monitoring(self):
         """Start position monitoring in background thread"""
         if not self.monitoring:
@@ -1251,8 +1327,8 @@ class LeveragedProfitMonitor:
             self.monitor_thread = threading.Thread(target=self.monitor_positions, daemon=True)
             self.monitor_thread.start()
             self.logger.info("📊 Started enhanced position monitoring:")
+            self.logger.info("   🎯 Milestone-based trailing stops (leverage-aware)")
             self.logger.info("   💰 Partial profits: 50% at 100%, 200%, 300% leveraged profit")
-            self.logger.info("   🎯 Trailing stops: Auto-update at partial profit milestones")
             self.logger.info("   ⏱️ Check interval: 10 seconds")
     
     def stop_monitoring(self):
@@ -1390,6 +1466,9 @@ class OrderExecutor:
             stop_loss = signal['stop_loss']
             take_profit = 0
 
+            # if self.config.auto_close_profit_at == 1000:
+            #     take_profit = signal.get('take_profit_1', signal.get('take_profit', 0))
+            # else:
             take_profit = signal.get('take_profit_1', signal.get('take_profit', 0)) if self.config.default_tp_level == 'take_profit_1' else signal.get('take_profit_2', signal.get('take_profit', 0))
             
             self.logger.info(f"🚀 Placing {side.upper()} order for {symbol}")
@@ -1444,10 +1523,10 @@ class OrderExecutor:
             self.logger.info(f"   Risk Amount: {risk_amount_usdt:.2f} USDT")
             self.logger.info(f"   Position Size: {position_size:.2f} units")
             self.logger.info(f"   Required Margin: {required_margin:.2f} USDT")
-            self.logger.info(f"   Leverage: {leverage}x (trailing stops will activate at partial milestones)")
+            self.logger.info(f"   Leverage: {leverage}x (milestone stops will adjust dynamically)")
             
-            # Use lowercase side for CCXT
-            ccxt_side = side.lower()
+            # FIXED: Capitalize the side parameter for Bybit API
+            bybit_side = side.capitalize()  # 'buy' -> 'Buy', 'sell' -> 'Sell'
             
             # Place entry order with integrated SL/TP
             order_type = 'market' if signal.get('order_type') == 'market' else 'limit'
@@ -1463,7 +1542,7 @@ class OrderExecutor:
                 entry_order = self.exchange.create_order(
                     symbol=symbol,
                     type='market',
-                    side=ccxt_side,
+                    side=bybit_side,  # Use capitalized side
                     amount=position_size,
                     params=order_params  # Include SL/TP in main order
                 )
@@ -1471,7 +1550,7 @@ class OrderExecutor:
                 entry_order = self.exchange.create_order(
                     symbol=symbol,
                     type='limit',
-                    side=ccxt_side,
+                    side=bybit_side,  # Use capitalized side
                     amount=position_size,
                     price=entry_price,
                     params=order_params  # Include SL/TP in main order
@@ -1483,8 +1562,8 @@ class OrderExecutor:
             if take_profit > 0:
                 self.logger.debug(f"✅ Take profit integrated: ${take_profit:.6f}")
             
-            # Note about trailing stops
-            self.logger.info(f"📈 Trailing stops will activate at partial profit milestones (leverage: {leverage}x)")
+            # Note about milestone stops
+            self.logger.info(f"📈 Milestone-based trailing stops will activate based on {leverage}x leverage")
             
             # SL/TP are now integrated - no separate orders needed
             sl_order = None
@@ -1513,7 +1592,7 @@ class OrderExecutor:
                 'correlation_info': correlation_info,
                 'auto_close_profit_target': self.config.auto_close_profit_at,
                 'auto_close_loss_target': self.config.auto_close_loss_at,
-                'partial_trailing_stops_enabled': True,  # NEW: Flag for partial milestone trailing stops
+                'milestone_stops_enabled': True,  # NEW: Flag for milestone stops
                 'leverage_for_milestones': leverage  # NEW: Store leverage for milestone calculation
             }
             self.logger.info("=" * 100 + "\n")
@@ -1781,7 +1860,7 @@ def format_percentage(value: float) -> str:
 class AutoTrader:
     """
     Main auto-trading orchestration class
-    ENHANCED: Trailing stops integrated with partial profit milestones
+    ENHANCED: Milestone-based trailing stops with leverage awareness
     """
     
     def __init__(self, config: EnhancedSystemConfig):
@@ -1841,8 +1920,8 @@ class AutoTrader:
             self.logger.debug(f"   Auto-close loss target: {self.config.auto_close_loss_at}%")
             self.logger.debug(f"   Scan interval: {self.config.scan_interval / 3600:.1f} hours")
             self.logger.debug(f"   🔥 Portfolio heat monitoring: Active")
-            self.logger.debug(f"   🎯 PARTIAL PROFIT MILESTONES: 50% at 100%, 200%, 300% leveraged profit")
-            self.logger.debug(f"   💰 TRAILING STOPS: Auto-activate at partial profit milestones")
+            self.logger.debug(f"   🎯 MILESTONE-BASED TRAILING STOPS: Active (leverage-aware)")
+            self.logger.debug(f"   💰 PARTIAL PROFIT TAKING: 50% at 100%, 200%, 300% leveraged profit")
             
             return session_id
             
@@ -1877,9 +1956,7 @@ class AutoTrader:
             self._log_mtf_analysis_results(results)
             
             # ===== PHASE 2: FILTER EXISTING POSITIONS & ORDERS =====
-            print()
-            self.logger.info("=" * 80)
-            self.logger.info("🔍 FILTERING OUT EXISTING POSITIONS & ORDERS...")
+            print("\n🔍 FILTERING OUT EXISTING POSITIONS & ORDERS...")
             
             already_ranked_signals = results.get('signals', [])
             signals_left_after_filter_out_existing_orders = self.position_manager.filter_signals_by_existing_symbols(already_ranked_signals)
@@ -1889,15 +1966,12 @@ class AutoTrader:
                 save_result = self.enhanced_db_manager.save_all_results(results)
                 
                 self.logger.warning("⚠️ No signals available for execution after filtering existing symbols")
-                self.logger.info("⚠️  ALL SIGNALS FILTERED OUT:")
-                self.logger.info("   Either symbols already have positions/orders")
-                self.logger.info("   or no valid signals generated")
-                print()
+                print("⚠️  ALL SIGNALS FILTERED OUT:")
+                print("   Either symbols already have positions/orders")
+                print("   or no valid signals generated")
+                print("")
                 return signals_count, 0
             
-            print()
-            self.logger.info("=" * 80 + "\n")
-
             # ===== PHASE 3: UPDATE RESULTS WITH FILTERED DATA =====
             filtered_results = self._update_results_with_filtering(
                 results, already_ranked_signals, signals_left_after_filter_out_existing_orders
@@ -1913,6 +1987,7 @@ class AutoTrader:
             
             # ===== PHASE 5: DISPLAY RESULTS TABLE =====
             self.trading_system.print_comprehensive_results_with_mtf(filtered_results)
+            print("=" * 150 + "\n")
             
             # ===== PHASE 6: CHECK POSITION AVAILABILITY =====
             can_trade, available_slots = self.position_manager.can_open_new_positions(
@@ -1925,10 +2000,10 @@ class AutoTrader:
                     f"⚠️ Cannot open new positions - at max capacity or portfolio heat too high "
                     f"({self.config.max_concurrent_positions} positions, {portfolio_heat:.1f}% heat)"
                 )
-                self.logger.info(f"⚠️  POSITION LIMIT REACHED:")
-                self.logger.info(f"   Max positions: {self.config.max_concurrent_positions}")
-                self.logger.info(f"   Portfolio heat: {portfolio_heat:.1f}%")
-                self.logger.info(f"   No new trades will be executed until positions are closed")
+                print(f"⚠️  POSITION LIMIT REACHED:")
+                print(f"   Max positions: {self.config.max_concurrent_positions}")
+                print(f"   Portfolio heat: {portfolio_heat:.1f}%")
+                print(f"   No new trades will be executed until positions are closed")
                 
                 # NOTE: Even if we can't execute, we DON'T send signal notifications here
                 # No charts or notifications without execution
@@ -2005,8 +2080,7 @@ class AutoTrader:
                     self.logger.info(f"     MTF Status: {mtf_status}")
                     self.logger.info(f"     Entry Strategy: {entry_strategy}")
                     self.logger.info(f"     Analysis Method: {analysis_method}")
-                    self.logger.info(f"     🎯 Partial Profit Milestones: 100%, 200%, 300% leveraged profit")
-                    self.logger.info(f"     💰 Trailing Stops: Auto-activate at milestones")
+                    self.logger.info(f"     🎯 Milestone Stops: Enabled (leverage-aware)")
                     
                     # Execute trade using enhanced order executor
                     success, message, position_data = self.order_executor.place_leveraged_order(
@@ -2038,12 +2112,12 @@ class AutoTrader:
                         self.logger.info(f"   Entry: ${opportunity['entry_price']:.6f}")
                         self.logger.info(f"   Risk: {position_data.get('risk_percentage', self.config.risk_amount):.1f}% (adaptive)")
                         self.logger.info(f"   MTF Validated: {mtf_validated}")
-                        self.logger.info(f"   Partial Milestones: Active at {position_data['leverage']}x leverage")
+                        self.logger.info(f"   Milestone Stops: Active at {position_data['leverage']}x leverage")
                         
                     else:
-                        # self.logger.info(f"   ❌ TRADE FAILED!")
-                        # self.logger.info(f"   Error: {message}")
-                        self.logger.error(f"❌ Trade execution failed: {message}")
+                        print(f"   ❌ TRADE FAILED!")
+                        print(f"   Error: {message}")
+                        self.logger.error(f"Trade execution failed: {message}")
                         
                         # Track failed execution
                         opportunity['execution_status'] = 'failed'
@@ -2051,8 +2125,8 @@ class AutoTrader:
                         
                 except Exception as e:
                     error_msg = f"Error executing trade for {opportunity['symbol']}: {e}"
-                    self.logger.error(f"   ❌ {error_msg}")
-                    # self.logger.error(error_msg)
+                    print(f"   ❌ {error_msg}")
+                    self.logger.error(error_msg)
                     opportunity['execution_status'] = 'error'
                     opportunity['execution_message'] = str(e)
             
@@ -2093,7 +2167,7 @@ class AutoTrader:
     async def send_executed_trade_notification(self, trade: Dict, position_data: Dict):
         """
         Send comprehensive notification for executed trade
-        Combines signal info with execution confirmation and partial milestone info
+        Combines signal info with execution confirmation and milestone stop info
         """
         try:
             symbol = escape_markdown(trade['symbol'])
@@ -2143,13 +2217,32 @@ class AutoTrader:
             message_parts.append(f"    📊 Risk/Reward: {escape_markdown(f'{risk_reward:.2f}')}:1")
             message_parts.append("")
             
-            # Add partial profit milestone information
-            message_parts.append(f"💰 *PARTIAL PROFIT MILESTONES:*")
+            # Add milestone stops information
+            message_parts.append(f"📈 *MILESTONE TRAILING STOPS:*")
             message_parts.append(f"    🎯 Leverage: {escape_markdown(str(leverage))}x")
-            message_parts.append(f"    1️⃣ 50% at 100% leveraged profit → SL to Break Even")
-            message_parts.append(f"    2️⃣ 50% at 200% leveraged profit → SL to 100% profit")
-            message_parts.append(f"    3️⃣ 50% at 300% leveraged profit → SL to 200% profit")
-            message_parts.append(f"    📈 Trailing stops auto\\-activate at milestones")
+            
+            # Show milestones based on leverage (updated with wider distances)
+            if leverage <= 10:
+                message_parts.append(f"    1️⃣ Break Even: at 15% profit")
+                message_parts.append(f"    2️⃣ Lock 8%: at 25% profit")
+                message_parts.append(f"    3️⃣ Lock 18%: at 40% profit")
+                message_parts.append(f"    4️⃣ Lock 30%: at 60% profit")
+            elif leverage <= 25:
+                message_parts.append(f"    1️⃣ Break Even: at 20% profit")
+                message_parts.append(f"    2️⃣ Lock 12\\.5%: at 37\\.5% profit")
+                message_parts.append(f"    3️⃣ Lock 25%: at 60% profit")
+                message_parts.append(f"    4️⃣ Lock 45%: at 87\\.5% profit")
+            elif leverage <= 50:
+                message_parts.append(f"    1️⃣ Break Even: at 25% profit")
+                message_parts.append(f"    2️⃣ Lock 15%: at 50% profit")
+                message_parts.append(f"    3️⃣ Lock 35%: at 80% profit")
+                message_parts.append(f"    4️⃣ Lock 65%: at 125% profit")
+            else:
+                message_parts.append(f"    1️⃣ Break Even: at 30% profit")
+                message_parts.append(f"    2️⃣ Lock 20%: at 60% profit")
+                message_parts.append(f"    3️⃣ Lock 40%: at 100% profit")
+                message_parts.append(f"    4️⃣ Lock 70%: at 150% profit")
+            
             message_parts.append("")
             
             message_parts.append(f"📋 *SIGNAL QUALITY:*")
@@ -2220,7 +2313,7 @@ class AutoTrader:
     def _debug_enhanced_signals(self, sample_signals: List[Dict]):
         """Debug logging for enhanced signals with MTF details"""
         try:
-            self.logger.debug("\n🔍 ENHANCED SIGNAL ANALYSIS:")
+            print("\n🔍 ENHANCED SIGNAL ANALYSIS:")
             for i, signal in enumerate(sample_signals, 1):
                 symbol = signal['symbol']
                 mtf_validated = signal.get('mtf_validated', False)
@@ -2237,16 +2330,16 @@ class AutoTrader:
                 mtf_trend = analysis_details.get('mtf_trend', 'unknown')
                 structure_timeframe = analysis_details.get('structure_timeframe', 'unknown')
                 
-                self.logger.debug(f"  {i}. {symbol}:")
-                self.logger.debug(f"     🎯 MTF Status: {'✅ VALIDATED' if mtf_validated else '❌ TRADITIONAL'} ({mtf_status})")
-                self.logger.debug(f"     📊 Analysis: {analysis_method}")
-                self.logger.debug(f"     📈 Trend Context: {mtf_trend} ({structure_timeframe})")
-                self.logger.debug(f"     🎪 Entry Strategy: {entry_strategy}")
-                self.logger.debug(f"     💰 R/R Ratio: {original_rr:.2f} → {final_rr:.2f}")
-                self.logger.debug(f"     🎯 Confidence: {signal['confidence']:.1f}%")
-                self.logger.debug(f"     📋 TP Level: {self.config.default_tp_level}")
-                self.logger.debug(f"     📈 Partial Milestones: 100%, 200%, 300% leveraged profit")
-                self.logger.debug()
+                print(f"  {i}. {symbol}:")
+                print(f"     🎯 MTF Status: {'✅ VALIDATED' if mtf_validated else '❌ TRADITIONAL'} ({mtf_status})")
+                print(f"     📊 Analysis: {analysis_method}")
+                print(f"     📈 Trend Context: {mtf_trend} ({structure_timeframe})")
+                print(f"     🎪 Entry Strategy: {entry_strategy}")
+                print(f"     💰 R/R Ratio: {original_rr:.2f} → {final_rr:.2f}")
+                print(f"     🎯 Confidence: {signal['confidence']:.1f}%")
+                print(f"     📋 TP Level: {self.config.default_tp_level}")
+                print(f"     📈 Milestone Stops: Will activate based on leverage")
+                print()
                 
         except Exception as e:
             self.logger.error(f"Error in enhanced signal debugging: {e}")
@@ -2288,17 +2381,17 @@ class AutoTrader:
         try:
             portfolio_heat = self.position_manager.calculate_portfolio_heat()
             
-            print()
-            self.logger.info("=" * 80 + "\n")
-            self.logger.info(f"🎯 ENHANCED EXECUTION PLAN:")
-            self.logger.info(f"   Original Signals: {original_signals}")
-            self.logger.info(f"   Total After Position/Order Filter: {available_signals}")
-            self.logger.info(f"   Available Position Slots: {available_slots}")
-            self.logger.info(f"   Portfolio Heat: {portfolio_heat:.1f}%")
-            self.logger.info(f"   Selected for Execution: {execution_count}")
-            self.logger.info(f"   Auto-Execute: {'✅ Enabled' if self.config.auto_execute_trades else '❌ Disabled'}")
-            self.logger.info(f"   🎯 Partial Profit Milestones: 100%, 200%, 300% leveraged profit")
-            self.logger.info(f"   💰 Trailing Stops: Auto-activate at milestones")
+            print("")
+            print("=" * 150 + "\n")
+            print(f"🎯 ENHANCED EXECUTION PLAN:")
+            print(f"   Original Signals: {original_signals}")
+            print(f"   Total After Position/Order Filter: {available_signals}")
+            print(f"   Available Position Slots: {available_slots}")
+            print(f"   Portfolio Heat: {portfolio_heat:.1f}%")
+            print(f"   Selected for Execution: {execution_count}")
+            print(f"   Auto-Execute: {'✅ Enabled' if self.config.auto_execute_trades else '❌ Disabled'}")
+            print(f"   🎯 Milestone Trailing Stops: Enabled (leverage-aware)")
+            print("")
             
             self.logger.debug(
                 f"🎯 Enhanced execution: {execution_count} trades from {available_signals} available "
@@ -2314,27 +2407,24 @@ class AutoTrader:
             filter_rate = ((original_signals - available_signals) / original_signals * 100) if original_signals > 0 else 0
             execution_rate = (executed_count / available_signals * 100) if available_signals > 0 else 0
             portfolio_heat = self.position_manager.calculate_portfolio_heat()
-
-            print()
-            self.logger.info("=" * 80 + "\n")
-            self.logger.info(f"📊 ENHANCED EXECUTION SUMMARY:")
-            self.logger.info(f"   Original Signals: {original_signals}")
-            self.logger.info(f"   Available After Filtering: {available_signals} ({100-filter_rate:.1f}%)")
-            self.logger.info(f"   Successfully Executed: {executed_count} ({execution_rate:.1f}%)")
-            self.logger.info(f"   Portfolio Heat: {portfolio_heat:.1f}%")
-            self.logger.info(f"   Filter Efficiency: {filter_rate:.1f}% (prevents overexposure)")
-            self.logger.info(f"   Risk Management: Enhanced (adaptive sizing + correlation filters)")
-            self.logger.info(f"   🎯 Partial Milestones: 50% at 100%, 200%, 300% leveraged profit")
-            self.logger.info(f"   💰 Trailing Stops: Auto-update at partial milestones")
-            print()
-            self.logger.info("=" * 80)
             
-            self.logger.debug(f"🏁 Enhanced scan summary: {original_signals} → {available_signals} → {executed_count} trades")
-            self.logger.debug(f"   📈 Filter rate: {filter_rate:.1f}% (risk management)")
-            self.logger.debug(f"   🎯 Execution rate: {execution_rate:.1f}% (of available)")
-            self.logger.debug(f"   🔥 Portfolio heat: {portfolio_heat:.1f}%")
-            self.logger.debug(f"   📊 Partial milestones active for all positions")
-            self.logger.debug(f"   💰 Trailing stops will activate at partial milestones")
+            print(f"\n📊 ENHANCED EXECUTION SUMMARY:")
+            print(f"   Original Signals: {original_signals}")
+            print(f"   Available After Filtering: {available_signals} ({100-filter_rate:.1f}%)")
+            print(f"   Successfully Executed: {executed_count} ({execution_rate:.1f}%)")
+            print(f"   Portfolio Heat: {portfolio_heat:.1f}%")
+            print(f"   Filter Efficiency: {filter_rate:.1f}% (prevents overexposure)")
+            print(f"   Risk Management: Enhanced (adaptive sizing + correlation filters)")
+            print(f"   🎯 Milestone Stops: Active (leverage-aware protection)")
+            print(f"   💰 Partial Profits: 50% at 100%, 200%, 300% leveraged profit")
+            print("=" * 150)
+            
+            self.logger.info(f"🏁 Enhanced scan summary: {original_signals} → {available_signals} → {executed_count} trades")
+            self.logger.info(f"   📈 Filter rate: {filter_rate:.1f}% (risk management)")
+            self.logger.info(f"   🎯 Execution rate: {execution_rate:.1f}% (of available)")
+            self.logger.info(f"   🔥 Portfolio heat: {portfolio_heat:.1f}%")
+            self.logger.info(f"   📊 Milestone trailing stops active for all positions")
+            self.logger.info(f"   💰 Partial profits will trigger at key milestones")
             
         except Exception as e:
             self.logger.error(f"Error logging enhanced execution summary: {e}")
@@ -2342,22 +2432,22 @@ class AutoTrader:
     def main_trading_loop(self):
         """
         Main auto-trading loop
-        ENHANCED: With partial profit milestones and integrated trailing stops
+        ENHANCED: With milestone-based trailing stops and leveraged partial profits
         """
         try:
             self.is_running = True
             session_id = self.start_trading_session()
             
-            # Start enhanced profit monitoring with partial milestones and trailing stops
+            # Start enhanced profit monitoring with milestone stops and partial profits
             if self.config.auto_close_enabled:
                 self.logger.debug("📈 Starting enhanced profit monitoring:")
+                self.logger.debug("   - Milestone-based trailing stops (leverage-aware)")
                 self.logger.debug("   - Partial profits at 100%, 200%, 300% leveraged profit")
-                self.logger.debug("   - Trailing stops auto-activate at partial milestones")
                 self.profit_monitor.start_monitoring()
             
             self.logger.info("🤖 Enhanced auto-trading loop started")
-            self.logger.info("🎯 Partial profit milestones active")
-            self.logger.info("💰 Trailing stops will activate at milestones")
+            self.logger.info("🎯 Milestone-based trailing stops active")
+            self.logger.info("💰 Partial profit taking active (50% at key milestones)")
             
             while self.is_running:
                 try:
@@ -2425,8 +2515,8 @@ class AutoTrader:
                 session.close()
             
             self.logger.info("🛑 Enhanced auto-trading stopped")
-            self.logger.info("🎯 Partial profit milestones deactivated")
-            self.logger.info("💰 Trailing stop automation deactivated")
+            self.logger.info("🎯 Milestone-based trailing stops deactivated")
+            self.logger.info("💰 Partial profit taking deactivated")
             
         except Exception as e:
             self.logger.error(f"Error stopping trading: {e}")
@@ -2463,7 +2553,7 @@ class AutoTrader:
 def main():
     """
     Main function for running the enhanced auto-trader
-    ENHANCED: With partial profit milestones and integrated trailing stops
+    ENHANCED: With milestone-based trailing stops and leveraged partial profits
     """
     try:
         from config.config import DatabaseConfig, EnhancedSystemConfig
@@ -2486,33 +2576,32 @@ def main():
             return
         
         # Start enhanced auto-trader
-        logger.info("🚀 Starting Enhanced Auto-Trader v2.1 with:")
-        logger.info("   🎯 PARTIAL PROFIT MILESTONES (50% at 100%, 200%, 300% leveraged profit)")
-        logger.info("   💰 INTEGRATED TRAILING STOPS (auto-activate at partial milestones)")
+        logger.info("🚀 Starting Enhanced Auto-Trader v2.0 with:")
+        logger.info("   🎯 MILESTONE-BASED TRAILING STOPS (leverage-aware)")
+        logger.info("   💰 PARTIAL PROFIT TAKING (50% at 100%, 200%, 300% leveraged profit)")
         logger.info("   📊 Adaptive Position Sizing")
         logger.info("   🛑 Dynamic Stop Loss Management")
         logger.info("   🔗 Correlation Risk Management")
         logger.info("   📈 Market Regime Awareness")
         logger.info("   🔥 Portfolio Heat Monitoring")
-        logger.info("   🔧 FIXED: Bybit API integration issues")
         logger.info("")
-        logger.info("💰 Partial profit strategy:")
-        logger.info("   - 50% of position closed at 100% leveraged profit → SL moves to Break Even")
-        logger.info("   - 50% of remaining closed at 200% leveraged profit → SL moves to 100% profit")
-        logger.info("   - 50% of remaining closed at 300% leveraged profit → SL moves to 200% profit")
+        logger.info("📈 Milestone stops will adjust dynamically based on:")
+        logger.info("   - Position leverage (wider milestones for lower leverage)")
+        logger.info("   - Leveraged profit percentages")
+        logger.info("   - One-way progression (never moves stops backward)")
+        logger.info("   - More breathing room to avoid premature triggers")
+        logger.info("")
+        logger.info("📊 Example milestone distances by leverage:")
+        logger.info("   10x: BE at 1.5% move (15% profit), then 2.5%, 4%, 6%, 8%")
+        logger.info("   25x: BE at 0.8% move (20% profit), then 1.5%, 2.4%, 3.5%, 5%")
+        logger.info("   50x: BE at 0.5% move (25% profit), then 1%, 1.6%, 2.5%, 3.5%")
+        logger.info("   100x: BE at 0.3% move (30% profit), then 0.6%, 1%, 1.5%, 2.2%")
+        logger.info("")
+        logger.info("💰 Partial profits will be taken automatically:")
+        logger.info("   - 50% of position at 100% leveraged profit")
+        logger.info("   - 50% of remaining at 200% leveraged profit")
+        logger.info("   - 50% of remaining at 300% leveraged profit")
         logger.info("   - Each partial is taken ONCE and tracked to prevent repetition")
-        logger.info("")
-        logger.info("🎯 Trailing stop integration:")
-        logger.info("   - Automatically activates when partial profits are taken")
-        logger.info("   - Uses correct Bybit API parameters (triggerPrice, stop_market)")
-        logger.info("   - Protects profits while allowing for continued upside")
-        logger.info("   - Never moves stops backward (one-way progression)")
-        logger.info("")
-        logger.info("🔧 Technical fixes:")
-        logger.info("   - Fixed Bybit stop order API parameters")
-        logger.info("   - Improved error handling for API failures")
-        logger.info("   - Enhanced position tracking and synchronization")
-        logger.info("   - Better debugging and monitoring logs")
         logger.info("")
         
         auto_trader = AutoTrader(config)

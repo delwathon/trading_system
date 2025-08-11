@@ -207,7 +207,7 @@ class EnhancedSystemConfig:
                 auto_close_profit_at=75.0,  # 75% profit target
                 auto_close_loss_at=100.0,  # 100% profit target
                 default_tp_level='take_profit_1',  # Default take profit level to use
-                use_old_analysis=False,  # Use old analysis method
+                enable_signal_generation_relaxed_mode=False,  # Use old analysis method
                 monitor_mode=False  # Monitor mode only, no analysis
             )
             
@@ -298,7 +298,7 @@ class EnhancedSystemConfig:
         self.auto_close_profit_at = 75.0  # 75% profit
         self.auto_close_loss_at = 100.0  # 100% profit
         self.default_tp_level = 'take_profit_1'
-        self.use_old_analysis = False  # Use old analysis method
+        self.enable_signal_generation_relaxed_mode = False  # Use old analysis method
         self.monitor_mode = False  # Monitor mode only, no analysis
         
         self._post_init()
@@ -320,11 +320,11 @@ class EnhancedSystemConfig:
         self.mtf_weight_multiplier = max(1.0, min(3.0, self.mtf_weight_multiplier))
         
         # Validate auto-trading parameters
-        self.max_concurrent_positions = max(1, min(20, self.max_concurrent_positions))
-        self.max_execution_per_trade = max(1, min(10, self.max_execution_per_trade))
-        self.risk_amount = max(0.1, min(50.0, self.risk_amount))  # 0.1% to 50% of account balance
-        self.auto_close_profit_at = max(0.5, min(1000.0, self.auto_close_profit_at))  # 0.5% to 100%
-        self.auto_close_loss_at = max(0.5, min(1000.0, self.auto_close_loss_at))  # 0.5% to 100%
+        self.max_concurrent_positions = max(1, min(10, self.max_concurrent_positions))
+        self.max_execution_per_trade = max(1, min(3, self.max_execution_per_trade))
+        self.risk_amount = max(0.1, min(10.0, self.risk_amount))  # 0.1% to 10% of account balance
+        self.auto_close_profit_at = max(0.5, min(500.0, self.auto_close_profit_at))  # 0.5% to 500%
+        self.auto_close_loss_at = max(0.5, min(500.0, self.auto_close_loss_at))  # 0.5% to 500%
         self.scan_interval = max(300, self.scan_interval)  # Minimum 5 minutes between scans
         
         # Validate leverage
@@ -501,7 +501,7 @@ class EnhancedSystemConfig:
                 'auto_close_profit_at': self.auto_close_profit_at,
                 'auto_close_loss_at': self.auto_close_loss_at,
                 'default_tp_level': self.default_tp_level,
-                'use_old_analysis': self.use_old_analysis,  # Use old analysis method
+                'enable_signal_generation_relaxed_mode': self.enable_signal_generation_relaxed_mode,  # Use old analysis method
                 'monitor_mode': self.monitor_mode  # Monitor mode only, no analysis
             }
             
@@ -571,7 +571,7 @@ class EnhancedSystemConfig:
             'auto_close_profit_at': getattr(self, 'auto_close_profit_at', 75.0),
             'auto_close_loss_at': getattr(self, 'auto_close_loss_at', 100.0),
             'default_tp_level': getattr(self, 'default_tp_level', 'take_profit_1'),
-            'use_old_analysis': getattr(self, 'use_old_analysis', False),  # Use old analysis method
+            'enable_signal_generation_relaxed_mode': getattr(self, 'enable_signal_generation_relaxed_mode', False),  # Use old analysis method
             'monitor_mode': getattr(self, 'monitor_mode', False)  # Monitor mode only, no analysis
         }
     

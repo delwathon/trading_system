@@ -121,7 +121,7 @@ class CompleteEnhancedBybitSystem:
                 
                 if mtf_validated:
                     # Signal was generated with full MTF structure awareness
-                    self.logger.info(f"   ✅ {symbol} - MTF-validated {primary_signal['side'].upper()} signal")
+                    self.logger.debug(f"   ✅ {symbol} - MTF-validated {primary_signal['side'].upper()} signal")
                     self.logger.debug(f"   📊 Entry: ${primary_signal['entry_price']:.6f} via {primary_signal.get('entry_strategy', 'structure')}")
                     self.logger.debug(f"   🎯 Confidence: {primary_signal['confidence']:.1f}% (MTF: {analysis_details.get('mtf_trend', 'confirmed')})")
                     
@@ -236,7 +236,6 @@ class CompleteEnhancedBybitSystem:
         self.logger.info(f"   Timeframes: {timeframe_display}")
         self.logger.info(f"   Structure Analysis: {self.config.confirmation_timeframes[-1] if self.config.confirmation_timeframes else '6h'} dominant")
         self.logger.info(f"   Chart Strategy: Top {self.config.charts_per_batch} signals only")
-        self.logger.info("=" * 90)
         
         # Get top symbols
         symbols = self.exchange_manager.get_top_symbols()
@@ -338,18 +337,9 @@ class CompleteEnhancedBybitSystem:
         self.logger.info(f"   🎯 MTF-validated in top results: {mtf_validated_ranked}/{len(ranked_signals)}")
         self.logger.info(f"   📈 Average confidence: {avg_confidence:.1f}%")
         
-        # ===== PHASE 3: OPTIMIZED CHART GENERATION =====
-        # charts_generated = 0
-        
-        # if self.config.generate_chart and ranked_signals:
-        #     self.logger.info(f"📊 PHASE 3: Chart Generation (Top {len(ranked_signals)} signals)")
-        #     charts_generated = self.generate_charts_for_top_signals(ranked_signals)
-        # else:
-        #     self.logger.info("📊 PHASE 3: Chart generation disabled or no signals")
-        
         execution_time = time.time() - start_time
         
-        # ===== PHASE 4: ENHANCED RESULTS COMPILATION =====
+        # ===== PHASE 3: ENHANCED RESULTS COMPILATION =====
         return self._compile_enhanced_results(
             start_time, execution_time, symbols, ranked_signals, analysis_results, 
             mtf_validated_count, traditional_count
@@ -366,7 +356,6 @@ class CompleteEnhancedBybitSystem:
                 'symbols_analyzed': symbols_count,
                 'signals_generated': 0,
                 'success_rate': 0,
-                # 'charts_generated': 0,
                 'method': 'enhanced_mtf',
                 'mtf_enabled': True
             },
@@ -392,7 +381,6 @@ class CompleteEnhancedBybitSystem:
             'symbols_analyzed': len(symbols),
             'signals_generated': len(ranked_signals),
             'success_rate': len(ranked_signals) / len(symbols) * 100 if symbols else 0,
-            # 'charts_generated': charts_generated,
             'parallel_processing': True,
             'threads_used': self.config.max_workers,
             'method': 'enhanced_mtf_structure_aware',
@@ -423,7 +411,6 @@ class CompleteEnhancedBybitSystem:
                 'order_type_distribution': self.get_order_type_distribution(ranked_signals),
                 'mtf_distribution': self.get_enhanced_mtf_distribution(ranked_signals),
                 'speedup_factor': self.calculate_speedup_factor(execution_time, len(symbols)),
-                # 'chart_efficiency': f"{charts_generated}/{len(ranked_signals)} signals charted"
             }
         }
         
@@ -433,7 +420,6 @@ class CompleteEnhancedBybitSystem:
         self.logger.info(f"   📊 Signal Quality: {mtf_validated_count} MTF-validated + {traditional_count} traditional")
         self.logger.info(f"   🎯 MTF Validation Rate: {mtf_validation_rate:.1f}%")
         self.logger.info(f"   📈 Structure Filtering: {((len(symbols) - len(ranked_signals)) / len(symbols) * 100):.1f}% symbols filtered")
-        # self.logger.info(f"   📋 Chart Generation: {charts_generated}/{len(ranked_signals)} = {charts_generated/max(1,len(ranked_signals))*100:.1f}% charted")
         
         return results
 
@@ -741,7 +727,7 @@ class CompleteEnhancedBybitSystem:
         """
         
         if not results:
-            print("❌ No results to display")
+            self.logger.debug("❌ No results to display")
             return
         
         scan_info = results['scan_info']
@@ -755,10 +741,10 @@ class CompleteEnhancedBybitSystem:
         execution_time = scan_info.get('execution_time_seconds', 0)
         method = scan_info.get('method', 'unknown')
         
-        print("=" * 200)
-        print(f"\n🏆 ENHANCED TRADING OPPORTUNITIES ANALYSIS ({timeframe_display} MTF)")
-        print(f"📊 Method: {method.upper()} | ⏱️  Execution: {execution_time:.1f}s | 🎯 Found: {len(opportunities)} signals")
-        print("=" * 200)
+        self.logger.debug("=" * 200)
+        self.logger.debug(f"\n🏆 ENHANCED TRADING OPPORTUNITIES ANALYSIS ({timeframe_display} MTF)")
+        self.logger.debug(f"📊 Method: {method.upper()} | ⏱️  Execution: {execution_time:.1f}s | 🎯 Found: {len(opportunities)} signals")
+        self.logger.debug("=" * 200)
         
         if not opportunities:
             print("   No trading opportunities found")
@@ -770,11 +756,11 @@ class CompleteEnhancedBybitSystem:
         
         # Enhanced header with all critical information
         header = (
-            f"{'#':<3} | {'Symbol':<15} | {'Side':<9} | {'Entry':<12} | {'SL':<12} | "
-            f"{tp1_marker:<12} | {tp2_marker:<12} | {'R/R':<6} | {'Conf':<8} | "
-            f"{'Quality':<8} | {'MTF':<15} | {'Strategy':<18} | "
-            f"{'Confirmed TF':<20} | {'Opposing TF':<15} | {'Neutral TF':<15} | "
-            f"{'Vol':<8} | {'Regime':<12} | {'Execute':<10}"
+            f"{'#':<1} | {'Symbol':<8} | {'Side':<9} | {'Entry':<10} | {'SL':<10} | "
+            f"{tp1_marker:<10} | {tp2_marker:<10} | {'R/R':<4} | {'Conf':<8} | "
+            f"{'Qua':<5} | {'MTF':<15} | {'Strategy':<18} | "
+            f"{'✅ TF':<10} | {'❌ TF':<10} | "
+            f"{'Vol':<8} | {'Regime':<12} | {'Premium':<7} | {'Execute':<10}"
         )
         print(header)
         print("-" * 200)
@@ -790,7 +776,7 @@ class CompleteEnhancedBybitSystem:
         for i, opp in enumerate(opportunities):
             try:
                 # Basic signal info
-                symbol = opp['symbol']
+                symbol = opp['symbol'].split('/')[0]
                 side = opp['side']
                 entry_price = opp['entry_price']
                 stop_loss = opp['stop_loss']
@@ -918,16 +904,18 @@ class CompleteEnhancedBybitSystem:
                     regime_display = f"🔸 {market_regime[:8]}"
                 else:
                     regime_display = f"⚠️  {market_regime[:8]}"
+
+                is_premium_signal = '✅' if opp['is_premium_signal'] else '❌'
                 
                 # Construct the row
                 row = (
-                    f"{i+1:<3} | {symbol:<15} | {side_display:<9} | "
-                    f"{entry_price:<12.6f} | {stop_loss:<12.6f} | "
-                    f"{take_profit_1:<12.6f} | {take_profit_2:<12.6f} | "
-                    f"{risk_reward:<6.2f} | {conf_display:<8} | "
-                    f"{quality_display:<8} | {mtf_display:<15} | {strategy_display:<18} | "
-                    f"{confirmed_display:<20} | {conflicting_display:<15} | {neutral_display:<15} | "
-                    f"{volume_display:<8} | {regime_display:<12} | {execution_status:<10}"
+                    f"{i+1:<1} | {symbol:<8} | {side_display:<8} | "
+                    f"{entry_price:<10.6f} | {stop_loss:<10.6f} | "
+                    f"{take_profit_1:<10.6f} | {take_profit_2:<10.6f} | "
+                    f"{risk_reward:<4.2f} | {conf_display:<8} | "
+                    f"{quality_display:<5} | {mtf_display:<15} | {strategy_display:<18} | "
+                    f"{confirmed_display:<10} | {conflicting_display:<10} | "
+                    f"{volume_display:<8} | {regime_display:<12} | {is_premium_signal:<7} | {execution_status:<10}"
                 )
                 print(row)
                 
@@ -941,27 +929,27 @@ class CompleteEnhancedBybitSystem:
         print("-" * 200)
         
         # ENHANCED COMPREHENSIVE SUMMARY
-        print(f"\n📊 COMPREHENSIVE ANALYSIS SUMMARY:")
-        print("=" * 60)
+        self.logger.debug(f"\n📊 COMPREHENSIVE ANALYSIS SUMMARY:")
+        self.logger.debug("=" * 60)
         
         # Signal Quality Distribution
-        print(f"🎯 SIGNAL QUALITY:")
-        print(f"   Premium Signals (A+/A): {premium_signals}")
-        print(f"   MTF Validated: {mtf_validated_signals}")
-        print(f"   High Confidence (≥70%): {high_confidence_signals}")
-        print(f"   Total Opportunities: {len(opportunities)}")
+        self.logger.debug(f"🎯 SIGNAL QUALITY:")
+        self.logger.debug(f"   Premium Signals (A+/A): {premium_signals}")
+        self.logger.debug(f"   MTF Validated: {mtf_validated_signals}")
+        self.logger.debug(f"   High Confidence (≥70%): {high_confidence_signals}")
+        self.logger.debug(f"   Total Opportunities: {len(opportunities)}")
         
         # MTF Analysis Summary
-        print(f"\n🔍 MULTI-TIMEFRAME ANALYSIS:")
+        self.logger.debug(f"\n🔍 MULTI-TIMEFRAME ANALYSIS:")
         avg_confirmed = total_confirmed_tfs / len(opportunities) if opportunities else 0
         avg_conflicting = total_conflicting_tfs / len(opportunities) if opportunities else 0
         confirmation_ratio = total_confirmed_tfs / max(1, total_confirmed_tfs + total_conflicting_tfs)
         
-        print(f"   Total Confirming Timeframes: {total_confirmed_tfs}")
-        print(f"   Total Conflicting Timeframes: {total_conflicting_tfs}")
-        print(f"   Total Neutral Timeframes: {total_neutral_tfs}")
-        print(f"   Average Confirmations per Signal: {avg_confirmed:.1f}")
-        print(f"   Confirmation Ratio: {confirmation_ratio:.1%}")
+        self.logger.debug(f"   Total Confirming Timeframes: {total_confirmed_tfs}")
+        self.logger.debug(f"   Total Conflicting Timeframes: {total_conflicting_tfs}")
+        self.logger.debug(f"   Total Neutral Timeframes: {total_neutral_tfs}")
+        self.logger.debug(f"   Average Confirmations per Signal: {avg_confirmed:.1f}")
+        self.logger.debug(f"   Confirmation Ratio: {confirmation_ratio:.1%}")
         
         # Market Regime Analysis
         regime_distribution = {}
@@ -970,10 +958,10 @@ class CompleteEnhancedBybitSystem:
             regime_distribution[regime] = regime_distribution.get(regime, 0) + 1
         
         if regime_distribution:
-            print(f"\n🌍 MARKET REGIME DISTRIBUTION:")
+            self.logger.debug(f"\n🌍 MARKET REGIME DISTRIBUTION:")
             for regime, count in regime_distribution.items():
                 percentage = (count / len(opportunities)) * 100
-                print(f"   {regime.title()}: {count} signals ({percentage:.1f}%)")
+                self.logger.debug(f"   {regime.title()}: {count} signals ({percentage:.1f}%)")
         
         # Risk/Reward Analysis
         if opportunities:
@@ -982,45 +970,45 @@ class CompleteEnhancedBybitSystem:
             excellent_rr = len([r for r in rr_ratios if r >= 3.0])
             good_rr = len([r for r in rr_ratios if 2.3 <= r < 3.0])
             
-            print(f"\n💰 RISK/REWARD ANALYSIS:")
-            print(f"   Average R/R Ratio: {avg_rr:.2f}")
-            print(f"   Excellent R/R (≥3.0): {excellent_rr}")
-            print(f"   Good R/R (≥2.3): {good_rr}")
+            self.logger.debug(f"\n💰 RISK/REWARD ANALYSIS:")
+            self.logger.debug(f"   Average R/R Ratio: {avg_rr:.2f}")
+            self.logger.debug(f"   Excellent R/R (≥3.0): {excellent_rr}")
+            self.logger.debug(f"   Good R/R (≥2.3): {good_rr}")
         
         # Execution Plan
         execution_count = min(len(opportunities), self.config.max_execution_per_trade)
         skipped_count = len(opportunities) - execution_count
         
-        print(f"\n🎯 EXECUTION PLAN:")
-        print(f"   Will Execute: {execution_count} trades")
+        self.logger.debug(f"\n🎯 EXECUTION PLAN:")
+        self.logger.debug(f"   Will Execute: {execution_count} trades")
         if skipped_count > 0:
-            print(f"   Will Skip: {skipped_count} opportunities (position limits)")
-        print(f"   Max Per Scan: {self.config.max_execution_per_trade}")
-        print(f"   Auto-Execute: {'✅ Enabled' if self.config.auto_execute_trades else '❌ Disabled'}")
+            self.logger.debug(f"   Will Skip: {skipped_count} opportunities (position limits)")
+        self.logger.debug(f"   Max Per Scan: {self.config.max_execution_per_trade}")
+        self.logger.debug(f"   Auto-Execute: {'✅ Enabled' if self.config.auto_execute_trades else '❌ Disabled'}")
         
         # Trading Recommendations
-        print(f"\n💡 TRADING RECOMMENDATIONS:")
+        self.logger.debug(f"\n💡 TRADING RECOMMENDATIONS:")
         
         if premium_signals >= 2:
-            print("   🚀 EXCELLENT CONDITIONS: Multiple premium signals available")
-            print("      → Consider standard to increased position sizing")
+            self.logger.debug("   🚀 EXCELLENT CONDITIONS: Multiple premium signals available")
+            self.logger.debug("      → Consider standard to increased position sizing")
         elif mtf_validated_signals >= 2:
-            print("   ✅ GOOD CONDITIONS: Multiple MTF-validated signals")
-            print("      → Standard position sizing recommended")
+            self.logger.debug("   ✅ GOOD CONDITIONS: Multiple MTF-validated signals")
+            self.logger.debug("      → Standard position sizing recommended")
         elif high_confidence_signals >= 1:
-            print("   🔸 MODERATE CONDITIONS: High-confidence signals available")
-            print("      → Use cautious position sizing")
+            self.logger.debug("   🔸 MODERATE CONDITIONS: High-confidence signals available")
+            self.logger.debug("      → Use cautious position sizing")
         else:
-            print("   ⚠️  LIMITED CONDITIONS: Lower quality signals")
-            print("      → Consider waiting for better setups")
+            self.logger.debug("   ⚠️  LIMITED CONDITIONS: Lower quality signals")
+            self.logger.debug("      → Consider waiting for better setups")
         
         # MTF Health Check
         if confirmation_ratio > 0.7:
-            print("   📈 MTF HEALTH: Strong timeframe alignment")
+            self.logger.debug("   📈 MTF HEALTH: Strong timeframe alignment")
         elif confirmation_ratio > 0.5:
-            print("   🔸 MTF HEALTH: Moderate timeframe alignment")
+            self.logger.debug("   🔸 MTF HEALTH: Moderate timeframe alignment")
         else:
-            print("   ⚠️  MTF HEALTH: Weak timeframe alignment - exercise caution")
+            self.logger.debug("   ⚠️  MTF HEALTH: Weak timeframe alignment - exercise caution")
         
         # System Performance
         system_perf = results.get('system_performance', {})
@@ -1028,24 +1016,24 @@ class CompleteEnhancedBybitSystem:
         mtf_validation_rate = system_perf.get('mtf_validation_rate', 0)
         structure_filtered_rate = system_perf.get('structure_filtered_rate', 0)
         
-        print(f"\n⚡ SYSTEM PERFORMANCE:")
-        print(f"   Analysis Speed: {signals_per_min:.1f} signals/minute")
-        print(f"   MTF Validation Rate: {mtf_validation_rate:.1f}%")
-        print(f"   Structure Filter Rate: {structure_filtered_rate:.1f}%")
-        print(f"   Primary Timeframe: {self.config.timeframe}")
-        print(f"   Structure Timeframe: {self.config.confirmation_timeframes[-1] if self.config.confirmation_timeframes else 'N/A'}")
+        self.logger.debug(f"\n⚡ SYSTEM PERFORMANCE:")
+        self.logger.debug(f"   Analysis Speed: {signals_per_min:.1f} signals/minute")
+        self.logger.debug(f"   MTF Validation Rate: {mtf_validation_rate:.1f}%")
+        self.logger.debug(f"   Structure Filter Rate: {structure_filtered_rate:.1f}%")
+        self.logger.debug(f"   Primary Timeframe: {self.config.timeframe}")
+        self.logger.debug(f"   Structure Timeframe: {self.config.confirmation_timeframes[-1] if self.config.confirmation_timeframes else 'N/A'}")
         
         # Legend for symbols
-        print(f"\n🔤 LEGEND:")
-        print("   * = Structure timeframe")
-        print("   💪 = Strong confirmation (≥2 TFs)")
-        print("   ✅ = Single confirmation")
-        print("   ⚠️  = Multiple conflicts")
-        print("   ❌ = Single conflict")
-        print("   🎯 = Will execute")
-        print("   ⏭️  = Will skip (position limits)")
+        self.logger.debug(f"\n🔤 LEGEND:")
+        self.logger.debug("   * = Structure timeframe")
+        self.logger.debug("   💪 = Strong confirmation (≥2 TFs)")
+        self.logger.debug("   ✅ = Single confirmation")
+        self.logger.debug("   ⚠️  = Multiple conflicts")
+        self.logger.debug("   ❌ = Single conflict")
+        self.logger.debug("   🎯 = Will execute")
+        self.logger.debug("   ⏭️  = Will skip (position limits)")
         
-        print("=" * 200)
+        self.logger.debug("=" * 200)
 
     def _ensure_mtf_display_data(self, opportunities: List[Dict]) -> List[Dict]:
         """
