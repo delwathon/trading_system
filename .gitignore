@@ -1,2 +1,4 @@
 /logs
 /charts
+/signals/obsolete
+/bybit/autotrader_copy_*

@@ -760,7 +760,7 @@ class CompleteEnhancedBybitSystem:
             f"{tp1_marker:<10} | {tp2_marker:<10} | {'R/R':<4} | {'Conf':<8} | "
             f"{'Qua':<5} | {'MTF':<15} | {'Strategy':<18} | "
             f"{'✅ TF':<10} | {'❌ TF':<10} | "
-            f"{'Vol':<8} | {'Regime':<12} | {'Premium':<7} | {'Execute':<10}"
+            f"{'Vol':<8} | {'Regime':<12} | {'Execute':<10}"
         )
         print(header)
         print("-" * 200)
@@ -905,7 +905,7 @@ class CompleteEnhancedBybitSystem:
                 else:
                     regime_display = f"⚠️  {market_regime[:8]}"
 
-                is_premium_signal = '✅' if opp['is_premium_signal'] else '❌'
+                # is_premium_signal = '✅' if opp['is_premium_signal'] else '❌'
                 
                 # Construct the row
                 row = (
@@ -915,7 +915,7 @@ class CompleteEnhancedBybitSystem:
                     f"{risk_reward:<4.2f} | {conf_display:<8} | "
                     f"{quality_display:<5} | {mtf_display:<15} | {strategy_display:<18} | "
                     f"{confirmed_display:<10} | {conflicting_display:<10} | "
-                    f"{volume_display:<8} | {regime_display:<12} | {is_premium_signal:<7} | {execution_status:<10}"
+                    f"{volume_display:<8} | {regime_display:<12} | {execution_status:<10}"
                 )
                 print(row)
                 
