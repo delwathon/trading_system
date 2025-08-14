@@ -446,15 +446,17 @@ class StateManager:
 
 @dataclass
 class Signal:
-    """Enhanced signal model with full lifecycle support"""
-    # Identification (required fields)
+    """Enhanced Signal with all required fields for display and trading"""
+    
+    # ============ REQUIRED FIELDS (NO DEFAULTS) ============
+    # Core identification
     id: str
     symbol: str
     side: str  # 'buy' or 'sell'
-    
-    # Status and lifecycle (required fields)
     status: SignalStatus
     quality_tier: SignalQuality
+    
+    # Timestamps (required)
     created_at: datetime
     last_updated: datetime
     
@@ -473,18 +475,38 @@ class Signal:
     
     # Analysis data (required fields)
     confidence: float
+    original_confidence: float  # Before MTF boost
     analysis_timeframe: TimeFrame
     market_regime: MarketRegime
     
-    # Optional datetime fields
+    # Market data (required)
+    volume_24h: float
+    price_change_24h: float
+    volume_ratio: float
+    
+    # ============ OPTIONAL FIELDS (WITH DEFAULTS) ============
+    # Optional timestamps
     triggered_at: Optional[datetime] = None
     executed_at: Optional[datetime] = None
     
-    # Multi-timeframe validation (with defaults)
+    # Order and execution fields with defaults
+    mtf_boost: float = 0.0
+    order_type: str = 'limit'  # 'market' or 'limit'
+    quality_grade: str = 'C'  # A+, A, A-, B+, B, B-, C+, C
+    entry_strategy: str = 'patient'  # 'immediate', 'patient', 'scaled'
+    
+    # MTF status fields with defaults
+    mtf_status: str = 'NONE'  # 'STRONG', 'PARTIAL', 'NONE', 'DISABLED'
+    mtf_validated: bool = False
+    mtf_confirmation_count: int = 0
+    mtf_total_timeframes: int = 0
+    
+    # Multi-timeframe validation with defaults
     mtf_alignment: Dict[str, bool] = field(default_factory=dict)
     mtf_scores: Dict[str, float] = field(default_factory=dict)
+    mtf_analysis: Dict[str, List[str]] = field(default_factory=dict)
     
-    # Technical indicators (with defaults)
+    # Technical indicators
     indicators: Dict[str, Any] = field(default_factory=dict)
     
     # ML and sentiment (optional)
@@ -494,28 +516,36 @@ class Signal:
     # Volume profile (optional)
     volume_analysis: Optional[Dict] = None
     
-    # Entry conditions (with defaults)
+    # Pattern and structure with defaults
+    patterns: List[Dict] = field(default_factory=list)
+    breakout_detected: bool = False
+    support_resistance: Dict[str, float] = field(default_factory=dict)
+    
+    # Entry conditions with defaults
     entry_conditions: List[Dict] = field(default_factory=list)
     entry_checklist: Dict[str, bool] = field(default_factory=dict)
     
-    # Risk warnings (with defaults)
+    # Risk warnings with defaults
     warnings: List[str] = field(default_factory=list)
     
-    # Metadata (with defaults)
+    # Metadata with defaults
     metadata: Dict[str, Any] = field(default_factory=dict)
+    regime_compatibility: str = 'medium'  # 'high', 'medium', 'low'
     
     def to_dict(self) -> Dict:
-        """Convert to dictionary"""
+        """Convert to dictionary with all fields"""
         data = asdict(self)
         # Convert enums
-        data['status'] = self.status.value
-        data['quality_tier'] = self.quality_tier.value
-        data['market_regime'] = self.market_regime.value
-        data['analysis_timeframe'] = self.analysis_timeframe.label
+        data['status'] = self.status.value if hasattr(self.status, 'value') else self.status
+        data['quality_tier'] = self.quality_tier.value if hasattr(self.quality_tier, 'value') else self.quality_tier
+        data['market_regime'] = self.market_regime.value if hasattr(self.market_regime, 'value') else self.market_regime
+        data['analysis_timeframe'] = self.analysis_timeframe.label if hasattr(self.analysis_timeframe, 'label') else str(self.analysis_timeframe)
+        
         # Convert datetimes
         for key in ['created_at', 'last_updated', 'triggered_at', 'executed_at']:
             if data[key]:
                 data[key] = data[key].isoformat()
+        
         return data
     
     @classmethod
@@ -528,10 +558,10 @@ class Signal:
         data['analysis_timeframe'] = TimeFrame.from_string(data['analysis_timeframe'])
         # Convert datetimes
         for key in ['created_at', 'last_updated', 'triggered_at', 'executed_at']:
-            if data[key]:
+            if data.get(key):
                 data[key] = datetime.fromisoformat(data[key])
         return cls(**data)
-
+    
 @dataclass
 class SymbolState:
     """Track per-symbol state"""

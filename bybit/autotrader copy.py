@@ -541,28 +541,23 @@ class LeveragedProfitMonitor:
             
             # Initialize partial profit tracking if not exists
             if symbol not in self.position_tracker:
-                # Get the actual stop loss and take profit from the position or exchange
+                # Get the actual stop loss from the position or exchange
                 actual_stop_loss = position.stop_loss
-                actual_take_profit = position.take_profit
-                
-                if actual_stop_loss == 0 or actual_take_profit == 0:
+                if actual_stop_loss == 0:
                     # Try to get from exchange
                     try:
                         positions = self.exchange.fetch_positions([symbol])
                         for pos in positions:
                             if pos['symbol'] == symbol:
-                                actual_stop_loss = pos.get('stopLoss', 0) or actual_stop_loss
-                                actual_take_profit = pos.get('takeProfit', 0) or actual_take_profit
+                                actual_stop_loss = pos.get('stopLoss', 0)
                                 break
                     except Exception as e:
-                        self.logger.debug(f"Could not fetch stop loss/take profit from exchange: {e}")
+                        self.logger.debug(f"Could not fetch stop loss from exchange: {e}")
                 
                 self.position_tracker[symbol] = {
                     'milestone_reached': 'none',
                     'original_stop': actual_stop_loss,
-                    'original_take_profit': actual_take_profit,  # Store original TP
                     'current_stop': actual_stop_loss,
-                    'current_take_profit': actual_take_profit,  # Track current TP
                     'last_check_price': current_price,
                     'partial_100_taken': False,
                     'partial_200_taken': False,
@@ -572,9 +567,7 @@ class LeveragedProfitMonitor:
                     'manual_stop_price': 0  # Price for manual stop if needed
                 }
                 
-                self.logger.debug(f"Initialized tracker for {symbol}")
-                self.logger.debug(f"  Stop Loss: ${actual_stop_loss:.6f}")
-                self.logger.debug(f"  Take Profit: ${actual_take_profit:.6f}")
+                self.logger.debug(f"Initialized tracker for {symbol} with stop loss: ${actual_stop_loss:.6f}")
             
             tracker = self.position_tracker[symbol]
             
@@ -610,8 +603,7 @@ class LeveragedProfitMonitor:
                     'percentage': 50,
                     'level': 'partial_300',
                     'leveraged_profit_pct': leveraged_profit_pct,
-                    'milestone': '300% leveraged profit',
-                    'preserve_take_profit': tracker.get('current_take_profit', 0)  # Pass TP to preserve
+                    'milestone': '300% leveraged profit'
                 }
             
             elif leveraged_profit_pct >= 200.0 and not tracker.get('partial_200_taken', False):
@@ -622,8 +614,7 @@ class LeveragedProfitMonitor:
                     'percentage': 50,
                     'level': 'partial_200',
                     'leveraged_profit_pct': leveraged_profit_pct,
-                    'milestone': '200% leveraged profit',
-                    'preserve_take_profit': tracker.get('current_take_profit', 0)
+                    'milestone': '200% leveraged profit'
                 }
             
             elif leveraged_profit_pct >= 100.0 and not tracker.get('partial_100_taken', False):
@@ -634,8 +625,7 @@ class LeveragedProfitMonitor:
                     'percentage': 50,
                     'level': 'partial_100',
                     'leveraged_profit_pct': leveraged_profit_pct,
-                    'milestone': '100% leveraged profit',
-                    'preserve_take_profit': tracker.get('current_take_profit', 0)
+                    'milestone': '100% leveraged profit'
                 }
             
             return None
@@ -784,8 +774,8 @@ class LeveragedProfitMonitor:
     
     def _update_stop_order_on_exchange(self, position: PositionData, new_stop_price: float) -> bool:
         """
-        FIXED: Update the stop loss order on the exchange while preserving take profit
-        Uses proper Bybit V5 API parameters to maintain TP/SL binding
+        FIXED: Update the stop loss order on the exchange using correct Bybit API parameters
+        Enhanced error logging and handling for cases where no initial stop exists
         """
         try:
             symbol = position.symbol
@@ -793,16 +783,13 @@ class LeveragedProfitMonitor:
             
             self.logger.debug(f"🔧 Updating stop order for {symbol}: ${new_stop_price:.6f}")
             
-            # Get current position from exchange with TP/SL values
+            # Get current position from exchange to ensure we have the right size
             positions = self.exchange.fetch_positions([symbol])
             current_position = None
-            current_take_profit = 0
             
             for pos in positions:
                 if pos['symbol'] == symbol and pos['contracts'] > 0:
                     current_position = pos
-                    # CRITICAL: Preserve current take profit value
-                    current_take_profit = pos.get('takeProfit', 0) or position.take_profit
                     break
             
             if not current_position:
@@ -812,111 +799,31 @@ class LeveragedProfitMonitor:
             position_size = current_position['contracts']
             current_side = current_position['side'].lower()
             
-            # Update position tracker with current TP if we have it
-            if symbol in self.position_tracker and current_take_profit > 0:
-                self.position_tracker[symbol]['current_take_profit'] = current_take_profit
+            # Determine stop order parameters for Bybit
+            if current_side == 'long':
+                stop_side = 'sell'
+                trigger_direction = 1  # 1 for rising, 2 for falling
+            else:  # short
+                stop_side = 'buy'
+                trigger_direction = 2
             
-            # METHOD 1: Use set_trading_stop with BOTH SL and TP to preserve binding
+            # First, try to cancel any existing stop orders
             try:
-                # Convert symbol format for Bybit API
-                bybit_symbol = symbol.replace('/', '').replace(':USDT', '')
-                
-                # Build params - CRITICAL: Include both SL and TP to maintain binding
-                params = {
-                    'category': 'linear',
-                    'symbol': bybit_symbol,
-                    'stopLoss': str(new_stop_price),
-                    'tpslMode': 'Full',  # Use Full mode for entire position
-                }
-                
-                # IMPORTANT: Include take profit if it exists to preserve it
-                if current_take_profit > 0:
-                    params['takeProfit'] = str(current_take_profit)
-                    self.logger.debug(f"Preserving take profit at ${current_take_profit:.6f}")
-                
-                # Use direct API call for better control
-                result = self.exchange.privatePostV5PositionTradingStop(params)
-                
-                if result.get('retCode') == 0:
-                    self.logger.info(f"✅ Stop loss updated to ${new_stop_price:.6f} (TP preserved at ${current_take_profit:.6f})")
-                    return True
-                else:
-                    self.logger.debug(f"Method 1 failed with retCode: {result.get('retCode')}, retMsg: {result.get('retMsg')}")
-                    
-            except Exception as e1:
-                self.logger.debug(f"Method 1 (set_trading_stop with TP preservation) failed: {str(e1)}")
-            
-            # METHOD 2: Use CCXT's built-in method with proper params
-            try:
-                # Build request with both SL and TP
-                request_params = {
-                    'category': 'linear',
-                    'symbol': symbol.replace('/', '').replace(':USDT', ''),
-                    'stopLoss': str(new_stop_price),
-                    'tpslMode': 'Full'
-                }
-                
-                # Include TP to preserve it
-                if current_take_profit > 0:
-                    request_params['takeProfit'] = str(current_take_profit)
-                
-                # Try alternative API endpoint
-                result = self.exchange.private_post_v5_position_trading_stop(request_params)
-                
-                if result and result.get('retCode') == 0:
-                    self.logger.info(f"✅ Trading stop updated via CCXT at ${new_stop_price:.6f} (TP: ${current_take_profit:.6f})")
-                    return True
-                    
-            except Exception as e2:
-                self.logger.debug(f"Method 2 (CCXT trading stop) failed: {str(e2)}")
-            
-            # METHOD 3: Try with different API call structure
-            try:
-                # Another attempt with different parameter structure
-                result = self.exchange.private_post_v5_position_set_trading_stop({
-                    'category': 'linear',
-                    'symbol': symbol.replace('/', '').replace(':USDT', ''),
-                    'stopLoss': str(new_stop_price),
-                    'takeProfit': str(current_take_profit) if current_take_profit > 0 else None
-                })
-                
-                self.logger.info(f"✅ Trading stop updated (Method 3) at ${new_stop_price:.6f}")
-                return True
-                
-            except Exception as e3:
-                self.logger.debug(f"Method 3 (alternative API) failed: {str(e3)}")
-            
-            # METHOD 4: Use conditional stop order as separate order (fallback)
-            try:
-                # First cancel existing stop orders but NOT take profit orders
                 open_orders = self.exchange.fetch_open_orders(symbol)
                 for order in open_orders:
-                    # Only cancel stop orders, not take profit orders
-                    if order.get('type') in ['stop', 'stop_market'] and order.get('side') != current_side:
-                        # Check if it's a stop loss (opposite side of position)
-                        order_stop = order.get('stopPrice', 0) or order.get('triggerPrice', 0)
-                        current_mark = current_position.get('markPrice', 0)
-                        
-                        is_stop_loss = False
-                        if current_side == 'long' and order['side'] == 'sell' and order_stop < current_mark:
-                            is_stop_loss = True
-                        elif current_side == 'short' and order['side'] == 'buy' and order_stop > current_mark:
-                            is_stop_loss = True
-                        
-                        if is_stop_loss:
-                            try:
-                                self.exchange.cancel_order(order['id'], symbol)
-                                self.logger.debug(f"Cancelled existing stop order: {order['id']}")
-                            except Exception as cancel_err:
-                                self.logger.debug(f"Could not cancel order {order['id']}: {cancel_err}")
-                
-                # Determine stop order side
-                if current_side == 'long':
-                    stop_side = 'sell'
-                else:  # short
-                    stop_side = 'buy'
-                
-                # Create new conditional stop order
+                    if order.get('stopPrice') or order.get('triggerPrice') or order.get('type') in ['stop', 'stop_market', 'conditional']:
+                        try:
+                            self.exchange.cancel_order(order['id'], symbol)
+                            self.logger.debug(f"Cancelled existing stop order: {order['id']}")
+                        except Exception as cancel_err:
+                            self.logger.debug(f"Could not cancel order {order['id']}: {cancel_err}")
+            except Exception as fetch_err:
+                self.logger.debug(f"Could not fetch open orders: {fetch_err}")
+            
+            # Try multiple methods with enhanced error logging
+            
+            # Method 1: Use stop_market order (most reliable for Bybit)
+            try:
                 stop_order = self.exchange.create_order(
                     symbol=symbol,
                     type='stop_market',
@@ -926,38 +833,119 @@ class LeveragedProfitMonitor:
                     params={
                         'triggerPrice': new_stop_price,
                         'reduceOnly': True,
-                        'triggerBy': 'LastPrice',
-                        'closeOnTrigger': False  # Don't close TP orders
+                        'closeOnTrigger': True,
+                        'triggerBy': 'LastPrice'
                     }
                 )
                 
                 position.stop_order_id = stop_order['id']
-                self.logger.info(f"✅ Conditional stop order placed: {stop_order['id']} at ${new_stop_price:.6f}")
-                self.logger.info(f"   Take profit preserved at ${current_take_profit:.6f}")
+                self.logger.info(f"✅ Stop market order placed (Method 1): {stop_order['id']} at ${new_stop_price:.6f}")
                 return True
                 
-            except Exception as e4:
-                self.logger.debug(f"Method 4 (conditional stop order) failed: {str(e4)}")
-            
-            # If all methods fail, track internally and alert user
-            self.logger.warning(f"⚠️ All API methods failed. Tracking stop internally at ${new_stop_price:.6f}")
-            self.logger.warning(f"⚠️ MANUAL INTERVENTION NEEDED: Set stop loss for {symbol} at ${new_stop_price:.6f}")
-            self.logger.warning(f"⚠️ Ensure take profit remains at ${current_take_profit:.6f}")
-            
-            # Send urgent notification
-            asyncio.run(self._send_manual_intervention_notification(symbol, new_stop_price, current_side))
-            
-            # Update internal tracking
-            position.stop_loss = new_stop_price
-            
-            # Store in position tracker for manual monitoring
-            if symbol in self.position_tracker:
-                self.position_tracker[symbol]['manual_stop_needed'] = True
-                self.position_tracker[symbol]['manual_stop_price'] = new_stop_price
-                # Store current TP for recovery
-                self.position_tracker[symbol]['preserved_take_profit'] = current_take_profit
-            
-            return True
+            except Exception as e1:
+                self.logger.debug(f"Method 1 (stop_market) failed: {str(e1)}")
+                
+                # Method 2: Use conditional order with stop_loss parameter
+                try:
+                    stop_order = self.exchange.create_order(
+                        symbol=symbol,
+                        type='market',
+                        side=stop_side,
+                        amount=position_size,
+                        params={
+                            'stopLoss': {
+                                'triggerPrice': str(new_stop_price),
+                                'triggerBy': 'LastPrice'
+                            },
+                            'reduceOnly': True
+                        }
+                    )
+                    
+                    position.stop_order_id = stop_order.get('id', '')
+                    self.logger.info(f"✅ Market order with stopLoss placed (Method 2) at ${new_stop_price:.6f}")
+                    return True
+                    
+                except Exception as e2:
+                    self.logger.debug(f"Method 2 (market with stopLoss) failed: {str(e2)}")
+                    
+                    # Method 3: Use Bybit's set-trading-stop endpoint directly
+                    try:
+                        # Use Bybit's position modification endpoint
+                        result = self.exchange.privatePostV5PositionSetTradingStop({
+                            'category': 'linear',
+                            'symbol': symbol.replace('/', '').replace(':USDT', ''),  # Convert symbol format
+                            'stopLoss': str(new_stop_price),
+                            'tpslMode': 'Partial',  # Partial mode for position modification
+                            'slSize': str(position_size)  # Size for the stop loss
+                        })
+                        
+                        self.logger.info(f"✅ Trading stop set directly (Method 3) at ${new_stop_price:.6f}")
+                        self.logger.debug(f"API Response: {result}")
+                        return True
+                        
+                    except Exception as e3:
+                        self.logger.debug(f"Method 3 (set-trading-stop) failed: {str(e3)}")
+                        
+                        # Method 4: Try with different API endpoint structure
+                        try:
+                            # Alternative API call format
+                            result = self.exchange.private_post_v5_position_set_trading_stop({
+                                'category': 'linear',
+                                'symbol': symbol.replace('/', '').replace(':USDT', ''),
+                                'stopLoss': str(new_stop_price)
+                            })
+                            
+                            self.logger.info(f"✅ Trading stop updated (Method 4) at ${new_stop_price:.6f}")
+                            return True
+                            
+                        except Exception as e4:
+                            self.logger.debug(f"Method 4 (alternative API) failed: {str(e4)}")
+                            
+                            # Method 5: Create a conditional stop order
+                            try:
+                                # Bybit conditional order format
+                                stop_order = self.exchange.create_order(
+                                    symbol=symbol,
+                                    type='limit',
+                                    side=stop_side,
+                                    amount=position_size,
+                                    price=new_stop_price * 0.95 if stop_side == 'sell' else new_stop_price * 1.05,  # Slippage protection
+                                    params={
+                                        'stopPrice': new_stop_price,
+                                        'triggerPrice': new_stop_price,
+                                        'triggerDirection': trigger_direction,
+                                        'triggerBy': 'LastPrice',
+                                        'orderType': 'Limit',
+                                        'timeInForce': 'IOC',
+                                        'reduceOnly': True,
+                                        'closeOnTrigger': True
+                                    }
+                                )
+                                
+                                position.stop_order_id = stop_order['id']
+                                self.logger.info(f"✅ Conditional stop order placed (Method 5): {stop_order['id']} at ${new_stop_price:.6f}")
+                                return True
+                                
+                            except Exception as e5:
+                                self.logger.debug(f"Method 5 (conditional order) failed: {str(e5)}")
+                                
+                                # Method 6: Last resort - track internally and alert user
+                                self.logger.warning(f"⚠️ All API methods failed. Tracking stop internally at ${new_stop_price:.6f}")
+                                self.logger.warning(f"⚠️ MANUAL INTERVENTION NEEDED: Set stop loss for {symbol} at ${new_stop_price:.6f}")
+                                
+                                # Send urgent notification
+                                asyncio.run(self._send_manual_intervention_notification(symbol, new_stop_price, current_side))
+                                
+                                # Update internal tracking
+                                position.stop_loss = new_stop_price
+                                
+                                # Store in position tracker for manual monitoring
+                                if symbol in self.position_tracker:
+                                    self.position_tracker[symbol]['manual_stop_needed'] = True
+                                    self.position_tracker[symbol]['manual_stop_price'] = new_stop_price
+                                
+                                # Return True to continue monitoring but flag for manual intervention
+                                return True
             
         except Exception as e:
             self.logger.error(f"Critical error in stop order update: {str(e)}")
@@ -1323,11 +1311,11 @@ class OrderExecutor:
             # Check compatibility
             if regime == 'strong_bullish' and side == 'sell':
                 # Only allow very strong SHORT signals in bull market
-                if confidence < 60:
+                if confidence < 75:
                     return False, f"SHORT signal too weak for {regime} market"
             elif regime == 'strong_bearish' and side == 'buy':
                 # Only allow very strong LONG signals in bear market
-                if confidence < 60:
+                if confidence < 75:
                     return False, f"LONG signal too weak for {regime} market"
             
             return True, f"Compatible with {regime} regime"
@@ -1643,7 +1631,7 @@ class PositionManager:
                     elif symbol in symbols_with_orders:
                         reason = "pending orders"
                     
-                    self.logger.info(f"⭕️ Skipping {symbol} - {reason}")
+                    self.logger.info(f"⏭️ Skipping {symbol} - {reason}")
                     skipped_count += 1
                 else:
                     filtered_signals.append(signal)
@@ -1967,7 +1955,7 @@ class AutoTrader:
                     selected_opportunities, save_result.get('scan_session_id')
                 )
             else:
-                self.logger.info("📄 Auto-execution disabled - no charts or notifications will be sent")
+                self.logger.info("🔄 Auto-execution disabled - no charts or notifications will be sent")
             
             # ===== PHASE 8: GENERATE CHARTS FOR EXECUTED TRADES ONLY =====
             if executed_trades:
@@ -2013,7 +2001,7 @@ class AutoTrader:
                     
                     # Enhanced execution logging
                     validation_emoji = "🎯" if mtf_validated else "⚠️"
-                    self.logger.info(f"🔍 {validation_emoji} Executing trade {i+1}/{len(selected_opportunities)}: {symbol}")
+                    self.logger.info(f"📝 {validation_emoji} Executing trade {i+1}/{len(selected_opportunities)}: {symbol}")
                     self.logger.info(f"     MTF Status: {mtf_status}")
                     self.logger.info(f"     Entry Strategy: {entry_strategy}")
                     self.logger.info(f"     Analysis Method: {analysis_method}")
@@ -2171,7 +2159,7 @@ class AutoTrader:
             message_parts.append("")
             
             message_parts.append(f"🆔 Position ID: {escape_markdown(position_id)}")
-            message_parts.append(f"🕐 {escape_markdown(datetime.now().strftime('%H:%M:%S'))}")
+            message_parts.append(f"🕒 {escape_markdown(datetime.now().strftime('%H:%M:%S'))}")
             
             # Add chart info if available
             if chart_file and chart_file != "Chart data unavailable":

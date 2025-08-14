@@ -19,6 +19,7 @@ from analysis.technical import EnhancedTechnicalAnalysis
 from analysis.volume_profile import VolumeProfileAnalyzer
 from analysis.fibonacci import FibonacciConfluenceAnalyzer
 from signals.generator import create_mtf_signal_generator
+from signal_v14.signal_generator_v14 import create_signal_generator
 from visualization.charts import InteractiveChartGenerator
 from utils.database_manager import EnhancedDatabaseManager
 from utils.logging import get_logger 
@@ -50,7 +51,7 @@ class CompleteEnhancedBybitSystem:
         self.enhanced_ta = EnhancedTechnicalAnalysis()
         self.volume_analyzer = VolumeProfileAnalyzer()
         self.fibonacci_analyzer = FibonacciConfluenceAnalyzer()
-        self.signal_generator = create_mtf_signal_generator(config, self.exchange_manager)
+        self.signal_generator = create_signal_generator(config, self.exchange_manager)
         self.chart_generator = InteractiveChartGenerator(config)
         
         # System state
@@ -70,23 +71,126 @@ class CompleteEnhancedBybitSystem:
             self.logger.debug(f"✅ Multi-Timeframe Confirmation: Primary 30m, Confirmation 1h/4h/6h")
         self.logger.debug(f"✅ Database: {self.config.db_config.database} @ {self.config.db_config.host}")
     
+    # def analyze_symbol_complete_with_mtf(self, symbol_data: Dict) -> Optional[Dict]:
+    #     """
+    #     Enhanced MTF analysis method that works with the new structure-aware signal generator
+    #     """
+    #     try:
+    #         symbol = symbol_data['symbol']
+    #         current_price = symbol_data['current_price']
+            
+    #         self.logger.debug(f"📊 Enhanced MTF analysis for {symbol} (Primary: {self.config.timeframe})")
+            
+    #         # Fetch primary timeframe data
+    #         df = self.exchange_manager.fetch_ohlcv_data(symbol, self.config.timeframe)
+    #         if df.empty or len(df) < 50:
+    #             self.logger.debug(f"   Insufficient {self.config.timeframe} data for {symbol}")
+    #             return None
+            
+    #         # Enhanced Technical Analysis on primary timeframe
+    #         df = self.enhanced_ta.calculate_all_indicators(df, self.config)
+            
+    #         # Volume Profile Analysis
+    #         volume_profile = self.volume_analyzer.calculate_volume_profile(df)
+    #         volume_entry = self.volume_analyzer.find_optimal_entry_from_volume(
+    #             df, current_price, 'buy'
+    #         )
+            
+    #         # Fibonacci & Confluence Analysis
+    #         fibonacci_data = self.fibonacci_analyzer.calculate_fibonacci_levels(df)
+    #         confluence_zones = self.fibonacci_analyzer.find_confluence_zones(
+    #             df, volume_profile, current_price
+    #         )
+            
+    #         # === NEW: Structure-Aware Signal Generation ===
+    #         primary_signal = self.signal_generator.analyze_symbol_comprehensive(
+    #             df, symbol_data, volume_entry, fibonacci_data, confluence_zones, self.config.timeframe
+    #         )
+            
+    #         # ============= ADD THIS NEW SECTION =============
+    #         # Process the signal to ensure all display fields exist
+    #         if primary_signal:
+    #             # Convert signal to opportunity with all required fields
+    #             if isinstance(primary_signal, list):
+    #                 # If generator returns multiple signals
+    #                 opportunities = self.process_signals_to_opportunities(primary_signal)
+    #                 # Use the best one as primary signal
+    #                 primary_signal = opportunities[0] if opportunities else None
+    #             else:
+    #                 # Single signal - convert to opportunity format
+    #                 opportunities = self.process_signals_to_opportunities([primary_signal])
+    #                 primary_signal = opportunities[0] if opportunities else None
+            
+    #         # If no signal after processing, return None
+    #         if not primary_signal:
+    #             return None
+    #         # ============= END OF NEW SECTION =============
+            
+    #         if primary_signal:
+    #             # Check if signal was validated with MTF structure analysis
+    #             mtf_validated = primary_signal.get('mtf_validated', False)
+    #             analysis_details = primary_signal.get('analysis_details', {})
+                
+    #             if mtf_validated:
+    #                 # Signal was generated with full MTF structure awareness
+    #                 self.logger.debug(f"   ✅ {symbol} - MTF-validated {primary_signal['side'].upper()} signal")
+    #                 self.logger.debug(f"   📊 Entry: ${primary_signal['entry_price']:.6f} via {primary_signal.get('entry_strategy', 'structure')}")
+    #                 self.logger.debug(f"   🎯 Confidence: {primary_signal['confidence']:.1f}% (MTF: {analysis_details.get('mtf_trend', 'confirmed')})")
+                    
+    #                 # Add MTF status for compatibility with ranking system
+    #                 primary_signal['mtf_status'] = 'MTF_VALIDATED'
+    #                 primary_signal['mtf_analysis'] = {
+    #                     'method': 'structure_aware_generation',
+    #                     'structure_timeframe': analysis_details.get('structure_timeframe', self.config.confirmation_timeframes[-1]),
+    #                     'confirmation_score': analysis_details.get('confirmation_score', 0.8),
+    #                     'entry_method': primary_signal.get('entry_strategy', 'structure_based'),
+    #                     'mtf_trend': analysis_details.get('mtf_trend', 'aligned'),
+    #                     'validated_timeframes': self.config.confirmation_timeframes,
+    #                     'primary_timeframe': self.config.timeframe
+    #                 }
+                    
+    #             # Chart generation will happen later for top signals only
+    #             primary_signal['chart_file'] = None
+                
+    #             # Store chart data for later generation (top signals only)
+    #             primary_signal['_chart_data'] = {
+    #                 'df': df,
+    #                 'symbol_data': symbol_data
+    #             }
+                
+    #             # Add execution metadata
+    #             primary_signal['analysis_method'] = 'enhanced_mtf' if mtf_validated else 'traditional_fallback'
+    #             primary_signal['generation_timestamp'] = pd.Timestamp.now()
+                
+    #             # Enhanced logging based on signal quality
+    #             if mtf_validated:
+    #                 entry_strategy = primary_signal.get('entry_strategy', 'structure')
+    #                 self.logger.debug(f"   🎯 Structure-aware signal: {entry_strategy} entry method")
+    #             else:
+    #                 self.logger.debug(f"   ⚠️  Traditional signal: May lack higher timeframe validation")
+                
+    #             return primary_signal
+            
+    #         else:
+    #             # No signal generated - this is often due to structure filtering
+    #             self.logger.debug(f"   ❌ {symbol} - No signal (likely filtered by MTF structure analysis)")
+    #             return None
+                
+    #     except Exception as e:
+    #         self.logger.error(f"Enhanced MTF analysis failed for {symbol_data.get('symbol', 'unknown')}: {e}")
+    #         return None
+
     def analyze_symbol_complete_with_mtf(self, symbol_data: Dict) -> Optional[Dict]:
         """
         Enhanced MTF analysis method that works with the new structure-aware signal generator
-        
-        Key Changes:
-        - The new generator handles MTF analysis internally
-        - No need for separate multi_timeframe.py calls
-        - Better integration and fewer API calls
-        - Maintains full compatibility with existing system flow
         """
         try:
             symbol = symbol_data['symbol']
             current_price = symbol_data['current_price']
             
-            self.logger.debug(f"📊 Enhanced MTF analysis for {symbol} (Primary: {self.config.timeframe})")
+            self.logger.debug(f"🔊 Enhanced MTF analysis for {symbol} (Primary: {self.config.timeframe})")
             
-            # Fetch primary timeframe data (your configured timeframe, e.g., 1h)
+            # Fetch primary timeframe data
             df = self.exchange_manager.fetch_ohlcv_data(symbol, self.config.timeframe)
             if df.empty or len(df) < 50:
                 self.logger.debug(f"   Insufficient {self.config.timeframe} data for {symbol}")
@@ -95,74 +199,97 @@ class CompleteEnhancedBybitSystem:
             # Enhanced Technical Analysis on primary timeframe
             df = self.enhanced_ta.calculate_all_indicators(df, self.config)
             
-            # Volume Profile Analysis (existing)
+            # Volume Profile Analysis
             volume_profile = self.volume_analyzer.calculate_volume_profile(df)
             volume_entry = self.volume_analyzer.find_optimal_entry_from_volume(
                 df, current_price, 'buy'
             )
             
-            # Fibonacci & Confluence Analysis (existing)
+            # Fibonacci & Confluence Analysis
             fibonacci_data = self.fibonacci_analyzer.calculate_fibonacci_levels(df)
             confluence_zones = self.fibonacci_analyzer.find_confluence_zones(
                 df, volume_profile, current_price
             )
             
-            # === NEW: Structure-Aware Signal Generation ===
-            # The signal generator now handles MTF analysis internally
-            # This replaces the old separate MTF confirmation step
-            primary_signal = self.signal_generator.analyze_symbol_comprehensive(
-                df, symbol_data, volume_entry, fibonacci_data, confluence_zones, self.config.timeframe
-            )
+            # === FIXED: Proper V14 Signal Generation ===
+            # The V14 generator's analyze_symbol only takes the symbol string
+            primary_signal_obj = self.signal_generator.analyze_symbol(symbol)
             
-            if primary_signal:
-                # Check if signal was validated with MTF structure analysis
-                mtf_validated = primary_signal.get('mtf_validated', False)
-                analysis_details = primary_signal.get('analysis_details', {})
-                
-                if mtf_validated:
-                    # Signal was generated with full MTF structure awareness
-                    self.logger.debug(f"   ✅ {symbol} - MTF-validated {primary_signal['side'].upper()} signal")
-                    self.logger.debug(f"   📊 Entry: ${primary_signal['entry_price']:.6f} via {primary_signal.get('entry_strategy', 'structure')}")
-                    self.logger.debug(f"   🎯 Confidence: {primary_signal['confidence']:.1f}% (MTF: {analysis_details.get('mtf_trend', 'confirmed')})")
-                    
-                    # Add MTF status for compatibility with ranking system
-                    primary_signal['mtf_status'] = 'MTF_VALIDATED'
-                    primary_signal['mtf_analysis'] = {
-                        'method': 'structure_aware_generation',
-                        'structure_timeframe': analysis_details.get('structure_timeframe', self.config.confirmation_timeframes[-1]),
-                        'confirmation_score': analysis_details.get('confirmation_score', 0.8),
-                        'entry_method': primary_signal.get('entry_strategy', 'structure_based'),
-                        'mtf_trend': analysis_details.get('mtf_trend', 'aligned'),
-                        'validated_timeframes': self.config.confirmation_timeframes,
-                        'primary_timeframe': self.config.timeframe
-                    }
-                    
-                # Chart generation will happen later for top signals only
-                primary_signal['chart_file'] = None
-                
-                # Store chart data for later generation (top signals only)
-                primary_signal['_chart_data'] = {
-                    'df': df,
-                    'symbol_data': symbol_data
-                }
-                
-                # Add execution metadata
-                primary_signal['analysis_method'] = 'enhanced_mtf' if mtf_validated else 'traditional_fallback'
-                primary_signal['generation_timestamp'] = pd.Timestamp.now()
-                
-                # Enhanced logging based on signal quality
-                if mtf_validated:
-                    entry_strategy = primary_signal.get('entry_strategy', 'structure')
-                    self.logger.debug(f"   🎯 Structure-aware signal: {entry_strategy} entry method")
+            # Convert Signal object to dictionary if it exists
+            if primary_signal_obj:
+                # Convert to dictionary using the to_dict method
+                if hasattr(primary_signal_obj, 'to_dict'):
+                    primary_signal = primary_signal_obj.to_dict()
                 else:
-                    self.logger.debug(f"   ⚠️  Traditional signal: May lack higher timeframe validation")
-                
-                return primary_signal
-            
+                    # Fallback if somehow it's already a dict
+                    primary_signal = primary_signal_obj
             else:
-                # No signal generated - this is often due to structure filtering
-                self.logger.debug(f"   ❌ {symbol} - No signal (likely filtered by MTF structure analysis)")
+                primary_signal = None
+            
+            # Process the signal to ensure all display fields exist
+            if primary_signal:
+                # Convert signal to opportunity with all required fields
+                if isinstance(primary_signal, list):
+                    # If generator returns multiple signals
+                    opportunities = self.process_signals_to_opportunities(primary_signal)
+                    # Use the best one as primary signal
+                    primary_signal = opportunities[0] if opportunities else None
+                else:
+                    # Single signal - convert to opportunity format
+                    opportunities = self.process_signals_to_opportunities([primary_signal])
+                    primary_signal = opportunities[0] if opportunities else None
+            
+            # If no signal after processing, return None
+            if not primary_signal:
                 return None
+            
+            # Now primary_signal is guaranteed to be a dictionary
+            # Check if signal was validated with MTF structure analysis
+            mtf_validated = primary_signal.get('mtf_validated', False)
+            analysis_details = primary_signal.get('analysis_details', {})
+            
+            if mtf_validated:
+                # Signal was generated with full MTF structure awareness
+                self.logger.debug(f"   ✅ {symbol} - MTF-validated {primary_signal['side'].upper()} signal")
+                self.logger.debug(f"   📊 Entry: ${primary_signal['entry_price']:.6f} via {primary_signal.get('entry_strategy', 'structure')}")
+                self.logger.debug(f"   🎯 Confidence: {primary_signal['confidence']:.1f}% (MTF: {analysis_details.get('mtf_trend', 'confirmed')})")
+                
+                # Add MTF status for compatibility with ranking system
+                primary_signal['mtf_status'] = 'MTF_VALIDATED'
+                primary_signal['mtf_analysis'] = {
+                    'method': 'structure_aware_generation',
+                    'structure_timeframe': analysis_details.get('structure_timeframe', self.config.confirmation_timeframes[-1]),
+                    'confirmation_score': analysis_details.get('confirmation_score', 0.8),
+                    'entry_method': primary_signal.get('entry_strategy', 'structure_based'),
+                    'mtf_trend': analysis_details.get('mtf_trend', 'aligned'),
+                    'validated_timeframes': self.config.confirmation_timeframes,
+                    'primary_timeframe': self.config.timeframe
+                }
+            
+            # Chart generation will happen later for top signals only
+            primary_signal['chart_file'] = None
+            
+            # Store chart data for later generation (top signals only)
+            primary_signal['_chart_data'] = {
+                'df': df,
+                'symbol_data': symbol_data,
+                'volume_profile': volume_profile,
+                'fibonacci_data': fibonacci_data,
+                'confluence_zones': confluence_zones
+            }
+            
+            # Add execution metadata
+            primary_signal['analysis_method'] = 'enhanced_mtf' if mtf_validated else 'traditional_fallback'
+            primary_signal['generation_timestamp'] = pd.Timestamp.now()
+            
+            # Enhanced logging based on signal quality
+            if mtf_validated:
+                entry_strategy = primary_signal.get('entry_strategy', 'structure')
+                self.logger.debug(f"   🎯 Structure-aware signal: {entry_strategy} entry method")
+            else:
+                self.logger.debug(f"   ⚠️ Traditional signal: May lack higher timeframe validation")
+            
+            return primary_signal
                 
         except Exception as e:
             self.logger.error(f"Enhanced MTF analysis failed for {symbol_data.get('symbol', 'unknown')}: {e}")
@@ -322,8 +449,16 @@ class CompleteEnhancedBybitSystem:
         analysis_time = time.time() - start_time
         self.logger.info(f"📊 PHASE 2: Enhanced Signal Ranking")
         
-        # Use enhanced ranking system that prioritizes MTF-validated signals
-        ranked_signals = self.signal_generator.rank_opportunities_with_mtf(all_signals)
+        # First ensure all signals have required fields
+        processed_signals = self.process_signals_to_opportunities(all_signals)
+        
+        # Then rank them
+        ranked_signals = self.signal_generator.rank_opportunities_with_mtf(processed_signals)
+        
+        # # Now these have all fields for display
+        # results = {
+        #     'top_opportunities': ranked_signals[:self.config.max_opportunities_display],
+        #     'scan_info': {...},
 
         if not ranked_signals:
             self.logger.info("No signals found after enhanced ranking")
@@ -397,7 +532,7 @@ class CompleteEnhancedBybitSystem:
             'scan_info': scan_info,
             'signals': ranked_signals,
             'analysis_results': analysis_results,
-            'top_opportunities': ranked_signals,
+            'top_opportunities': ranked_signals[:self.config.charts_per_batch],
             'market_summary': self.create_market_summary_with_mtf(symbols, ranked_signals),
             'system_performance': {
                 'signals_per_minute': len(ranked_signals) / (execution_time / 60) if execution_time > 0 else 0,
@@ -754,16 +889,16 @@ class CompleteEnhancedBybitSystem:
         tp1_marker = "TP1 ✅" if self.config.default_tp_level == 'take_profit_1' else "TP1"
         tp2_marker = "TP2 ✅" if self.config.default_tp_level != 'take_profit_1' else "TP2"
         
-        # Enhanced header with all critical information
+        # UPDATED HEADER WITH ORDER TYPE
         header = (
-            f"{'#':<1} | {'Symbol':<8} | {'Side':<9} | {'Entry':<10} | {'SL':<10} | "
+            f"{'#':<1} | {'Symbol':<8} | {'Side':<9} | {'Order':<7} | {'Entry':<10} | {'SL':<10} | "
             f"{tp1_marker:<10} | {tp2_marker:<10} | {'R/R':<4} | {'Conf':<8} | "
             f"{'Qua':<5} | {'MTF':<15} | {'Strategy':<18} | "
             f"{'✅ TF':<10} | {'❌ TF':<10} | "
             f"{'Vol':<8} | {'Regime':<12} | {'Execute':<10}"
         )
         print(header)
-        print("-" * 200)
+        print("-" * 210)  # Increased width for new column
         
         # Track statistics for summary
         total_confirmed_tfs = 0
@@ -772,6 +907,8 @@ class CompleteEnhancedBybitSystem:
         premium_signals = 0
         mtf_validated_signals = 0
         high_confidence_signals = 0
+        market_orders = 0  # NEW: Track market orders
+        limit_orders = 0   # NEW: Track limit orders
         
         for i, opp in enumerate(opportunities):
             try:
@@ -785,6 +922,17 @@ class CompleteEnhancedBybitSystem:
                 risk_reward = opp.get('risk_reward_ratio', 0)
                 confidence = opp.get('confidence', 0)
                 volume_24h = opp.get('volume_24h', 0)
+                
+                # NEW: Get order type with default fallback
+                order_type = opp.get('order_type', 'limit').upper()
+                
+                # Track order type statistics
+                if order_type == 'MARKET':
+                    market_orders += 1
+                    order_display = "🚀 MKT"
+                else:
+                    limit_orders += 1
+                    order_display = "📊 LMT"
                 
                 # Execution status
                 will_execute = i < self.config.max_execution_per_trade
@@ -904,12 +1052,10 @@ class CompleteEnhancedBybitSystem:
                     regime_display = f"🔸 {market_regime[:8]}"
                 else:
                     regime_display = f"⚠️  {market_regime[:8]}"
-
-                # is_premium_signal = '✅' if opp['is_premium_signal'] else '❌'
                 
-                # Construct the row
+                # UPDATED ROW WITH ORDER TYPE
                 row = (
-                    f"{i+1:<1} | {symbol:<8} | {side_display:<8} | "
+                    f"{i+1:<1} | {symbol:<8} | {side_display:<8} | {order_display:<7} | "
                     f"{entry_price:<10.6f} | {stop_loss:<10.6f} | "
                     f"{take_profit_1:<10.6f} | {take_profit_2:<10.6f} | "
                     f"{risk_reward:<4.2f} | {conf_display:<8} | "
@@ -926,7 +1072,7 @@ class CompleteEnhancedBybitSystem:
                 )
                 print(error_row)
         
-        print("-" * 200)
+        print("-" * 210)  # Increased width for new column
         
         # ENHANCED COMPREHENSIVE SUMMARY
         self.logger.debug(f"\n📊 COMPREHENSIVE ANALYSIS SUMMARY:")
@@ -938,6 +1084,13 @@ class CompleteEnhancedBybitSystem:
         self.logger.debug(f"   MTF Validated: {mtf_validated_signals}")
         self.logger.debug(f"   High Confidence (≥70%): {high_confidence_signals}")
         self.logger.debug(f"   Total Opportunities: {len(opportunities)}")
+        
+        # NEW: Order Type Distribution
+        self.logger.debug(f"\n📋 ORDER TYPE DISTRIBUTION:")
+        self.logger.debug(f"   Market Orders: {market_orders} ({market_orders/len(opportunities)*100:.1f}%)")
+        self.logger.debug(f"   Limit Orders: {limit_orders} ({limit_orders/len(opportunities)*100:.1f}%)")
+        if market_orders > 0:
+            self.logger.debug(f"   → Market orders indicate immediate entry opportunities")
         
         # MTF Analysis Summary
         self.logger.debug(f"\n🔍 MULTI-TIMEFRAME ANALYSIS:")
@@ -1002,6 +1155,10 @@ class CompleteEnhancedBybitSystem:
             self.logger.debug("   ⚠️  LIMITED CONDITIONS: Lower quality signals")
             self.logger.debug("      → Consider waiting for better setups")
         
+        # Check for market order opportunities
+        if market_orders > 0:
+            self.logger.debug(f"   🚀 IMMEDIATE ACTION: {market_orders} market order(s) indicate breakout/proximity opportunities")
+        
         # MTF Health Check
         if confirmation_ratio > 0.7:
             self.logger.debug("   📈 MTF HEALTH: Strong timeframe alignment")
@@ -1032,6 +1189,8 @@ class CompleteEnhancedBybitSystem:
         self.logger.debug("   ❌ = Single conflict")
         self.logger.debug("   🎯 = Will execute")
         self.logger.debug("   ⏭️  = Will skip (position limits)")
+        self.logger.debug("   🚀 MKT = Market order (immediate)")
+        self.logger.debug("   📊 LMT = Limit order (patient)")
         
         self.logger.debug("=" * 200)
 
@@ -1219,3 +1378,60 @@ class CompleteEnhancedBybitSystem:
                 
         except Exception:
             return 'UNKNOWN'
+    
+    def process_signals_to_opportunities(self, signals: List[Dict]) -> List[Dict]:
+        """
+        Convert signals to opportunities with proper ranking and all display fields
+        """
+        opportunities = []
+        
+        for signal in signals:
+            # Ensure all required fields exist
+            opportunity = {
+                # Copy all signal fields
+                **signal,
+                
+                # Ensure display fields exist with defaults
+                'order_type': signal.get('order_type', 'limit'),
+                'quality_grade': signal.get('quality_grade', 'C'),
+                'mtf_boost': signal.get('mtf_boost', 0),
+                'original_confidence': signal.get('original_confidence', signal.get('confidence', 50)),
+                'mtf_status': signal.get('mtf_status', 'NONE'),
+                'mtf_validated': signal.get('mtf_validated', False),
+                'entry_strategy': signal.get('entry_strategy', 'patient'),
+                'volume_24h': signal.get('volume_24h', 0),
+                'price_change_24h': signal.get('price_change_24h', 0),
+                'regime_compatibility': signal.get('regime_compatibility', 'medium'),
+                
+                # Ensure MTF analysis exists
+                'mtf_analysis': signal.get('mtf_analysis', {
+                    'confirmed_timeframes': [],
+                    'conflicting_timeframes': [],
+                    'neutral_timeframes': []
+                })
+            }
+            
+            opportunities.append(opportunity)
+        
+        # Sort by quality and confidence
+        opportunities.sort(key=lambda x: (
+            self._quality_grade_to_score(x['quality_grade']),
+            x['confidence'],
+            x['risk_reward_ratio']
+        ), reverse=True)
+        
+        # Add ranking
+        for i, opp in enumerate(opportunities, 1):
+            opp['rank'] = i
+            opp['priority'] = 1000 - (i * 10)
+        
+        return opportunities
+    
+    def _quality_grade_to_score(self, grade: str) -> int:
+        """Convert quality grade to numeric score for sorting"""
+        grade_scores = {
+            'A+': 100, 'A': 95, 'A-': 90,
+            'B+': 85, 'B': 80, 'B-': 75,
+            'C+': 70, 'C': 65
+        }
+        return grade_scores.get(grade, 60)

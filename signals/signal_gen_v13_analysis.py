@@ -955,6 +955,97 @@ class MarketStructureAnalyzer:
         
         return None
 
+    def detect_breakout(self, df: pd.DataFrame, current_price: float) -> Dict:
+        """
+        Detect if price is breaking out of key levels
+        Returns detailed breakout information
+        """
+        try:
+            # Get recent price action (last 20-50 candles)
+            lookback_short = 20
+            lookback_long = 50
+            
+            # Recent high/low
+            recent_high_short = df['high'].tail(lookback_short).max()
+            recent_low_short = df['low'].tail(lookback_short).min()
+            recent_high_long = df['high'].tail(lookback_long).max()
+            recent_low_long = df['low'].tail(lookback_long).min()
+            
+            # Calculate ATR for dynamic thresholds
+            atr = df['atr'].iloc[-1] if 'atr' in df.columns else (recent_high_short - recent_low_short) * 0.1
+            
+            breakout_info = {
+                'has_breakout': False,
+                'type': None,
+                'strength': 0,
+                'levels': {
+                    'resistance_short': recent_high_short,
+                    'support_short': recent_low_short,
+                    'resistance_long': recent_high_long,
+                    'support_long': recent_low_long
+                },
+                'volume_confirmed': False,
+                'pattern_confirmed': False
+            }
+            
+            # Check for resistance breakout
+            if current_price > recent_high_short * 0.998:  # Within 0.2% or breaking
+                breakout_strength = (current_price - recent_high_short) / recent_high_short
+                breakout_info.update({
+                    'has_breakout': True,
+                    'type': 'resistance_break',
+                    'strength': breakout_strength,
+                    'level_broken': recent_high_short
+                })
+                
+                # Check if also breaking longer-term resistance
+                if current_price > recent_high_long * 0.998:
+                    breakout_info['strength'] *= 1.5  # Stronger signal
+                    breakout_info['type'] = 'major_resistance_break'
+            
+            # Check for support breakdown
+            elif current_price < recent_low_short * 1.002:  # Within 0.2% or breaking
+                breakdown_strength = (recent_low_short - current_price) / recent_low_short
+                breakout_info.update({
+                    'has_breakout': True,
+                    'type': 'support_break',
+                    'strength': breakdown_strength,
+                    'level_broken': recent_low_short
+                })
+                
+                # Check if also breaking longer-term support
+                if current_price < recent_low_long * 1.002:
+                    breakout_info['strength'] *= 1.5
+                    breakout_info['type'] = 'major_support_break'
+            
+            # Volume confirmation
+            if breakout_info['has_breakout']:
+                volume_avg = df['volume'].tail(20).mean()
+                current_volume = df['volume'].iloc[-1]
+                volume_spike = df['volume'].iloc[-3:].mean()  # Last 3 candles
+                
+                if current_volume > volume_avg * 1.5 or volume_spike > volume_avg * 1.3:
+                    breakout_info['volume_confirmed'] = True
+                    breakout_info['strength'] *= 1.3
+                    breakout_info['volume_ratio'] = current_volume / volume_avg
+            
+            # Pattern confirmation (check if breakout aligns with patterns)
+            if breakout_info['has_breakout']:
+                # Check for consolidation before breakout
+                recent_range = recent_high_short - recent_low_short
+                longer_range = recent_high_long - recent_low_long
+                
+                if recent_range < longer_range * 0.5:  # Consolidation detected
+                    breakout_info['pattern_confirmed'] = True
+                    breakout_info['pattern'] = 'consolidation_breakout'
+                    breakout_info['strength'] *= 1.2
+            
+            return breakout_info
+            
+        except Exception as e:
+            self.logger.error(f"Breakout detection error: {e}")
+            return {'has_breakout': False, 'type': None, 'strength': 0}
+
 # ===========================
 # EXPORTS
 # ===========================

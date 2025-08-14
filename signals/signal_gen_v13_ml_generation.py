@@ -872,6 +872,20 @@ class MultiTimeframeSignalGenerator(AnalysisModule):
         try:
             self.logger.debug(f"Analyzing {symbol} with top-down approach")
             
+            # ============ ADD THIS SECTION TO FETCH MARKET DATA ============
+            # Step 0: Fetch current market data for volume and price change
+            try:
+                ticker = exchange_manager.exchange.fetch_ticker(symbol)
+                volume_24h = ticker.get('quoteVolume', 0)  # 24h volume in quote currency
+                price_change_24h = ticker.get('percentage', 0)  # 24h price change percentage
+                current_price = ticker.get('last', 0)
+            except Exception as e:
+                self.logger.warning(f"Could not fetch ticker data for {symbol}: {e}")
+                volume_24h = 0
+                price_change_24h = 0
+                current_price = 0
+            # ============ END OF NEW SECTION ============
+            
             # Step 1: Analyze primary timeframe (highest - 6h)
             primary_df = await self._fetch_and_prepare_data(
                 symbol, self.config.primary_timeframe, exchange_manager
@@ -881,9 +895,16 @@ class MultiTimeframeSignalGenerator(AnalysisModule):
                 self.logger.debug(f"Insufficient data for {symbol}")
                 return []
             
-            # Step 2: Identify potential signals on primary timeframe
-            primary_signals = await self._identify_primary_signals(primary_df, symbol)
+            # If current_price wasn't fetched, use last close
+            if current_price == 0:
+                current_price = primary_df['close'].iloc[-1]
             
+            # Step 2: Identify potential signals on primary timeframe
+            # ============ PASS MARKET DATA TO PRIMARY SIGNALS ============
+            primary_signals = await self._identify_primary_signals(
+                primary_df, symbol, volume_24h, price_change_24h, current_price
+            )
+
             if not primary_signals:
                 self.logger.debug(f"No signals found on primary timeframe for {symbol}")
                 return []
@@ -940,53 +961,319 @@ class MultiTimeframeSignalGenerator(AnalysisModule):
             self.logger.error(f"Data fetch error for {symbol}: {e}")
             return None
     
-    async def _identify_primary_signals(self, df: pd.DataFrame, symbol: str) -> List[Dict]:
-        """Identify potential signals on primary timeframe"""
-        signals = []
+    async def _identify_primary_signals(self, df: pd.DataFrame, symbol: str, 
+                                    volume_24h: float = 0, price_change_24h: float = 0,
+                                    current_price: float = 0) -> List[Dict]:
+        """
+        Identify potential signals on primary timeframe with comprehensive analysis
+        FIXED: Handle missing columns and historical data access properly
+        """
+        signal_candidates = []
         
         try:
+            # Ensure we have current price
+            if current_price <= 0:
+                current_price = df['close'].iloc[-1]
+            
+            # Calculate volume ratio
+            volume_avg = df['volume'].tail(20).mean()
+            current_volume = df['volume'].iloc[-1]
+            volume_ratio = current_volume / volume_avg if volume_avg > 0 else 1.0
+            
+            # ===========================
+            # TECHNICAL INDICATORS
+            # ===========================
+            
+            # Ensure all indicators are calculated
+            if 'rsi' not in df.columns:
+                df = TechnicalIndicators.calculate_all_indicators(df)
+            
+            # Get latest values
             latest = df.iloc[-1]
-            current_price = latest['close']
             
-            # Extract ML features
-            ml_features = self.ml_engine.extract_features(df)
+            # Extract key indicators with safe defaults
+            rsi = latest.get('rsi', 50)
+            macd = latest.get('macd', 0)
+            macd_signal = latest.get('macd_signal', 0)
+            macd_histogram = latest.get('macd_histogram', 0)
+            stoch_k = latest.get('stoch_k', 50)
+            stoch_d = latest.get('stoch_d', 50)
+            bb_position = latest.get('bb_percent', 0.5)
+            atr = latest.get('atr', 0)
+            atr_percent = latest.get('atr_percent', 2.0)
             
-            # Get ML prediction
+            # Moving averages
+            sma_20 = latest.get('sma_20', current_price)
+            sma_50 = latest.get('sma_50', current_price)
+            ema_20 = latest.get('ema_20', current_price)
+            
+            # Get previous macd_histogram safely
+            prev_macd_histogram = 0
+            if 'macd_histogram' in df.columns and len(df) >= 2:
+                prev_macd_histogram = df['macd_histogram'].iloc[-2]
+            
+            # ===========================
+            # VOLUME PROFILE ANALYSIS
+            # ===========================
+            
+            volume_analyzer = VolumeProfileAnalyzer()
+            volume_profile = volume_analyzer.analyze_volume_profile(df)
+            
+            poc = volume_profile.get('poc', current_price)
+            vah = volume_profile.get('value_area_high', current_price)
+            val = volume_profile.get('value_area_low', current_price)
+            
+            # ===========================
+            # MARKET STRUCTURE ANALYSIS
+            # ===========================
+            
+            structure_analyzer = MarketStructureAnalyzer()
+            structure = structure_analyzer.analyze_structure(df)
+            
+            trend_structure = structure.get('trend_structure', {})
+            support_zones = structure.get('support_zones', [])
+            resistance_zones = structure.get('resistance_zones', [])
+            patterns = structure.get('patterns', [])
+            market_regime_str = structure.get('market_regime', 'ranging')
+            
+            # Breakout detection
+            breakout_info = structure_analyzer.detect_breakout(df, current_price)
+            
+            # ===========================
+            # ML FEATURES EXTRACTION
+            # ===========================
+            
+            # Safe calculation of price changes
+            price_change_5 = 0
+            price_change_10 = 0
+            price_change_20 = 0
+            
+            if len(df) >= 5:
+                price_change_5 = ((current_price - df['close'].iloc[-5]) / df['close'].iloc[-5] * 100)
+            if len(df) >= 10:
+                price_change_10 = ((current_price - df['close'].iloc[-10]) / df['close'].iloc[-10] * 100)
+            if len(df) >= 20:
+                price_change_20 = ((current_price - df['close'].iloc[-20]) / df['close'].iloc[-20] * 100)
+            
+            # Safe RSI change calculation
+            rsi_change = 0
+            if 'rsi' in df.columns and len(df) >= 2:
+                rsi_change = rsi - df['rsi'].iloc[-2]
+            
+            # Safe OBV change calculation
+            obv_change = 0
+            if 'obv' in df.columns and len(df) >= 5:
+                obv_5_ago = df['obv'].iloc[-5]
+                if obv_5_ago != 0:
+                    obv_change = ((latest.get('obv', 0) - obv_5_ago) / abs(obv_5_ago) * 100)
+            
+            ml_features = MLFeatures(
+                # Price features
+                price_change_5=price_change_5,
+                price_change_10=price_change_10,
+                price_change_20=price_change_20,
+                distance_from_sma20=(current_price - sma_20) / sma_20 * 100 if sma_20 > 0 else 0,
+                distance_from_sma50=(current_price - sma_50) / sma_50 * 100 if sma_50 > 0 else 0,
+                
+                # Technical indicators
+                rsi=rsi,
+                rsi_change=rsi_change,
+                macd_histogram=macd_histogram,
+                stoch_k=stoch_k,
+                bb_position=bb_position,
+                
+                # Volume features
+                volume_ratio=volume_ratio,
+                obv_change=obv_change,
+                mfi=latest.get('mfi', 50),
+                
+                # Volatility features
+                atr_percent=atr_percent,
+                bb_width=latest.get('bb_width', 0.02),
+                
+                # Market structure
+                trend_strength=trend_structure.get('strength', 0.5),
+                distance_from_resistance=min([abs(current_price - r['price']) / current_price for r in resistance_zones]) if resistance_zones else 0.1,
+                distance_from_support=min([abs(current_price - s['price']) / current_price for s in support_zones]) if support_zones else 0.1,
+                
+                # Momentum
+                momentum_score=(macd_histogram / current_price * 1000) if current_price > 0 else 0,
+                roc=latest.get('roc_10', 0)
+            )
+            
+            # ===========================
+            # ML PREDICTION
+            # ===========================
+            
             ml_prediction = self.ml_engine.predict_direction(ml_features, self.config.primary_timeframe)
             
-            # Get news sentiment
-            news_sentiment = await self.news_analyzer.analyze_sentiment(symbol)
+            # ===========================
+            # NEWS SENTIMENT (Optional)
+            # ===========================
             
-            # Analyze market structure
-            structure = self.structure_analyzer.analyze_structure(df)
+            news_sentiment = {'classification': 'neutral', 'score': 0}
+            if self.config.use_news_sentiment:
+                try:
+                    news_sentiment = await self.news_analyzer.analyze_sentiment(symbol)
+                except Exception as e:
+                    self.logger.debug(f"News sentiment failed for {symbol}: {e}")
             
-            # Volume profile
-            volume_profile = self.volume_analyzer.analyze_volume_profile(df)
+            # ===========================
+            # SIGNAL GENERATION CONDITIONS (FIXED)
+            # ===========================
             
-            # Check for LONG signal
-            if self._check_long_conditions(latest, ml_prediction, news_sentiment, structure):
-                long_signal = self._create_signal_candidate(
-                    symbol, 'buy', current_price, df, 
-                    ml_features, ml_prediction, news_sentiment,
-                    structure, volume_profile
-                )
-                if long_signal:
-                    signals.append(long_signal)
+            # Check for LONG signals
+            long_conditions = {
+                'rsi_oversold': 25 <= rsi <= 45,
+                'stoch_oversold': stoch_k < 30 or (stoch_k < 50 and stoch_k > stoch_d),
+                'macd_bullish': macd_histogram > 0 or (macd > macd_signal and macd_histogram > prev_macd_histogram),
+                'price_above_support': any(abs(current_price - s['price']) / current_price < 0.02 for s in support_zones) if support_zones else False,
+                'bullish_pattern': any(p.get('type') == 'bullish' for p in patterns) if patterns else False,
+                'trend_up': trend_structure.get('trend') in ['uptrend', 'ranging'],
+                'volume_surge': volume_ratio > 1.3,
+                'ml_bullish': ml_prediction.get('direction') == 'bullish' and ml_prediction.get('confidence', 0) > 0.6,
+                'breakout_up': breakout_info.get('type') == 'resistance_break',
+                'price_above_vwap': current_price > latest.get('vwap', current_price),
+                'bollinger_oversold': bb_position < 0.2
+            }
             
-            # Check for SHORT signal
-            if self._check_short_conditions(latest, ml_prediction, news_sentiment, structure):
-                short_signal = self._create_signal_candidate(
-                    symbol, 'sell', current_price, df,
-                    ml_features, ml_prediction, news_sentiment,
-                    structure, volume_profile
-                )
-                if short_signal:
-                    signals.append(short_signal)
+            # Check for SHORT signals
+            short_conditions = {
+                'rsi_overbought': 55 <= rsi <= 75,
+                'stoch_overbought': stoch_k > 70 or (stoch_k > 50 and stoch_k < stoch_d),
+                'macd_bearish': macd_histogram < 0 or (macd < macd_signal and macd_histogram < prev_macd_histogram),
+                'price_near_resistance': any(abs(current_price - r['price']) / current_price < 0.02 for r in resistance_zones) if resistance_zones else False,
+                'bearish_pattern': any(p.get('type') == 'bearish' for p in patterns) if patterns else False,
+                'trend_down': trend_structure.get('trend') in ['downtrend', 'ranging'],
+                'volume_surge': volume_ratio > 1.3,
+                'ml_bearish': ml_prediction.get('direction') == 'bearish' and ml_prediction.get('confidence', 0) > 0.6,
+                'breakout_down': breakout_info.get('type') == 'support_break',
+                'price_below_vwap': current_price < latest.get('vwap', current_price),
+                'bollinger_overbought': bb_position > 0.8
+            }
             
-            return signals
+            # Count satisfied conditions
+            long_score = sum(1 for v in long_conditions.values() if v)
+            short_score = sum(1 for v in short_conditions.values() if v)
+            
+            # Minimum conditions required (relaxed for more signals)
+            min_conditions = 3
+            
+            # ===========================
+            # CREATE SIGNAL CANDIDATES
+            # ===========================
+            
+            # Helper function to calculate stop loss safely
+            def calculate_stop_loss(side, current_price, atr_percent, support_zones, resistance_zones, df):
+                if side == 'buy':
+                    # For long positions
+                    atr_stop = current_price * (1 - atr_percent / 100 * 2)
+                    support_stop = support_zones[0]['price'] * 0.995 if support_zones else current_price * 0.98
+                    recent_low_stop = df['low'].tail(10).min() * 0.995 if len(df) >= 10 else current_price * 0.98
+                    return min(atr_stop, support_stop, recent_low_stop)
+                else:
+                    # For short positions
+                    atr_stop = current_price * (1 + atr_percent / 100 * 2)
+                    resistance_stop = resistance_zones[0]['price'] * 1.005 if resistance_zones else current_price * 1.02
+                    recent_high_stop = df['high'].tail(10).max() * 1.005 if len(df) >= 10 else current_price * 1.02
+                    return max(atr_stop, resistance_stop, recent_high_stop)
+            
+            # Long signal candidate
+            if long_score >= min_conditions:
+                stop_loss = calculate_stop_loss('buy', current_price, atr_percent, support_zones, resistance_zones, df)
+                
+                signal_candidate = {
+                    'symbol': symbol,
+                    'side': 'buy',
+                    'current_price': current_price,
+                    'stop_loss': stop_loss,
+                    
+                    # Market data
+                    'volume_24h': volume_24h,
+                    'price_change_24h': price_change_24h,
+                    'volume_ratio': volume_ratio,
+                    
+                    # Technical data
+                    'rsi': rsi,
+                    'macd_histogram': macd_histogram,
+                    'stoch_k': stoch_k,
+                    'bb_position': bb_position,
+                    'atr_percent': atr_percent,
+                    
+                    # Structure data
+                    'structure': structure,
+                    'volume_profile': volume_profile,
+                    'breakout_info': breakout_info,
+                    
+                    # ML data
+                    'ml_features': ml_features,
+                    'ml_prediction': ml_prediction,
+                    'news_sentiment': news_sentiment,
+                    
+                    # Scoring
+                    'conditions_met': long_score,
+                    'conditions_details': long_conditions,
+                    'signal_strength': long_score / len(long_conditions),
+                    
+                    # For later processing
+                    'timeframe': self.config.primary_timeframe.label,
+                    'analysis_time': datetime.now(timezone.utc).isoformat()
+                }
+                
+                signal_candidates.append(signal_candidate)
+                self.logger.debug(f"Long signal candidate for {symbol}: {long_score}/{len(long_conditions)} conditions met")
+            
+            # Short signal candidate
+            if short_score >= min_conditions:
+                stop_loss = calculate_stop_loss('sell', current_price, atr_percent, support_zones, resistance_zones, df)
+                
+                signal_candidate = {
+                    'symbol': symbol,
+                    'side': 'sell',
+                    'current_price': current_price,
+                    'stop_loss': stop_loss,
+                    
+                    # Market data
+                    'volume_24h': volume_24h,
+                    'price_change_24h': price_change_24h,
+                    'volume_ratio': volume_ratio,
+                    
+                    # Technical data
+                    'rsi': rsi,
+                    'macd_histogram': macd_histogram,
+                    'stoch_k': stoch_k,
+                    'bb_position': bb_position,
+                    'atr_percent': atr_percent,
+                    
+                    # Structure data
+                    'structure': structure,
+                    'volume_profile': volume_profile,
+                    'breakout_info': breakout_info,
+                    
+                    # ML data
+                    'ml_features': ml_features,
+                    'ml_prediction': ml_prediction,
+                    'news_sentiment': news_sentiment,
+                    
+                    # Scoring
+                    'conditions_met': short_score,
+                    'conditions_details': short_conditions,
+                    'signal_strength': short_score / len(short_conditions),
+                    
+                    # For later processing
+                    'timeframe': self.config.primary_timeframe.label,
+                    'analysis_time': datetime.now(timezone.utc).isoformat()
+                }
+                
+                signal_candidates.append(signal_candidate)
+                self.logger.debug(f"Short signal candidate for {symbol}: {short_score}/{len(short_conditions)} conditions met")
+            
+            return signal_candidates
             
         except Exception as e:
-            self.logger.error(f"Primary signal identification error: {e}")
+            self.logger.error(f"Error identifying primary signals for {symbol}: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
             return []
     
     def _check_long_conditions(self, latest: pd.Series, ml_prediction: Dict,
@@ -1283,20 +1570,263 @@ class MultiTimeframeSignalGenerator(AnalysisModule):
         
         return entry
     
-    def _finalize_signal(self, signal_candidate: Dict, optimized_entry: float,
-                        validation_result: Dict) -> Signal:
-        """Create final Signal object"""
-        # Recalculate stop and targets with optimized entry
-        side = signal_candidate['side']
+    def _determine_order_type(self, signal_candidate: Dict, optimized_entry: float, 
+                              current_price: float) -> str:
+        """
+        Determine order type based on entry proximity and breakout patterns
+        
+        Market order conditions:
+        1. Entry price is within 0.5% to 1% of current price
+        2. Breakout pattern detected
+        3. High volume surge
+        4. Strong MTF confirmation
+        """
+        
+        # Calculate price difference percentage
+        price_diff_pct = abs(optimized_entry - current_price) / current_price
+        
+        # Check for breakout
+        breakout_info = signal_candidate.get('breakout_info', {})
+        has_breakout = breakout_info.get('has_breakout', False)
+        breakout_strength = breakout_info.get('strength', 0)
+        
+        # Check for pattern-based breakouts
+        patterns = signal_candidate.get('structure', {}).get('patterns', [])
+        breakout_patterns = [
+            'ascending_triangle', 'descending_triangle', 
+            'double_bottom', 'inverse_head_and_shoulders',
+            'bull_flag', 'bear_flag', 'cup_and_handle'
+        ]
+        
+        has_pattern_breakout = any(
+            p.get('name') in breakout_patterns 
+            for p in patterns
+        )
+        
+        # Check volume conditions
+        volume_ratio = signal_candidate.get('volume_ratio', 1.0)
+        has_volume_surge = volume_ratio > 2.0
+        
+        # Check MTF alignment
+        mtf_status = signal_candidate.get('mtf_status', 'NONE')
+        strong_mtf = mtf_status == 'STRONG'
+        
+        # Determine order type with reasoning
+        order_type = 'limit'  # Default
+        reason = "Default - patient entry preferred"
+        
+        # Priority conditions for market orders
+        if has_breakout and breakout_strength > 0.003:  # Strong breakout
+            order_type = 'market'
+            reason = f"Strong breakout detected ({breakout_info.get('type', 'breakout')})"
+        elif 0.005 <= price_diff_pct <= 0.01:  # Optimal proximity
+            order_type = 'market'
+            reason = f"Entry within optimal range ({price_diff_pct:.2%} from current)"
+        elif has_pattern_breakout and has_volume_surge:
+            order_type = 'market'
+            pattern_names = [p.get('name') for p in patterns if p.get('name') in breakout_patterns]
+            reason = f"Pattern breakout with volume: {', '.join(pattern_names[:2])}"
+        elif price_diff_pct < 0.005 and (has_volume_surge or strong_mtf):
+            order_type = 'market'
+            reason = f"Very close entry ({price_diff_pct:.2%}) with "
+            reason += "volume surge" if has_volume_surge else "strong MTF"
+        elif strong_mtf and price_diff_pct < 0.015:
+            order_type = 'market'
+            reason = f"Strong MTF confirmation with reasonable proximity"
+        
+        self.logger.debug(f"Order type: {order_type.upper()} - {reason}")
+        
+        # Store reasoning for later reference
+        signal_candidate['order_type_reason'] = reason
+        
+        return order_type
+    
+    def _calculate_quality_grade(self, confidence: float, rr_ratio: float, 
+                                  mtf_status: str, volume_ratio: float) -> str:
+        """
+        Calculate comprehensive quality grade
+        A+ = Elite signals (>90 score)
+        A  = Premium signals (85-90)
+        A- = High quality (80-85)
+        B+ = Good quality (75-80)
+        B  = Decent quality (70-75)
+        B- = Acceptable (65-70)
+        C+ = Marginal (60-65)
+        C  = Minimum viable (<60)
+        """
+        
+        # Calculate composite score (0-100)
+        score = 0
+        
+        # Confidence component (0-40 points)
+        conf_score = min(confidence / 100 * 40, 40)
+        score += conf_score
+        
+        # Risk/Reward component (0-25 points)
+        rr_score = min(rr_ratio / 4 * 25, 25)  # Max at 4:1
+        score += rr_score
+        
+        # MTF component (0-20 points)
+        mtf_scores = {
+            'STRONG': 20,
+            'PARTIAL': 12,
+            'NONE': 5,
+            'DISABLED': 0
+        }
+        score += mtf_scores.get(mtf_status, 5)
+        
+        # Volume component (0-15 points)
+        if volume_ratio >= 2.0:
+            score += 15
+        elif volume_ratio >= 1.5:
+            score += 10
+        elif volume_ratio >= 1.2:
+            score += 7
+        elif volume_ratio >= 1.0:
+            score += 5
+        else:
+            score += 2
+        
+        # Determine grade based on score
+        if score >= 90:
+            return 'A+'
+        elif score >= 85:
+            return 'A'
+        elif score >= 80:
+            return 'A-'
+        elif score >= 75:
+            return 'B+'
+        elif score >= 70:
+            return 'B'
+        elif score >= 65:
+            return 'B-'
+        elif score >= 60:
+            return 'C+'
+        else:
+            return 'C'
+    
+    def _determine_mtf_status(self, validation_result: Dict) -> Tuple[str, int, int]:
+        """
+        Determine MTF status and counts from validation result
+        Returns: (status, confirmed_count, total_count)
+        """
+        confirmations = validation_result.get('confirmations', {})
+        confirmed_count = sum(1 for v in confirmations.values() if v)
+        total_count = len(confirmations)
+        
+        if total_count == 0:
+            return 'DISABLED', 0, 0
+        elif confirmed_count >= 2:
+            return 'STRONG', confirmed_count, total_count
+        elif confirmed_count == 1:
+            return 'PARTIAL', confirmed_count, total_count
+        else:
+            return 'NONE', confirmed_count, total_count
+    
+    def _calculate_mtf_boost(self, original_confidence: float, 
+                             mtf_status: str, alignment_score: float) -> float:
+        """Calculate confidence boost from MTF confirmation"""
+        boost = 0
+        
+        if mtf_status == 'STRONG':
+            boost = min(10, alignment_score * 15)  # Max 10 point boost
+        elif mtf_status == 'PARTIAL':
+            boost = min(5, alignment_score * 8)   # Max 5 point boost
+        
+        return round(boost, 1)
+    
+    def _determine_entry_strategy(self, order_type: str, mtf_status: str, 
+                                  breakout_info: Dict) -> str:
+        """Determine entry strategy based on conditions"""
+        if order_type == 'market':
+            if breakout_info.get('has_breakout'):
+                return 'breakout_entry'
+            else:
+                return 'immediate_entry'
+        else:  # limit order
+            if mtf_status == 'STRONG':
+                return 'patient_confirmed'
+            else:
+                return 'patient_entry'
+    
+    def _determine_regime_compatibility(self, side: str, market_regime: str) -> str:
+        """Determine how compatible the signal is with market regime"""
+        regime_str = str(market_regime).lower()
         
         if side == 'buy':
-            stop_loss = signal_candidate['stop_loss']
-            risk = optimized_entry - stop_loss
+            if 'strong_trend_up' in regime_str or 'trend_up' in regime_str:
+                return 'high'
+            elif 'ranging' in regime_str or 'squeeze' in regime_str:
+                return 'medium'
+            else:
+                return 'low'
+        else:  # sell
+            if 'strong_trend_down' in regime_str or 'trend_down' in regime_str:
+                return 'high'
+            elif 'ranging' in regime_str or 'squeeze' in regime_str:
+                return 'medium'
+            else:
+                return 'low'
+    
+    def _process_mtf_analysis(self, validation_result: Dict, 
+                             confirmation_timeframes: List[str]) -> Dict:
+        """Process MTF data for display"""
+        confirmations = validation_result.get('confirmations', {})
+        
+        confirmed_tfs = []
+        conflicting_tfs = []
+        neutral_tfs = []
+        
+        for tf in confirmation_timeframes:
+            if tf in confirmations:
+                if confirmations[tf]:
+                    confirmed_tfs.append(tf)
+                else:
+                    conflicting_tfs.append(tf)
+            else:
+                neutral_tfs.append(tf)
+        
+        return {
+            'confirmed_timeframes': confirmed_tfs,
+            'conflicting_timeframes': conflicting_tfs,
+            'neutral_timeframes': neutral_tfs,
+            'confirmation_strength': validation_result.get('alignment_score', 0)
+        }
+    
+    def _finalize_signal(self, signal_candidate: Dict, optimized_entry: float,
+                        validation_result: Dict) -> Signal:
+        """
+        COMPLETE REWRITE: Create final Signal object with ALL required fields
+        """
+        
+        # Extract basic info
+        side = signal_candidate['side']
+        current_price = signal_candidate['current_price']
+        
+        # Fix stop loss and calculate targets with proper logic
+        stop_loss = signal_candidate['stop_loss']
+        
+        if side == 'buy':
+            # For long positions, stop should be below entry
+            if stop_loss >= optimized_entry:
+                # Fix invalid stop loss
+                risk = optimized_entry * 0.02  # 2% default risk
+                stop_loss = optimized_entry - risk
+            else:
+                risk = optimized_entry - stop_loss
+            
             tp1 = optimized_entry + (risk * 2.0)
             tp2 = optimized_entry + (risk * 3.5)
-        else:
-            stop_loss = signal_candidate['stop_loss']
-            risk = stop_loss - optimized_entry
+            
+        else:  # sell
+            # For short positions, stop should be above entry
+            if stop_loss <= optimized_entry:
+                # Fix invalid stop loss
+                risk = optimized_entry * 0.02  # 2% default risk
+                stop_loss = optimized_entry + risk
+            else:
+                risk = stop_loss - optimized_entry
+            
             tp1 = optimized_entry - (risk * 2.0)
             tp2 = optimized_entry - (risk * 3.5)
         
@@ -1305,46 +1835,153 @@ class MultiTimeframeSignalGenerator(AnalysisModule):
         reward_amount = abs(tp1 - optimized_entry)
         rr_ratio = reward_amount / risk_amount if risk_amount > 0 else 0
         
-        # Calculate confidence
-        base_confidence = 60
-        confidence = base_confidence
-        confidence += validation_result['alignment_score'] * 20
-        confidence += signal_candidate['ml_prediction']['confidence'] * 10
-        confidence = min(95, max(50, confidence))
-        
-        # Determine quality tier
-        quality_prediction = self.ml_engine.predict_signal_quality(
-            signal_candidate, signal_candidate['ml_features']
+        # Determine order type
+        order_type = self._determine_order_type(
+            signal_candidate, optimized_entry, current_price
         )
         
-        # Create Signal object
+        # Determine MTF status
+        mtf_status, mtf_confirmed_count, mtf_total = self._determine_mtf_status(
+            validation_result
+        )
+        
+        # Calculate base confidence
+        base_confidence = 50  # Start with base
+        base_confidence += validation_result.get('alignment_score', 0.5) * 30
+        base_confidence += min(rr_ratio / 4, 1) * 10
+        base_confidence += signal_candidate.get('ml_prediction', {}).get('confidence', 0.5) * 10
+        base_confidence = min(95, max(40, base_confidence))
+        
+        # Calculate MTF boost
+        original_confidence = base_confidence
+        mtf_boost = self._calculate_mtf_boost(
+            original_confidence, 
+            mtf_status, 
+            validation_result.get('alignment_score', 0)
+        )
+        final_confidence = min(95, original_confidence + mtf_boost)
+        
+        # Get volume data
+        volume_ratio = signal_candidate.get('volume_ratio', 1.0)
+        volume_24h = signal_candidate.get('volume_24h', 0)
+        price_change_24h = signal_candidate.get('price_change_24h', 0)
+        
+        # Calculate quality grade
+        quality_grade = self._calculate_quality_grade(
+            final_confidence, rr_ratio, mtf_status, volume_ratio
+        )
+        
+        # Determine entry strategy
+        breakout_info = signal_candidate.get('breakout_info', {})
+        entry_strategy = self._determine_entry_strategy(
+            order_type, mtf_status, breakout_info
+        )
+        
+        # Determine regime compatibility
+        market_regime = signal_candidate.get('structure', {}).get('market_regime', 'ranging')
+        regime_compatibility = self._determine_regime_compatibility(side, market_regime)
+        
+        # Process MTF analysis for display
+        mtf_analysis = self._process_mtf_analysis(
+            validation_result, 
+            self.config.confirmation_timeframes
+        )
+        
+        # Determine quality tier based on grade
+        quality_tier_map = {
+            'A+': SignalQuality.ELITE,
+            'A': SignalQuality.ELITE,
+            'A-': SignalQuality.PREMIUM,
+            'B+': SignalQuality.PREMIUM,
+            'B': SignalQuality.STANDARD,
+            'B-': SignalQuality.STANDARD,
+            'C+': SignalQuality.MARGINAL,
+            'C': SignalQuality.MARGINAL
+        }
+        quality_tier = quality_tier_map.get(quality_grade, SignalQuality.MARGINAL)
+        
+        # Extract patterns
+        patterns = signal_candidate.get('structure', {}).get('patterns', [])
+        
+        # Create comprehensive Signal object
         signal = Signal(
+            # Core identification
             id=self._generate_signal_id(signal_candidate),
             symbol=signal_candidate['symbol'],
             side=side,
             status=SignalStatus.READY,
-            quality_tier=quality_prediction['quality_tier'],
+            quality_tier=quality_tier,
+            
+            # Timestamps
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
+            
+            # Price levels
             entry_price=optimized_entry,
             stop_loss=stop_loss,
             take_profit_1=tp1,
             take_profit_2=tp2,
-            current_price=signal_candidate['current_price'],
+            current_price=current_price,
+            
+            # Risk metrics
             risk_reward_ratio=rr_ratio,
             position_size=0,  # Will be calculated by risk manager
-            risk_amount=0,
+            risk_amount=risk_amount,
             potential_profit=reward_amount,
-            confidence=confidence,
+            
+            # Confidence metrics
+            confidence=final_confidence,
+            original_confidence=original_confidence,
+            mtf_boost=mtf_boost,
+            
+            # Analysis data
             analysis_timeframe=self.config.primary_timeframe,
             market_regime=self._determine_market_regime(signal_candidate),
-            mtf_alignment=validation_result['confirmations'],
-            mtf_scores={'alignment': validation_result['alignment_score']},
+            
+            # Order and execution
+            order_type=order_type,
+            quality_grade=quality_grade,
+            entry_strategy=entry_strategy,
+            
+            # MTF status
+            mtf_status=mtf_status,
+            mtf_validated=(mtf_status in ['STRONG', 'PARTIAL']),
+            mtf_confirmation_count=mtf_confirmed_count,
+            mtf_total_timeframes=mtf_total,
+            
+            # MTF data
+            mtf_alignment=validation_result.get('confirmations', {}),
+            mtf_scores={'alignment': validation_result.get('alignment_score', 0)},
+            mtf_analysis=mtf_analysis,
+            
+            # Market data
+            volume_24h=volume_24h,
+            price_change_24h=price_change_24h,
+            volume_ratio=volume_ratio,
+            
+            # Technical data
             indicators=self._extract_key_indicators(signal_candidate),
-            ml_prediction=signal_candidate['ml_prediction'],
-            news_sentiment=signal_candidate['news_sentiment'],
-            volume_analysis=signal_candidate['volume_profile'],
-            warnings=self._identify_warnings(signal_candidate)
+            ml_prediction=signal_candidate.get('ml_prediction'),
+            news_sentiment=signal_candidate.get('news_sentiment'),
+            volume_analysis=signal_candidate.get('volume_profile'),
+            
+            # Patterns and structure
+            patterns=patterns,
+            breakout_detected=breakout_info.get('has_breakout', False),
+            support_resistance={
+                'support': signal_candidate.get('structure', {}).get('support_zones', []),
+                'resistance': signal_candidate.get('structure', {}).get('resistance_zones', [])
+            },
+            
+            # Risk and warnings
+            warnings=self._identify_warnings(signal_candidate),
+            
+            # Metadata
+            regime_compatibility=regime_compatibility,
+            metadata={
+                'order_type_reason': signal_candidate.get('order_type_reason', ''),
+                'structure_timeframe': self.config.confirmation_timeframes[-1] if self.config.confirmation_timeframes else None
+            }
         )
         
         return signal
