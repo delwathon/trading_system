@@ -33,10 +33,10 @@ class SystemConfig(Base):
     # Market Scanning
     min_volume_24h = Column(Float, default=5_000_000)
     max_symbols_scan = Column(Integer, default=500)
-    timeframe = Column(String(10), default='1h')
+    timeframe = Column(String(10), default='6h')
     
     # Multi-Timeframe Configuration
-    confirmation_timeframes = Column(JSON, default=['2h', '4h', '6h'])
+    confirmation_timeframes = Column(JSON, default=['4h', '1h'])
     mtf_confirmation_required = Column(Boolean, default=True)
     mtf_weight_multiplier = Column(Float, default=1.5)
     
@@ -96,10 +96,9 @@ class SystemConfig(Base):
     scan_interval = Column(Integer, default=3600)  # 3 hours in seconds
     auto_execute_trades = Column(Boolean, default=True)  # Enable auto-trading execution
     auto_close_enabled = Column(Boolean, default=True)  # Enable auto-close feature
-    auto_close_profit_at = Column(Float, default=75.0)  # 20% profit target
-    auto_close_loss_at = Column(Float, default=100.0)  # 100% profit target
-    default_tp_level = Column(String(20), default='take_profit_1')  # Default take profit level to use
-    enable_signal_generation_relaxed_mode = Column(Boolean, default=False)  # Use old analysis method
+    auto_close_profit_at = Column(Float, default=500.0)
+    auto_close_loss_at = Column(Float, default=400.0) 
+    default_tp_level = Column(String(20), default='take_profit_2')  # Default take profit level to use
     monitor_mode = Column(Boolean, default=False)  # Monitor mode only, no analysis
     
     # Metadata
@@ -119,7 +118,7 @@ class SystemConfig(Base):
             'min_volume_24h': self.min_volume_24h,
             'max_symbols_scan': self.max_symbols_scan,
             'timeframe': self.timeframe,
-            'confirmation_timeframes': self.confirmation_timeframes or ['2h', '4h', '6h'],
+            'confirmation_timeframes': self.confirmation_timeframes or ['4h', '1h'],
             'mtf_confirmation_required': self.mtf_confirmation_required,
             'mtf_weight_multiplier': self.mtf_weight_multiplier,
             'max_requests_per_second': self.max_requests_per_second,
@@ -162,7 +161,6 @@ class SystemConfig(Base):
             'auto_close_profit_at': self.auto_close_profit_at,
             'auto_close_loss_at': self.auto_close_loss_at,  # 100% profit target
             'default_tp_level': self.default_tp_level,  # Default take profit level to use
-            'enable_signal_generation_relaxed_mode': self.enable_signal_generation_relaxed_mode,  # Use old analysis method
             'monitor_mode': self.monitor_mode,  # Monitor mode only, no analysis
         }
 

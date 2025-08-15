@@ -18,8 +18,7 @@ from core.exchange import ExchangeManager
 from analysis.technical import EnhancedTechnicalAnalysis
 from analysis.volume_profile import VolumeProfileAnalyzer
 from analysis.fibonacci import FibonacciConfluenceAnalyzer
-from signals.generator import create_mtf_signal_generator
-from signal_v14.signal_generator_v14 import create_signal_generator
+from signal_generator.generator import create_signal_generator
 from visualization.charts import InteractiveChartGenerator
 from utils.database_manager import EnhancedDatabaseManager
 from utils.logging import get_logger 

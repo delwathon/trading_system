@@ -138,10 +138,10 @@ class EnhancedSystemConfig:
                 # Market Scanning
                 min_volume_24h=5_000_000,
                 max_symbols_scan=500,
-                timeframe='1h',
+                timeframe='6h',
                 
                 # Multi-Timeframe Configuration
-                confirmation_timeframes=['2h', '4h', '6h'],
+                confirmation_timeframes=['4h', '1h'],
                 mtf_confirmation_required=True,
                 mtf_weight_multiplier=1.5,
                 
@@ -204,10 +204,9 @@ class EnhancedSystemConfig:
                 scan_interval=3600,  # 3 hours in seconds
                 auto_execute_trades=True,
                 auto_close_enabled=True,
-                auto_close_profit_at=75.0,  # 75% profit target
-                auto_close_loss_at=100.0,  # 100% profit target
-                default_tp_level='take_profit_1',  # Default take profit level to use
-                enable_signal_generation_relaxed_mode=False,  # Use old analysis method
+                auto_close_profit_at=500.0,
+                auto_close_loss_at=400.0,
+                default_tp_level='take_profit_2',  # Default take profit level to use
                 monitor_mode=False  # Monitor mode only, no analysis
             )
             
@@ -245,8 +244,8 @@ class EnhancedSystemConfig:
         self.sandbox_mode = True
         self.min_volume_24h = 5_000_000
         self.max_symbols_scan = 500
-        self.timeframe = '1h'
-        self.confirmation_timeframes = ['2h', '4h', '6h']
+        self.timeframe = '6h'
+        self.confirmation_timeframes = ['4h', '1h',]
         self.mtf_confirmation_required = True
         self.mtf_weight_multiplier = 1.5
         self.max_requests_per_second = 6.0  # Reduced for connection pool optimization
@@ -295,10 +294,9 @@ class EnhancedSystemConfig:
         self.scan_interval = 3600  # 3 hours
         self.auto_execute_trades = True
         self.auto_close_enabled=True
-        self.auto_close_profit_at = 75.0  # 75% profit
-        self.auto_close_loss_at = 100.0  # 100% profit
-        self.default_tp_level = 'take_profit_1'
-        self.enable_signal_generation_relaxed_mode = False  # Use old analysis method
+        self.auto_close_profit_at = 500.0
+        self.auto_close_loss_at = 400.0
+        self.default_tp_level = 'take_profit_2'
         self.monitor_mode = False  # Monitor mode only, no analysis
         
         self._post_init()
@@ -311,7 +309,7 @@ class EnhancedSystemConfig:
         
         # Set default confirmation timeframes if None
         if self.confirmation_timeframes is None:
-            self.confirmation_timeframes = ['2h', '4h', '6h']
+            self.confirmation_timeframes = ['4h', '1h']
         
         # Validate ranges with connection pool optimization
         self.max_requests_per_second = max(1.0, min(8.0, self.max_requests_per_second))
@@ -501,7 +499,6 @@ class EnhancedSystemConfig:
                 'auto_close_profit_at': self.auto_close_profit_at,
                 'auto_close_loss_at': self.auto_close_loss_at,
                 'default_tp_level': self.default_tp_level,
-                'enable_signal_generation_relaxed_mode': self.enable_signal_generation_relaxed_mode,  # Use old analysis method
                 'monitor_mode': self.monitor_mode  # Monitor mode only, no analysis
             }
             
@@ -525,8 +522,8 @@ class EnhancedSystemConfig:
             'sandbox_mode': getattr(self, 'sandbox_mode', False),
             'min_volume_24h': getattr(self, 'min_volume_24h', 5_000_000),
             'max_symbols_scan': getattr(self, 'max_symbols_scan', 500),
-            'timeframe': getattr(self, 'timeframe', '1h'),
-            'confirmation_timeframes': getattr(self, 'confirmation_timeframes', ['2h', '4h', '6h']),
+            'timeframe': getattr(self, 'timeframe', '6h'),
+            'confirmation_timeframes': getattr(self, 'confirmation_timeframes', ['4h', '1h']),
             'mtf_confirmation_required': getattr(self, 'mtf_confirmation_required', True),
             'mtf_weight_multiplier': getattr(self, 'mtf_weight_multiplier', 1.5),
             'max_requests_per_second': getattr(self, 'max_requests_per_second', 6.0),
@@ -568,10 +565,9 @@ class EnhancedSystemConfig:
             'scan_interval': getattr(self, 'scan_interval', 3600),
             'auto_execute_trades': getattr(self, 'auto_execute_trades', True),
             'auto_close_enabled': getattr(self, 'auto_close_enabled', True),
-            'auto_close_profit_at': getattr(self, 'auto_close_profit_at', 75.0),
-            'auto_close_loss_at': getattr(self, 'auto_close_loss_at', 100.0),
-            'default_tp_level': getattr(self, 'default_tp_level', 'take_profit_1'),
-            'enable_signal_generation_relaxed_mode': getattr(self, 'enable_signal_generation_relaxed_mode', False),  # Use old analysis method
+            'auto_close_profit_at': getattr(self, 'auto_close_profit_at', 500.0),
+            'auto_close_loss_at': getattr(self, 'auto_close_loss_at', 400.0),
+            'default_tp_level': getattr(self, 'default_tp_level', 'take_profit_2'),
             'monitor_mode': getattr(self, 'monitor_mode', False)  # Monitor mode only, no analysis
         }
     
