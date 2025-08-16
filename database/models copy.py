@@ -4,61 +4,30 @@ SQLAlchemy models for storing trading signals, market data, system configuration
 UPDATED: Added encryption_password field for database-stored encryption key.
 """
 
-from sqlalchemy import (
-    create_engine, Column, Integer, String, Float, Boolean, 
-    DateTime, Text, JSON, ForeignKey, text,
-    Enum as SQLEnum  # Add this import
-)
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
-from enum import Enum  # Keep this for defining enum classes
 
 Base = declarative_base()
 
 
-class UserTier(Enum):
-    """User tier enumeration"""
-    ADMIN = "admin"
-    FREE = "free"
-    PAID = "paid"
-    AWOOF = "awoof"
-
-
-class ExchangeType(Enum):
-    """Supported exchanges enumeration"""
-    BINANCE = "binance"
-    BITUNIX = "bitunix"
-    BYBIT = "bybit"
-    KUCOIN = "kucoin"
-    WEEX = "weex"
-
-
 class SystemConfig(Base):
-    """System configuration stored in database - UPDATED for multi-user"""
+    """System configuration stored in database - UPDATED with encryption password"""
     __tablename__ = 'system_config'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     config_name = Column(String(100), unique=True, nullable=False, default='default')
     
-    # API Configuration - MODIFIED for multi-user
-    # Live API keys removed - now stored in users table
+    # API Configuration
+    bybit_live_api_key = Column(String(255), nullable=True)
+    bybit_live_api_secret = Column(String(255), nullable=True)
     bybit_demo_api_key = Column(String(255), nullable=True)
     bybit_demo_api_secret = Column(String(255), nullable=True)
     sandbox_mode = Column(Boolean, default=False)
     
-    # NEW: Deposit addresses for payments
-    deposit_addresses = Column(JSON, default={
-        'USDT_TRC20': '',
-        'USDT_ERC20': '',
-        'USDT_BEP20': ''
-    })
-    
-    # NEW: Subscription fee
-    subscription_fee = Column(Float, default=100.0)
-    
-    # Encryption password for API secrets
+    # NEW: Encryption password for API secrets
     encryption_password = Column(String(255), default='bybit_trading_system_secure_key_2024')
     
     # Market Scanning
@@ -98,7 +67,7 @@ class SystemConfig(Base):
     charts_per_batch = Column(Integer, default=5)
     chart_width = Column(Integer, default=1400)
     chart_height = Column(Integer, default=800)
-
+    
     # Indicator parameters
     stoch_rsi_window = Column(Integer, default=14)
     stoch_rsi_smooth_k = Column(Integer, default=3)
@@ -107,32 +76,14 @@ class SystemConfig(Base):
     ichimoku_window2 = Column(Integer, default=26)
     ichimoku_window3 = Column(Integer, default=52)
     
-    # Auto-Trading Configuration
-    enable_auto_trading = Column(Boolean, default=False)
-    use_max_leverage = Column(Boolean, default=True)
-    position_size_percentage = Column(Float, default=5.0)
-    max_positions_per_trade = Column(Integer, default=10)
-    risk_per_trade = Column(Float, default=0.005)
-    default_leverage = Column(Integer, default=10)
-    auto_close_profit_at = Column(Float, default=5.0)
+    # OHLCV Data Limits
+    ohlcv_limit_primary = Column(Integer, default=500)
+    ohlcv_limit_mtf = Column(Integer, default=200)
+    ohlcv_limit_analysis = Column(Integer, default=500)
     
-    # Telegram Configuration
-    telegram_bot_token = Column(String(255), nullable=True)
-    telegram_id = Column(String(50), nullable=True)
-    
-    # Trading Configuration
-    ohlcv_limit_primary = Column(Integer, default=1000)
-    ohlcv_limit_mtf = Column(Integer, default=500)
-    ohlcv_limit_analysis = Column(Integer, default=1000)
-    
-    # Signal Configuration
-    min_confidence = Column(Float, default=0.45)
-    min_risk_reward = Column(Float, default=1.5)
-    
-    # Order Configuration
-    limit_order_spread = Column(Float, default=0.001)
-    stop_loss_spread = Column(Float, default=0.02)
-    take_profit_spread = Column(Float, default=0.05)
+    # Telegram & Trading Configuration
+    telegram_id = Column(String(50), default='6708641837')
+    telegram_bot_token = Column(String(255), default='8088506547:AAHZZxiY_wlh48IN4ldPNRJtM9qi7qxfLdM')
     
     # FIXED: Leverage - Single string value instead of JSON array
     leverage = Column(String(10), default='max')  # Must be one of: '10', '12.5', '25', '50', 'max'
@@ -154,15 +105,15 @@ class SystemConfig(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True)
-
+    
     def to_dict(self):
         """Convert to dictionary for compatibility with existing code"""
         return {
+            'bybit_live_api_key': self.bybit_live_api_key,
+            'bybit_live_api_secret': self.bybit_live_api_secret,
             'bybit_demo_api_key': self.bybit_demo_api_key,
             'bybit_demo_api_secret': self.bybit_demo_api_secret,
             'sandbox_mode': self.sandbox_mode,
-            'deposit_addresses': self.deposit_addresses,
-            'subscription_fee': self.subscription_fee,
             'encryption_password': self.encryption_password,  # NEW
             'min_volume_24h': self.min_volume_24h,
             'max_symbols_scan': self.max_symbols_scan,
@@ -214,112 +165,12 @@ class SystemConfig(Base):
         }
 
 
-class User(Base):
-    """User table for multi-user support"""
-    __tablename__ = 'users'
-    
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    telegram_id = Column(String(50), unique=True, nullable=False)
-    telegram_username = Column(String(100), nullable=True)
-    
-    # Exchange configuration
-    exchange = Column(SQLEnum(ExchangeType), default=ExchangeType.BYBIT)
-    api_key = Column(String(255), nullable=True)
-    api_secret = Column(String(255), nullable=True)
-    
-    # User tier and subscription
-    tier = Column(SQLEnum(UserTier), default=UserTier.FREE)
-    subscription_expires_at = Column(DateTime, nullable=True)
-    
-    # Trading statistics
-    total_trades = Column(Integer, default=0)
-    max_daily_trades = Column(Integer, default=0)  # Calculated based on tier
-    successful_trades = Column(Integer, default=0)
-    total_pnl = Column(Float, default=0.0)
-    
-    # Account status
-    is_active = Column(Boolean, default=True)
-    is_banned = Column(Boolean, default=False)
-    ban_reason = Column(String(255), nullable=True)
-    
-    # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    subscriptions = relationship("Subscription", back_populates="user", order_by="Subscription.created_at.desc()")
-    
-    @property
-    def calculated_max_daily_trades(self):
-        """Calculate max daily trades based on tier"""
-        if self.tier == UserTier.ADMIN:
-            return 999999  # Unlimited
-        elif self.tier == UserTier.FREE:
-            return 0
-        elif self.tier in [UserTier.PAID, UserTier.AWOOF]:
-            return 5
-        return 0
-    
-    def is_subscription_active(self):
-        """Check if user subscription is active"""
-        if self.tier == UserTier.ADMIN:
-            return True
-        if self.tier == UserTier.FREE:
-            return False
-        if self.subscription_expires_at:
-            return datetime.utcnow() < self.subscription_expires_at
-        return False
-    
-    def extend_subscription(self, days=30):
-        """Extend user subscription"""
-        if self.subscription_expires_at and self.subscription_expires_at > datetime.utcnow():
-            self.subscription_expires_at += timedelta(days=days)
-        else:
-            self.subscription_expires_at = datetime.utcnow() + timedelta(days=days)
-    
-    def can_trade_today(self, trades_today=0):
-        """Check if user can make more trades today"""
-        max_trades = self.calculated_max_daily_trades
-        if max_trades == 999999:  # Admin unlimited
-            return True
-        return trades_today < max_trades
-
-
-class Subscription(Base):
-    """Subscription payment tracking"""
-    __tablename__ = 'subscriptions'
-    
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    telegram_id = Column(String(50), ForeignKey('users.telegram_id'), nullable=False)
-    
-    # Payment details
-    payment_date = Column(DateTime, nullable=False)
-    blockchain_hash = Column(String(255), unique=True, nullable=False)
-    expiry_date = Column(DateTime, nullable=False)
-    amount = Column(Float, nullable=False)
-    network = Column(String(20), nullable=False)  # TRC20, ERC20, BEP20
-    
-    # Verification status
-    is_verified = Column(Boolean, default=False)
-    verification_time = Column(DateTime, nullable=True)
-    block_number = Column(String(50), nullable=True)
-    from_address = Column(String(255), nullable=True)
-    to_address = Column(String(255), nullable=True)
-    
-    # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    user = relationship("User", back_populates="subscriptions")
-
-
 class TradingPosition(Base):
     """NEW: Track auto-trading positions"""
     __tablename__ = 'trading_positions'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     scan_session_id = Column(Integer, ForeignKey('scan_sessions.id'), nullable=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)  # NEW: Track which user
     
     # Position identification
     position_id = Column(String(100), unique=True, nullable=False)  # Bybit position ID
@@ -371,7 +222,6 @@ class AutoTradingSession(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(String(50), unique=True, nullable=False)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=True)  # NEW: Track which user
     
     # Session details
     started_at = Column(DateTime, default=datetime.utcnow)
@@ -687,197 +537,3 @@ class DatabaseManager:
         except Exception as e:
             self.logger.error(f"MySQL database connection failed: {e}")
             return False
-    
-    def migrate_admin_user(self, session):
-        """Migrate admin user from system_config during bootstrap"""
-        try:
-            # Check if admin already exists
-            admin = session.query(User).filter(
-                User.telegram_id == "6708641837"
-            ).first()
-            
-            if not admin:
-                # Get API credentials from system_config if they exist
-                config = session.query(SystemConfig).filter(
-                    SystemConfig.config_name == 'default'
-                ).first()
-                
-                api_key = None
-                api_secret = None
-                
-                # Check if old fields exist (for migration from old schema)
-                try:
-                    # Try to access old fields if they exist
-                    import sqlalchemy
-                    inspector = sqlalchemy.inspect(self.engine)
-                    columns = [col['name'] for col in inspector.get_columns('system_config')]
-                    
-                    if 'bybit_live_api_key' in columns and config:
-                        # Use raw SQL to get old values before migration
-                        result = session.execute(
-                            text("SELECT bybit_live_api_key, bybit_live_api_secret FROM system_config WHERE id = :id"),
-                            {"id": config.id}
-                        ).first()
-                        if result:
-                            api_key = result[0]
-                            api_secret = result[1]
-                except Exception as e:
-                    self.logger.debug(f"No old API fields to migrate: {e}")
-                
-                # Create admin user
-                admin = User(
-                    telegram_id="6708641837",
-                    telegram_username="SmartMoneyTraderAdmin",
-                    exchange=ExchangeType.BYBIT,
-                    api_key=api_key,
-                    api_secret=api_secret,
-                    tier=UserTier.ADMIN,
-                    subscription_expires_at=datetime.utcnow() + timedelta(days=30),
-                    is_active=True,
-                    is_banned=False
-                )
-                session.add(admin)
-                session.commit()
-                self.logger.info("✅ Admin user created successfully")
-            else:
-                # Update subscription if needed
-                if not admin.subscription_expires_at or admin.subscription_expires_at < datetime.utcnow():
-                    admin.subscription_expires_at = datetime.utcnow() + timedelta(days=30)
-                    session.commit()
-                    self.logger.info("✅ Admin subscription extended")
-                    
-        except Exception as e:
-            self.logger.error(f"Error migrating admin user: {e}")
-            session.rollback()
-    
-    def migrate_system_config(self, session):
-        """Migrate system configuration with default values if empty"""
-        try:
-            # Check if default config already exists
-            config = session.query(SystemConfig).filter(
-                SystemConfig.config_name == 'default'
-            ).first()
-            
-            if not config:
-                # Create default system configuration
-                config = SystemConfig(
-                    config_name='default',
-                    bybit_demo_api_key=None,
-                    bybit_demo_api_secret=None,
-                    sandbox_mode=True,
-                    deposit_addresses={
-                        'USDT_TRC20': '',
-                        'USDT_ERC20': '',
-                        'USDT_BEP20': ''
-                    },
-                    subscription_fee=100.00,
-                    encryption_password='bybit_trading_system_secure_key_2024',
-                    min_volume_24h=5_000_000,
-                    max_symbols_scan=500,
-                    timeframe='6h',
-                    confirmation_timeframes=['4h', '1h'],
-                    mtf_confirmation_required=True,
-                    mtf_weight_multiplier=1.5,
-                    max_requests_per_second=6.0,
-                    api_timeout=30000,
-                    max_portfolio_risk=0.02,
-                    max_daily_trades=20,
-                    max_single_position_risk=0.005,
-                    max_workers=15,
-                    cache_ttl_seconds=60,
-                    max_cache_size=1000,
-                    ml_training_samples=400,
-                    ml_profitable_rate=0.45,
-                    generate_chart=True,
-                    show_charts=True,
-                    save_charts=False,
-                    charts_per_batch=5,
-                    chart_width=1400,
-                    chart_height=800,
-                    stoch_rsi_window=14,
-                    stoch_rsi_smooth_k=3,
-                    stoch_rsi_smooth_d=3,
-                    ichimoku_window1=9,
-                    ichimoku_window2=26,
-                    ichimoku_window3=52,
-                    ohlcv_limit_primary=300,
-                    ohlcv_limit_mtf=300,
-                    ohlcv_limit_analysis=300,
-                    telegram_id='6708641837',
-                    telegram_bot_token='8088506547:AAHZZxiY_wlh48IN4ldPNRJtM9qi7qxfLdM',
-                    leverage='max',
-                    risk_amount=5.0,
-                    max_concurrent_positions=10,
-                    max_execution_per_trade=3,
-                    day_trade_start_hour='01:00',
-                    scan_interval=900,  # 15 minutes (900 seconds)
-                    auto_execute_trades=True,
-                    auto_close_enabled=True,
-                    auto_close_profit_at=500.0,
-                    auto_close_loss_at=400.0,
-                    default_tp_level='take_profit_2',
-                    monitor_mode=False,
-                    is_active=True
-                )
-                session.add(config)
-                session.commit()
-                self.logger.info("✅ Default system configuration created successfully")
-            else:
-                self.logger.debug("System configuration already exists")
-                
-        except Exception as e:
-            self.logger.error(f"Error migrating system configuration: {e}")
-            session.rollback()
-
-    def check_and_downgrade_expired_users(self, session):
-        """Check and downgrade users with expired subscriptions"""
-        try:
-            expired_users = session.query(User).filter(
-                User.tier.in_([UserTier.PAID, UserTier.AWOOF]),
-                User.subscription_expires_at < datetime.utcnow()
-            ).all()
-            
-            for user in expired_users:
-                user.tier = UserTier.FREE
-                self.logger.info(f"Downgraded user {user.telegram_username} to FREE tier (subscription expired)")
-            
-            if expired_users:
-                session.commit()
-                
-        except Exception as e:
-            self.logger.error(f"Error checking expired subscriptions: {e}")
-            session.rollback()
-    
-    def get_user_by_telegram_id(self, telegram_id: str, session=None):
-        """Get user by telegram ID"""
-        own_session = False
-        if not session:
-            session = self.get_session()
-            own_session = True
-        
-        try:
-            user = session.query(User).filter(
-                User.telegram_id == telegram_id
-            ).first()
-            return user
-        finally:
-            if own_session:
-                session.close()
-    
-    def get_active_trading_users(self, session=None):
-        """Get all users who can trade (admin, paid, awoof)"""
-        own_session = False
-        if not session:
-            session = self.get_session()
-            own_session = True
-        
-        try:
-            users = session.query(User).filter(
-                User.is_active == True,
-                User.is_banned == False,
-                User.tier.in_([UserTier.ADMIN, UserTier.PAID, UserTier.AWOOF])
-            ).all()
-            return users
-        finally:
-            if own_session:
-                session.close()

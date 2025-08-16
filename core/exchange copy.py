@@ -1,26 +1,25 @@
 """
-Enhanced ExchangeManager with Global Bybit API support and Multi-User System
-COMPLETE VERSION: All existing methods plus deposit address fetching
+Enhanced ExchangeManager with Global Bybit API support
+UPDATED: Uses api.bybitglobal.com instead of api.bybit.com for regional access
+FIXED: Better credential handling and validation with global endpoint
 """
 
 import ccxt
 import pandas as pd
 import logging
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from config.config import EnhancedSystemConfig
 from utils.encryption import SecretManager
-from database.models import DatabaseManager, User, UserTier
 
 
 class ExchangeManager:
-    """Handles Bybit exchange connection with Global API endpoint and multi-user support"""
+    """Handles Bybit exchange connection with Global API endpoint and encrypted API secrets"""
     
-    def __init__(self, config: EnhancedSystemConfig, user_id: str = None):
+    def __init__(self, config: EnhancedSystemConfig):
         self.config = config
         self.logger = logging.getLogger(__name__)
         self.secret_manager = SecretManager.from_config(config)
-        self.user_id = user_id
         self.exchange = self.setup_exchange()
         
     def setup_exchange(self):
@@ -31,7 +30,7 @@ class ExchangeManager:
                 'rateLimit': int(1000 / self.config.max_requests_per_second),  # Dynamic rate limiting
                 'timeout': self.config.api_timeout,
                 'sandbox': self.config.sandbox_mode,
-                # Connection pool optimization
+                # FIXED: Connection pool optimization
                 'options': {
                     'defaultType': 'linear',  # Use linear (USDT) contracts by default
                     'createMarketBuyOrderRequiresPrice': False,
@@ -48,19 +47,38 @@ class ExchangeManager:
                 self.logger.error("❌ Encryption/decryption test failed")
                 return None
             
-            # Get credentials based on mode and user
-            encrypted_api, encrypted_secret = self.get_user_credentials()
+            # Determine which credentials to use
+            if self.config.sandbox_mode:
+                # Use demo credentials for sandbox mode
+                encrypted_api = self.config.bybit_demo_api_key
+                encrypted_secret = self.config.bybit_demo_api_secret
+                self.logger.debug("Using demo API credentials for sandbox mode")
+            else:
+                # Use production credentials
+                encrypted_api = self.config.bybit_live_api_key
+                encrypted_secret = self.config.bybit_live_api_secret
+                self.logger.debug("Using production API credentials")
             
+            # Validate credentials exist
             if not encrypted_api or not encrypted_secret:
                 self.logger.error("❌ Missing API credentials")
+                self.logger.error(f"   API Key: {'Present' if encrypted_api else 'Missing'}")
+                self.logger.error(f"   API Secret: {'Present' if encrypted_secret else 'Missing'}")
                 return None
             
-            # Decrypt the API credentials
+            self.logger.debug(f"API Key (first 10 chars): {encrypted_api[:10]}...")
+            self.logger.debug(f"Encrypted Secret (length): {len(encrypted_secret)}")
+            
+            # Decrypt the API secret
             decrypted_api = self.secret_manager.decrypt_secret(encrypted_api)
             decrypted_secret = self.secret_manager.decrypt_secret(encrypted_secret)
             
             if not decrypted_secret:
                 self.logger.error("❌ Failed to decrypt API secret")
+                self.logger.error("   This could be due to:")
+                self.logger.error("   - Wrong encryption password")
+                self.logger.error("   - Corrupted encrypted data")
+                self.logger.error("   - API secret not properly encrypted")
                 return None
             
             self.logger.debug(f"✅ API secret decrypted successfully (length: {len(decrypted_secret)})")
@@ -82,6 +100,7 @@ class ExchangeManager:
             
             # Configure connection pool settings if available
             try:
+                # Try to configure the underlying requests session if it exists
                 if hasattr(exchange, 'session') and exchange.session is not None:
                     import requests.adapters
                     
@@ -98,6 +117,8 @@ class ExchangeManager:
                     exchange.session.mount('https://', adapter)
                     
                     self.logger.debug("✅ Enhanced connection pool adapter configured")
+                else:
+                    self.logger.debug("ℹ️ Exchange session not available for optimization")
                     
             except Exception as e:
                 self.logger.debug(f"Connection pool optimization not available: {e}")
@@ -117,49 +138,35 @@ class ExchangeManager:
             
             mode = "DEMO" if self.config.sandbox_mode else "PRODUCTION"
             self.logger.info(f"✅ Connected to Bybit {mode} with decrypted credentials")
+            self.logger.debug(f"   Rate limit: {exchange_config['rateLimit']}ms")
+            self.logger.debug(f"   Timeout: {self.config.api_timeout}ms")
             
             return exchange
             
         except ccxt.AuthenticationError as e:
             self.logger.error(f"❌ Authentication error: {e}")
+            self.logger.error("   Possible causes:")
+            self.logger.error("   - Invalid API key")
+            self.logger.error("   - Invalid API secret")
+            self.logger.error("   - API credentials not enabled for trading")
+            self.logger.error("   - Wrong sandbox mode setting")
             return None
         except ccxt.PermissionDenied as e:
             self.logger.error(f"❌ Permission denied: {e}")
+            self.logger.error("   Check your API key permissions on Bybit")
             return None
         except ccxt.NetworkError as e:
             self.logger.error(f"❌ Network error: {e}")
+            self.logger.error("   Check your internet connection")
             return None
         except Exception as e:
             self.logger.error(f"❌ Exchange setup failed: {e}")
-            return None
-    
-    def get_user_credentials(self) -> Tuple[Optional[str], Optional[str]]:
-        """Get API credentials based on user and mode"""
-        # If sandbox mode, use demo credentials
-        if self.config.sandbox_mode:
-            self.logger.debug("Using demo API credentials for sandbox mode")
-            return self.config.bybit_demo_api_key, self.config.bybit_demo_api_secret
-        
-        # For production mode, get user credentials
-        if self.user_id:
-            # Get user from database
-            db_manager = DatabaseManager(self.config.db_config.get_database_url())
-            user = db_manager.get_user_by_telegram_id(self.user_id)
             
-            if user and user.api_key and user.api_secret:
-                self.logger.debug(f"Using credentials for user {user.telegram_username}")
-                return user.api_key, user.api_secret
-        
-        # Default to admin credentials for production
-        db_manager = DatabaseManager(self.config.db_config.get_database_url())
-        admin = db_manager.get_user_by_telegram_id("6708641837")
-        
-        if admin and admin.api_key and admin.api_secret:
-            self.logger.debug("Using admin API credentials")
-            return admin.api_key, admin.api_secret
-        
-        self.logger.error("No valid credentials found")
-        return None, None
+            # Log additional debug info
+            if hasattr(e, 'response'):
+                self.logger.error(f"API Response: {e.response}")
+            
+            return None
     
     def test_connection(self) -> bool:
         """Test exchange connection with Global API and API credentials"""
@@ -178,6 +185,7 @@ class ExchangeManager:
             balance = self.exchange.fetch_balance()
             
             self.logger.info("✅ Global API connection test successful")
+            # self.logger.info(f"🌍 Connected via: {api_endpoint}")
             self.logger.debug(f"   Account currencies: {list(balance.keys())[:5]}...")
             
             return True
@@ -189,10 +197,17 @@ class ExchangeManager:
             self.logger.error(f"❌ Permission denied on Global API: {e}")
             return False
         except ccxt.NetworkError as e:
-            self.logger.error(f"❌ Network error with API: {e}")
+            self.logger.error(f"❌ Network error with {'Demo API' if self.config.sandbox_mode else 'Global API'}: {e}")
+            self.logger.error("   This could indicate:")
+            if self.config.sandbox_mode:
+                self.logger.error("   - api-demo.bybit.com is not accessible from your location")
+            else:
+                self.logger.error("   - api.bybitglobal.com is not accessible from your location")
+            self.logger.error("   - Firewall blocking the connection")
+            self.logger.error("   - Internet connectivity issues")
             return False
         except Exception as e:
-            self.logger.error(f"❌ Connection test failed: {e}")
+            self.logger.error(f"❌ Global API connection test failed: {e}")
             return False
     
     def validate_credentials(self) -> Dict[str, bool]:
@@ -247,20 +262,43 @@ class ExchangeManager:
             self.logger.error(f"Error validating credentials: {e}")
             return {}
     
-    def fetch_ohlcv(self, symbol: str, timeframe: str = '1h', limit: int = 100) -> pd.DataFrame:
-        """Fetch OHLCV data for a symbol with optimized connection reuse"""
-        if not self.exchange:
-            return pd.DataFrame()
-        
+    def get_api_info(self) -> Dict[str, str]:
+        """Get current API endpoint information"""
         try:
-            # Add minimal delay to prevent rate limiting
+            if not self.exchange:
+                return {'error': 'Exchange not initialized'}
+            
+            return {
+                'public_api': self.exchange.urls['api']['public'],
+                'private_api': self.exchange.urls['api']['private'],
+                'demo_public': self.exchange.urls.get('test', {}).get('public', 'N/A'),
+                'demo_private': self.exchange.urls.get('test', {}).get('private', 'N/A'),
+                'sandbox_mode': self.config.sandbox_mode,
+                'hostname': self.exchange.options.get('hostname', 'Not set')
+            }
+        except Exception as e:
+            return {'error': str(e)}
+    
+    def fetch_ohlcv_data(self, symbol: str, timeframe: str = None, limit: int = None) -> pd.DataFrame:
+        """Fetch OHLCV data with Global API error handling and connection reuse"""
+        if timeframe is None:
+            timeframe = self.config.timeframe
+            
+        if limit is None:
+            limit = self.config.ohlcv_limit_primary
+            
+        try:
+            if not self.exchange:
+                self.logger.error("Exchange not available for data fetching")
+                return pd.DataFrame()
+            
+            # Add small delay to respect rate limits and reduce connection pressure
             time.sleep(0.1)
             
-            self.logger.debug(f"Fetching {timeframe} OHLCV for {symbol}, limit: {limit}")
             ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             
             if not ohlcv:
-                self.logger.warning(f"No OHLCV data for {symbol}")
+                self.logger.warning(f"No OHLCV data returned for {symbol}")
                 return pd.DataFrame()
             
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
@@ -270,43 +308,56 @@ class ExchangeManager:
             return df
             
         except ccxt.NetworkError as e:
-            self.logger.warning(f"Network error fetching {symbol}: {e}")
+            self.logger.warning(f"Global API network error fetching {symbol} data: {e}")
+            time.sleep(1)  # Brief pause before retry
             return pd.DataFrame()
         except ccxt.RateLimitExceeded as e:
-            self.logger.warning(f"Rate limit exceeded for {symbol}: {e}")
-            time.sleep(2)
+            self.logger.warning(f"Global API rate limit exceeded for {symbol}: {e}")
+            time.sleep(2)  # Longer pause for rate limit
+            return pd.DataFrame()
+        except ccxt.ExchangeError as e:
+            self.logger.warning(f"Global API exchange error for {symbol}: {e}")
             return pd.DataFrame()
         except Exception as e:
-            self.logger.error(f"Failed to fetch OHLCV for {symbol}: {e}")
+            self.logger.error(f"Failed to fetch {symbol} data from Global API: {e}")
             return pd.DataFrame()
     
-    def get_top_symbols(self) -> List[str]:
-        """Get available USDT perpetual trading symbols with connection reuse"""
+    def get_top_symbols(self) -> List[Dict]:
+        """Get top trading symbols by volume with Global API connection optimization"""
         try:
             if not self.exchange:
+                self.logger.error("Exchange not available for symbol fetching")
                 return []
             
-            # Add delay to prevent rate limiting
+            # Add delay to prevent connection pool exhaustion
             time.sleep(0.2)
             
-            self.logger.debug("Fetching available symbols from Global API...")
-            markets = self.exchange.fetch_markets()
+            self.logger.debug("Fetching tickers from Global API...")
+            tickers = self.exchange.fetch_tickers()
             
+            # Filter for USDT perpetual contracts
             usdt_symbols = []
-            for market in markets:
-                if market.get('quote') == 'USDT' and market.get('type') == 'swap':
-                    symbol = market.get('symbol')
-                    if symbol and 'USDT' in symbol:
-                        usdt_symbols.append(symbol)
+            for symbol, ticker in tickers.items():
+                if 'USDT' in symbol and ticker.get('quoteVolume', 0) >= self.config.min_volume_24h:
+                    usdt_symbols.append({
+                        'symbol': symbol,
+                        'volume_24h': ticker['quoteVolume'],
+                        'price_change_24h': ticker.get('percentage', 0),
+                        'current_price': ticker.get('last', 0)
+                    })
             
-            self.logger.debug(f"Found {len(usdt_symbols)} USDT perpetual symbols")
-            return usdt_symbols
+            # Sort by volume and limit
+            usdt_symbols.sort(key=lambda x: x['volume_24h'], reverse=True)
+            result = usdt_symbols[:self.config.max_symbols_scan]
+            
+            self.logger.debug(f"Found {len(result)} symbols meeting volume criteria from Global API")
+            return result
             
         except ccxt.NetworkError as e:
-            self.logger.warning(f"Network error getting symbols: {e}")
+            self.logger.warning(f"Global API network error getting symbols: {e}")
             return []
         except ccxt.RateLimitExceeded as e:
-            self.logger.warning(f"Rate limit exceeded getting symbols: {e}")
+            self.logger.warning(f"Global API rate limit exceeded getting symbols: {e}")
             time.sleep(2)
             return []
         except Exception as e:
@@ -344,192 +395,6 @@ class ExchangeManager:
             self.logger.error(f"Failed to get account info from Global API: {e}")
             return {}
     
-    def fetch_deposit_addresses(self, coin: str = "USDT") -> Dict[str, str]:
-        """Fetch deposit addresses using ccxt"""
-        try:
-            if not self.exchange:
-                self.logger.error("Exchange not initialized")
-                return {}
-            
-            self.logger.debug(f"Fetching deposit addresses for {coin}...")
-            
-            # Fetch deposit addresses
-            addresses = {}
-            
-            # Try different network names that Bybit might use
-            networks = {
-                'TRC20': ['TRC20', 'TRX', 'TRON'],
-                'ERC20': ['ERC20', 'ETH', 'ETHEREUM'],
-                'BEP20': ['BEP20', 'BSC', 'BNB']
-            }
-            
-            # First try to get all networks at once
-            try:
-                response = self.exchange.fetch_deposit_address(coin)
-
-                # Check if response has network information
-                if 'info' in response and response['info']:
-                    info = response['info']
-                    if 'chains' in info:
-                        for chain in info['chains']:
-                            chain_type = chain.get('chainType', '').upper()
-                            address = chain.get('addressDeposit', '')
-                            
-                            if 'TRC' in chain_type or 'TRON' in chain_type:
-                                addresses['USDT_TRC20'] = address
-                            elif 'ERC' in chain_type or 'ETH' in chain_type:
-                                addresses['USDT_ERC20'] = address
-                            elif 'BEP' in chain_type or 'BSC' in chain_type or 'BNB' in chain_type:
-                                addresses['USDT_BEP20'] = address
-                    else:
-                        # Single address response
-                        if 'address' in response:
-                            # Try to determine network from tag or network field
-                            network = response.get('network', '').upper()
-                            address = response['address']
-                            
-                            if any(n in network for n in ['TRC', 'TRON']):
-                                addresses['USDT_TRC20'] = address
-                            elif any(n in network for n in ['ERC', 'ETH']):
-                                addresses['USDT_ERC20'] = address
-                            elif any(n in network for n in ['BEP', 'BSC', 'BNB']):
-                                addresses['USDT_BEP20'] = address
-                
-            except Exception as e:
-                self.logger.debug(f"Could not fetch all networks at once: {e}")
-                
-                # Try fetching each network individually
-                for standard_name, possible_names in networks.items():
-                    for network_name in possible_names:
-                        try:
-                            params = {'network': network_name}
-                            response = self.exchange.fetch_deposit_address(coin, params=params)
-                            
-                            if response and 'address' in response:
-                                key = f"USDT_{standard_name}"
-                                addresses[key] = response['address']
-                                self.logger.debug(f"Found {key}: {response['address'][:10]}...")
-                                break
-                        except Exception as e:
-                            self.logger.debug(f"Could not fetch {network_name}: {e}")
-                            continue
-            
-            # If still no addresses, try using private API directly
-            if not addresses:
-                try:
-                    # Use Bybit's private endpoint directly
-                    if hasattr(self.exchange, 'private_get_asset_v3_private_deposit_address_list'):
-                        response = self.exchange.private_get_asset_v3_private_deposit_address_list({'coin': coin})
-                        
-                        if response['retCode'] == 0:
-                            chains = response['result']['chains']
-                            for chain in chains:
-                                chain_type = chain['chainType']
-                                address = chain['addressDeposit']
-                                
-                                if chain_type == 'TRC20':
-                                    addresses['USDT_TRC20'] = address
-                                elif chain_type == 'ERC20':
-                                    addresses['USDT_ERC20'] = address
-                                elif chain_type == 'BEP20':
-                                    addresses['USDT_BEP20'] = address
-                                    
-                except Exception as e:
-                    self.logger.debug(f"Direct API call failed: {e}")
-            
-            if addresses:
-                self.logger.info(f"✅ Successfully fetched {len(addresses)} deposit addresses")
-                for key, addr in addresses.items():
-                    self.logger.debug(f"   {key}: {addr[:10]}...{addr[-10:]}")
-            else:
-                self.logger.warning("Could not fetch any deposit addresses")
-            
-            return addresses
-            
-        except Exception as e:
-            self.logger.error(f"Error fetching deposit addresses: {e}")
-            return {}
-    
-    def get_api_info(self) -> Dict:
-        """Get API endpoint information"""
-        try:
-            if not self.exchange:
-                return {}
-            
-            urls = self.exchange.urls
-            return {
-                'public_api': urls.get('api', {}).get('public', 'Unknown'),
-                'private_api': urls.get('api', {}).get('private', 'Unknown'),
-                'hostname': urls.get('hostname', 'Unknown'),
-                'sandbox': self.config.sandbox_mode
-            }
-        except Exception as e:
-            self.logger.error(f"Error getting API info: {e}")
-            return {}
-    
-    def place_order(self, symbol: str, order_type: str, side: str, amount: float, 
-                    price: float = None, stop_loss: float = None, take_profit: float = None, 
-                    leverage: int = None) -> Dict:
-        """Place an order on Bybit"""
-        try:
-            if not self.exchange:
-                return {'status': 'error', 'message': 'Exchange not initialized'}
-            
-            # Set leverage if specified
-            if leverage:
-                self.exchange.set_leverage(leverage, symbol)
-            
-            # Place the main order
-            if order_type == 'market':
-                order = self.exchange.create_market_order(symbol, side, amount)
-            else:
-                order = self.exchange.create_limit_order(symbol, side, amount, price)
-            
-            # Add stop loss if specified
-            if stop_loss:
-                sl_side = 'sell' if side == 'buy' else 'buy'
-                self.exchange.create_order(
-                    symbol=symbol,
-                    type='stop',
-                    side=sl_side,
-                    amount=amount,
-                    stopPrice=stop_loss,
-                    params={'stopLossPrice': stop_loss}
-                )
-            
-            # Add take profit if specified
-            if take_profit:
-                tp_side = 'sell' if side == 'buy' else 'buy'
-                self.exchange.create_order(
-                    symbol=symbol,
-                    type='limit',
-                    side=tp_side,
-                    amount=amount,
-                    price=take_profit,
-                    params={'takeProfitPrice': take_profit}
-                )
-            
-            return {'status': 'success', 'order': order}
-            
-        except Exception as e:
-            self.logger.error(f"Error placing order: {e}")
-            return {'status': 'error', 'message': str(e)}
-    
-    def get_open_positions(self) -> List[Dict]:
-        """Get open positions"""
-        try:
-            if not self.exchange:
-                return []
-            
-            positions = self.exchange.fetch_positions()
-            open_positions = [p for p in positions if p['contracts'] > 0]
-            
-            return open_positions
-            
-        except Exception as e:
-            self.logger.error(f"Error fetching positions: {e}")
-            return []
-    
     def cleanup_connections(self):
         """Clean up exchange connections to prevent pool exhaustion"""
         try:
@@ -545,7 +410,7 @@ class ExchangeManager:
                 else:
                     self.logger.debug("ℹ️ No Global API session to cleanup")
         except Exception as e:
-            self.logger.warning(f"Issue during connection cleanup: {e}")
+            self.logger.debug(f"Global API connection cleanup note: {e}")
     
     def __del__(self):
         """Cleanup when object is destroyed"""

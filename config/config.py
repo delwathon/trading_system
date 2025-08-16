@@ -117,7 +117,7 @@ class EnhancedSystemConfig:
             session.close()
             
         except Exception as e:
-            self.logger.error(f"Error loading configuration from MySQL database: {e}")
+            # self.logger.error(f"Error loading configuration from MySQL database: {e}")
             self._apply_fallback_config()
     
     def _create_default_config(self, session: Session):
@@ -129,11 +129,11 @@ class EnhancedSystemConfig:
                 config_name=self.config_name,
 
                 # API Configuration
-                bybit_live_api_key=None,
-                bybit_live_api_secret=None,
                 bybit_demo_api_key=None,
                 bybit_demo_api_secret=None,
                 sandbox_mode=True,
+                deposit_addresses=None,
+                subscription_fee=100.00,
                 
                 # Market Scanning
                 min_volume_24h=5_000_000,
@@ -237,11 +237,11 @@ class EnhancedSystemConfig:
         self.logger.warning("Using fallback configuration with 30m primary, 1h/4h/6h confirmation")
         
         # Set default values with correct timeframes
-        self.bybit_live_api_key = None
-        self.bybit_live_api_secret = None
         self.bybit_demo_api_key = None
         self.bybit_demo_api_secret = None
         self.sandbox_mode = True
+        self.deposit_addresses = None
+        self.subscription_fee = 100.00
         self.min_volume_24h = 5_000_000
         self.max_symbols_scan = 500
         self.timeframe = '6h'
@@ -291,10 +291,10 @@ class EnhancedSystemConfig:
         self.max_concurrent_positions = 10
         self.max_execution_per_trade = 3
         self.day_trade_start_hour = '01:00'
-        self.scan_interval = 3600  # 3 hours
+        self.scan_interval = 900  # 3 hours
         self.auto_execute_trades = True
         self.auto_close_enabled=True
-        self.auto_close_profit_at = 500.0
+        self.auto_close_profit_at = 800.0
         self.auto_close_loss_at = 400.0
         self.default_tp_level = 'take_profit_2'
         self.monitor_mode = False  # Monitor mode only, no analysis
@@ -446,11 +446,11 @@ class EnhancedSystemConfig:
         """Export current configuration to YAML file (for backup)"""
         try:
             config_dict = {
-                'bybit_live_api_key': self.bybit_live_api_key,
-                'bybit_live_api_secret': self.bybit_live_api_secret,
                 'bybit_demo_api_key': self.bybit_demo_api_key,
                 'bybit_demo_api_secret': self.bybit_demo_api_secret,
                 'sandbox_mode': self.sandbox_mode,
+                'deposit_addresses': self.deposit_addresses,
+                'subscription_fee': self.subscription_fee,
                 'min_volume_24h': self.min_volume_24h,
                 'max_symbols_scan': self.max_symbols_scan,
                 'timeframe': self.timeframe,
@@ -515,11 +515,12 @@ class EnhancedSystemConfig:
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary"""
         return {
-            'bybit_live_api_key': getattr(self, 'bybit_live_api_key', None),
-            'bybit_live_api_secret': getattr(self, 'bybit_live_api_secret', None),
             'bybit_demo_api_key': getattr(self, 'bybit_demo_api_key', None),
             'bybit_demo_api_secret': getattr(self, 'bybit_demo_api_secret', None),
             'sandbox_mode': getattr(self, 'sandbox_mode', False),
+            'deposit_addresses': getattr(self, 'deposit_addresses', None),
+            'subscription_fee': getattr(self, 'subscription_fee', 100.00),
+            # Market Scanning
             'min_volume_24h': getattr(self, 'min_volume_24h', 5_000_000),
             'max_symbols_scan': getattr(self, 'max_symbols_scan', 500),
             'timeframe': getattr(self, 'timeframe', '6h'),
