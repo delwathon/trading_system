@@ -1,7 +1,3 @@
 /logs
 /charts
-/signals/obsolete
-/trading_module/autotrader_copy_*
-/database/models_copy_*
-/telegram_bot_and_notification/bootstrap_manager_copy_*
-/core/exchange_copy_*
+/tmp
