@@ -24,8 +24,8 @@ from utils.logging import setup_logging, get_logger
 logger = setup_logging()  # This will be the ONLY log file created
 
 from config.config import EnhancedSystemConfig, DatabaseConfig
-from autotrader_module.bybit import AutoTrader, LeverageManager
-from autotrader_module.bitunix import BitUnixAutoTrader, BitUnixLeverageManager
+from trading_module.autotrader import AutoTrader
+from trading_module.bybit import LeverageManager
 from database.models import DatabaseManager
 from utils.logging import setup_logging
 from telegram_bot_and_notification.bootstrap_manager import TelegramBootstrapManager, run_bootstrap_mode, check_bootstrap_needed

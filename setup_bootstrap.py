@@ -632,7 +632,7 @@ def run_comprehensive_test():
             from config.config import DatabaseConfig, EnhancedSystemConfig
             from database.models import DatabaseManager
             from telegram_bot_and_notification.bootstrap_manager import TelegramBootstrapManager
-            from autotrader_module.bybit import AutoTrader
+            from trading_module.bybit import AutoTrader
             print("   ✅ All modules import successfully")
         except Exception as e:
             print(f"   ❌ Module import failed: {e}")
