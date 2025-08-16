@@ -129,10 +129,10 @@ class EnhancedSystemConfig:
                 config_name=self.config_name,
 
                 # API Configuration
-                api_key=None,
-                api_secret=None,
-                demo_api_key=None,
-                demo_api_secret=None,
+                bybit_live_api_key=None,
+                bybit_live_api_secret=None,
+                bybit_demo_api_key=None,
+                bybit_demo_api_secret=None,
                 sandbox_mode=True,
                 
                 # Market Scanning
@@ -237,10 +237,10 @@ class EnhancedSystemConfig:
         self.logger.warning("Using fallback configuration with 30m primary, 1h/4h/6h confirmation")
         
         # Set default values with correct timeframes
-        self.api_key = None
-        self.api_secret = None
-        self.demo_api_key = None
-        self.demo_api_secret = None
+        self.bybit_live_api_key = None
+        self.bybit_live_api_secret = None
+        self.bybit_demo_api_key = None
+        self.bybit_demo_api_secret = None
         self.sandbox_mode = True
         self.min_volume_24h = 5_000_000
         self.max_symbols_scan = 500
@@ -446,10 +446,10 @@ class EnhancedSystemConfig:
         """Export current configuration to YAML file (for backup)"""
         try:
             config_dict = {
-                'api_key': self.api_key,
-                'api_secret': self.api_secret,
-                'demo_api_key': self.demo_api_key,
-                'demo_api_secret': self.demo_api_secret,
+                'bybit_live_api_key': self.bybit_live_api_key,
+                'bybit_live_api_secret': self.bybit_live_api_secret,
+                'bybit_demo_api_key': self.bybit_demo_api_key,
+                'bybit_demo_api_secret': self.bybit_demo_api_secret,
                 'sandbox_mode': self.sandbox_mode,
                 'min_volume_24h': self.min_volume_24h,
                 'max_symbols_scan': self.max_symbols_scan,
@@ -515,10 +515,10 @@ class EnhancedSystemConfig:
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary"""
         return {
-            'api_key': getattr(self, 'api_key', None),
-            'api_secret': getattr(self, 'api_secret', None),
-            'demo_api_key': getattr(self, 'demo_api_key', None),
-            'demo_api_secret': getattr(self, 'demo_api_secret', None),
+            'bybit_live_api_key': getattr(self, 'bybit_live_api_key', None),
+            'bybit_live_api_secret': getattr(self, 'bybit_live_api_secret', None),
+            'bybit_demo_api_key': getattr(self, 'bybit_demo_api_key', None),
+            'bybit_demo_api_secret': getattr(self, 'bybit_demo_api_secret', None),
             'sandbox_mode': getattr(self, 'sandbox_mode', False),
             'min_volume_24h': getattr(self, 'min_volume_24h', 5_000_000),
             'max_symbols_scan': getattr(self, 'max_symbols_scan', 500),

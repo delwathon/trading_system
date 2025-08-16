@@ -619,7 +619,7 @@ class LeveragedProfitMonitor:
                 tracker['partial_200_taken'] = True
                 return {
                     'action': 'close_partial',
-                    'percentage': 50,
+                    'percentage': 40,
                     'level': 'partial_200',
                     'leveraged_profit_pct': leveraged_profit_pct,
                     'milestone': '200% leveraged profit',
@@ -631,7 +631,7 @@ class LeveragedProfitMonitor:
                 tracker['partial_100_taken'] = True
                 return {
                     'action': 'close_partial',
-                    'percentage': 50,
+                    'percentage': 30,
                     'level': 'partial_100',
                     'leveraged_profit_pct': leveraged_profit_pct,
                     'milestone': '100% leveraged profit',

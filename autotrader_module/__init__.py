@@ -3,7 +3,7 @@ Bybit module for Enhanced Trading System.
 Contains auto-trading functionality and position management.
 """
 
-from .autotrader import (
+from .bybit import (
     AutoTrader,
     LeverageManager,
     PositionSizer,

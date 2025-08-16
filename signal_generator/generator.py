@@ -810,7 +810,11 @@ class SignalGeneratorV14:
                 warnings=self._identify_warnings(primary_analysis, risk_reward_ratio)
             )
             
-            return signal
+            if final_confidence >= 60:
+                self.logger.info(f"Signal {signal.id} for {symbol} - {quality.label} ({final_confidence:.1f}% confidence)")
+                return signal
+            else:
+                return None
             
         except Exception as e:
             self.logger.error(f"Signal building error: {e}")
@@ -995,7 +999,7 @@ class SignalGeneratorV14:
                     signal.get('quality_tier', 'marginal')
                 )
             
-            return ranked_signals
+            return ranked_signals[:self.config.charts_per_batch]
             
         except Exception as e:
             self.logger.error(f"Ranking error: {e}")

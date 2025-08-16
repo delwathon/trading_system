@@ -24,7 +24,8 @@ from utils.logging import setup_logging, get_logger
 logger = setup_logging()  # This will be the ONLY log file created
 
 from config.config import EnhancedSystemConfig, DatabaseConfig
-from bybit.autotrader import AutoTrader, LeverageManager
+from autotrader_module.bybit import AutoTrader, LeverageManager
+from autotrader_module.bitunix import BitUnixAutoTrader, BitUnixLeverageManager
 from database.models import DatabaseManager
 from utils.logging import setup_logging
 from telegram_bot_and_notification.bootstrap_manager import TelegramBootstrapManager, run_bootstrap_mode, check_bootstrap_needed
@@ -84,9 +85,9 @@ def validate_auto_trading_config(config: EnhancedSystemConfig, skip_api_check: b
     # Skip API credential check if in bootstrap mode
     if not skip_api_check:
         # Validate API credentials
-        if not config.api_key or not config.api_secret:
+        if not config.bybit_live_api_key or not config.bybit_live_api_secret:
             logger.error("❌ Missing API credentials")
-            logger.error("   Please set api_key and api_secret in database configuration")
+            logger.error("   Please set bybit_live_api_key and bybit_live_api_secret in database configuration")
             return False
     
     return True

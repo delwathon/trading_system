@@ -21,10 +21,10 @@ class SystemConfig(Base):
     config_name = Column(String(100), unique=True, nullable=False, default='default')
     
     # API Configuration
-    api_key = Column(String(255), nullable=True)
-    api_secret = Column(String(255), nullable=True)
-    demo_api_key = Column(String(255), nullable=True)
-    demo_api_secret = Column(String(255), nullable=True)
+    bybit_live_api_key = Column(String(255), nullable=True)
+    bybit_live_api_secret = Column(String(255), nullable=True)
+    bybit_demo_api_key = Column(String(255), nullable=True)
+    bybit_demo_api_secret = Column(String(255), nullable=True)
     sandbox_mode = Column(Boolean, default=False)
     
     # NEW: Encryption password for API secrets
@@ -109,10 +109,10 @@ class SystemConfig(Base):
     def to_dict(self):
         """Convert to dictionary for compatibility with existing code"""
         return {
-            'api_key': self.api_key,
-            'api_secret': self.api_secret,
-            'demo_api_key': self.demo_api_key,
-            'demo_api_secret': self.demo_api_secret,
+            'bybit_live_api_key': self.bybit_live_api_key,
+            'bybit_live_api_secret': self.bybit_live_api_secret,
+            'bybit_demo_api_key': self.bybit_demo_api_key,
+            'bybit_demo_api_secret': self.bybit_demo_api_secret,
             'sandbox_mode': self.sandbox_mode,
             'encryption_password': self.encryption_password,  # NEW
             'min_volume_24h': self.min_volume_24h,

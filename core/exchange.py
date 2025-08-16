@@ -50,13 +50,13 @@ class ExchangeManager:
             # Determine which credentials to use
             if self.config.sandbox_mode:
                 # Use demo credentials for sandbox mode
-                encrypted_api = self.config.demo_api_key
-                encrypted_secret = self.config.demo_api_secret
+                encrypted_api = self.config.bybit_demo_api_key
+                encrypted_secret = self.config.bybit_demo_api_secret
                 self.logger.debug("Using demo API credentials for sandbox mode")
             else:
                 # Use production credentials
-                encrypted_api = self.config.api_key
-                encrypted_secret = self.config.api_secret
+                encrypted_api = self.config.bybit_live_api_key
+                encrypted_secret = self.config.bybit_live_api_secret
                 self.logger.debug("Using production API credentials")
             
             # Validate credentials exist
@@ -214,10 +214,10 @@ class ExchangeManager:
         """Validate and return credential status with Global API support"""
         try:
             status = {
-                'api_key_present': bool(self.config.api_key),
-                'api_secret_present': bool(self.config.api_secret),
-                'demo_api_key_present': bool(self.config.demo_api_key),
-                'demo_api_secret_present': bool(self.config.demo_api_secret),
+                'api_key_present': bool(self.config.bybit_live_api_key),
+                'api_secret_present': bool(self.config.bybit_live_api_secret),
+                'demo_api_key_present': bool(self.config.bybit_demo_api_key),
+                'demo_api_secret_present': bool(self.config.bybit_demo_api_secret),
                 'credentials_decryptable': False,
                 'exchange_connection': False,
                 'global_api_accessible': False
@@ -225,9 +225,9 @@ class ExchangeManager:
             
             # Test decryption
             if self.config.sandbox_mode:
-                encrypted_secret = self.config.demo_api_secret
+                encrypted_secret = self.config.bybit_demo_api_secret
             else:
-                encrypted_secret = self.config.api_secret
+                encrypted_secret = self.config.bybit_live_api_secret
             
             if encrypted_secret:
                 decrypted = self.secret_manager.decrypt_secret(encrypted_secret)

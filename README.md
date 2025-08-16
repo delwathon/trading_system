@@ -77,8 +77,8 @@ Edit `enhanced_config.yaml` to customize your settings:
 
 ```yaml
 # API Configuration (optional for demo mode)
-api_key: null
-api_secret: null
+bybit_live_api_key: null
+bybit_live_api_secret: null
 sandbox_mode: true
 
 # Market Analysis Settings

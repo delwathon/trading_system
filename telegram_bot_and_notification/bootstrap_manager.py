@@ -59,10 +59,10 @@ class TelegramBootstrapManager:
     def check_api_credentials(self) -> Dict[str, bool]:
         """Check which API credentials are missing"""
         credentials_status = {
-            'api_key': bool(self.config.api_key),
-            'api_secret': bool(self.config.api_secret),
-            'demo_api_key': bool(self.config.demo_api_key),
-            'demo_api_secret': bool(self.config.demo_api_secret)
+            'bybit_live_api_key': bool(self.config.bybit_live_api_key),
+            'bybit_live_api_secret': bool(self.config.bybit_live_api_secret),
+            'bybit_demo_api_key': bool(self.config.bybit_demo_api_key),
+            'bybit_demo_api_secret': bool(self.config.bybit_demo_api_secret)
         }
         
         all_configured = all(credentials_status.values())
@@ -266,7 +266,7 @@ class TelegramBootstrapManager:
             
             # Initialize configuration state
             self.pending_configurations[user_id] = {
-                'step': 'api_key',
+                'step': 'bybit_live_api_key',
                 'data': {},
                 'started_at': datetime.now()
             }
@@ -333,7 +333,7 @@ class TelegramBootstrapManager:
             config_state['data'][step] = user_input
             
             # Determine next step
-            step_sequence = ['api_key', 'api_secret', 'demo_api_key', 'demo_api_secret']
+            step_sequence = ['bybit_live_api_key', 'bybit_live_api_secret', 'bybit_demo_api_key', 'bybit_demo_api_secret']
             current_index = step_sequence.index(step)
             
             if current_index < len(step_sequence) - 1:
@@ -352,22 +352,22 @@ class TelegramBootstrapManager:
         """Show the next configuration step"""
         try:
             step_info = {
-                'api_key': {
+                'bybit_live_api_key': {
                     'title': 'Production API Key',
                     'number': '1/4',
                     'description': 'Enter your Bybit API Key for production trading'
                 },
-                'api_secret': {
+                'bybit_live_api_secret': {
                     'title': 'Production API Secret',
                     'number': '2/4',
                     'description': 'Enter your Bybit API Secret for production trading'
                 },
-                'demo_api_key': {
+                'bybit_demo_api_key': {
                     'title': 'Demo API Key',
                     'number': '3/4',
                     'description': 'Enter your Bybit Demo API Key for testing'
                 },
-                'demo_api_secret': {
+                'bybit_demo_api_secret': {
                     'title': 'Demo API Secret',
                     'number': '4/4',
                     'description': 'Enter your Bybit Demo API Secret for testing'
